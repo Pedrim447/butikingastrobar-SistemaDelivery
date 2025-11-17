@@ -106,20 +106,21 @@ const Menu = () => {
         )}
       </main>
 
-      {/* Floating Cart Button (Mobile) */}
+      {/* Floating Cart Summary (Mobile & Desktop) */}
       {cartCount > 0 && (
-        <div className="fixed bottom-6 right-6 sm:hidden">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-3rem)] max-w-md">
           <Button
             onClick={() => navigate('/cart')}
             size="lg"
-            className="h-16 w-16 rounded-full shadow-xl"
+            className="w-full h-14 shadow-2xl flex items-center justify-between px-6"
           >
-            <div className="relative">
-              <ShoppingCart className="w-6 h-6" />
-              <Badge className="absolute -top-3 -right-3 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                {cartCount}
-              </Badge>
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5" />
+              <span className="font-bold">Ver Sacola ({cartCount})</span>
             </div>
+            <span className="font-bold text-lg">
+              R$ {cartTotal.toFixed(2)}
+            </span>
           </Button>
         </div>
       )}
