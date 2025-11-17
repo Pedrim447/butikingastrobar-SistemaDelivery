@@ -103,6 +103,9 @@ const OrderConfirmation = () => {
                   <strong>Bairro:</strong> {order.customer_neighborhood}
                 </p>
                 <p>
+                  <strong>Cidade:</strong> {order.customer_city} - {order.customer_state}
+                </p>
+                <p>
                   <strong>CEP:</strong> {order.customer_cep}
                 </p>
               </div>
