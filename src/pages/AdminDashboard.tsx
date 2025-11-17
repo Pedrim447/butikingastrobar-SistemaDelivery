@@ -162,6 +162,9 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
     // Filter by status
     if (status && status !== "all") {
       filtered = filtered.filter(order => order.status === status);
+    } else if (status === "all") {
+      // "Todos" shows only history (exclude pending)
+      filtered = filtered.filter(order => order.status !== "pending");
     }
     
     // Filter by search term (name or ID)
@@ -206,7 +209,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
 
         <Tabs defaultValue="all" className="w-full">
           <TabsList className="mb-4">
-            <TabsTrigger value="all">Todos ({orders.length})</TabsTrigger>
+            <TabsTrigger value="all">Histórico ({orders.filter(o => o.status !== "pending").length})</TabsTrigger>
             <TabsTrigger value="pending">Pendentes ({filterOrders("pending").length})</TabsTrigger>
             <TabsTrigger value="preparing">Preparando ({filterOrders("preparing").length})</TabsTrigger>
             <TabsTrigger value="delivered">Entregues ({filterOrders("delivered").length})</TabsTrigger>
