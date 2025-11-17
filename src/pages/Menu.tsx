@@ -5,16 +5,18 @@ import { ProductCard } from '@/components/ProductCard';
 import { CategoryNav } from '@/components/CategoryNav';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, Menu as MenuIcon } from 'lucide-react';
+import { ShoppingCart, Menu as MenuIcon, User } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const Menu = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { getCartItemsCount, getCartTotal } = useCart();
   const navigate = useNavigate();
 
@@ -54,8 +56,63 @@ const Menu = () => {
       <header className="sticky top-0 z-50 border-b bg-card shadow-md">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <MenuIcon className="w-8 h-8 text-primary" />
-            <h1 className="text-2xl font-bold text-primary">FastFood Delivery</h1>
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MenuIcon className="w-6 h-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72">
+                <div className="flex flex-col gap-6 mt-6">
+                  <div className="flex items-center gap-3 pb-4 border-b">
+                    <MenuIcon className="w-8 h-8 text-primary" />
+                    <h2 className="text-xl font-bold text-primary">FastFood Delivery</h2>
+                  </div>
+                  
+                  <nav className="flex flex-col gap-2">
+                    <Button
+                      variant="ghost"
+                      className="justify-start"
+                      onClick={() => {
+                        setActiveCategory(null);
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Todos os Produtos
+                    </Button>
+                    
+                    {categories.map(category => (
+                      <Button
+                        key={category.id}
+                        variant="ghost"
+                        className="justify-start"
+                        onClick={() => {
+                          setActiveCategory(category.slug);
+                          setMobileMenuOpen(false);
+                        }}
+                      >
+                        {category.name}
+                      </Button>
+                    ))}
+                  </nav>
+
+                  <div className="pt-4 border-t mt-auto">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        navigate('/auth');
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Acesso Administrativo
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+            <h1 className="text-xl sm:text-2xl font-bold text-primary">FastFood Delivery</h1>
           </div>
           <Button 
             onClick={() => navigate('/cart')}
