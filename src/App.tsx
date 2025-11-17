@@ -11,6 +11,7 @@ import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import Auth from "./pages/Auth";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminStats from "./pages/AdminStats";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/stats" element={<AdminStats />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
