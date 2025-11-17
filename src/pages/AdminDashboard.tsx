@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { toast } from "sonner";
-import { Printer } from "lucide-react";
+import { Printer, Search } from "lucide-react";
 
 interface Order {
   id: string;
@@ -38,6 +40,8 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
     if (!user) {
@@ -153,8 +157,27 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
   };
 
   const filterOrders = (status?: string) => {
-    if (!status) return orders;
-    return orders.filter(order => order.status === status);
+    let filtered = orders;
+    
+    // Filter by status
+    if (status && status !== "all") {
+      filtered = filtered.filter(order => order.status === status);
+    }
+    
+    // Filter by search term (name or ID)
+    if (searchTerm) {
+      filtered = filtered.filter(order => 
+        order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.id.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Additional status filter for "all" tab
+    if (status === "all" && statusFilter !== "all") {
+      filtered = filtered.filter(order => order.status === statusFilter);
+    }
+    
+    return filtered;
   };
 
   const handleSignOut = async () => {
@@ -185,14 +208,36 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
           <TabsList className="mb-4">
             <TabsTrigger value="all">Todos ({orders.length})</TabsTrigger>
             <TabsTrigger value="pending">Pendentes ({filterOrders("pending").length})</TabsTrigger>
-            <TabsTrigger value="confirmed">Confirmados ({filterOrders("confirmed").length})</TabsTrigger>
             <TabsTrigger value="preparing">Preparando ({filterOrders("preparing").length})</TabsTrigger>
-            <TabsTrigger value="out_for_delivery">Em Entrega ({filterOrders("out_for_delivery").length})</TabsTrigger>
             <TabsTrigger value="delivered">Entregues ({filterOrders("delivered").length})</TabsTrigger>
-            <TabsTrigger value="cancelled">Cancelados ({filterOrders("cancelled").length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all">
+            <div className="mb-4 flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou ID do pedido..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filtrar por status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os status</SelectItem>
+                  <SelectItem value="pending">Pendentes</SelectItem>
+                  <SelectItem value="confirmed">Confirmados</SelectItem>
+                  <SelectItem value="preparing">Preparando</SelectItem>
+                  <SelectItem value="out_for_delivery">Saiu p/ Entrega</SelectItem>
+                  <SelectItem value="delivered">Entregues</SelectItem>
+                  <SelectItem value="cancelled">Cancelados</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -207,7 +252,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders.map((order) => (
+                  {filterOrders("all").map((order) => (
                     <TableRow key={order.id}>
                       <TableCell className="font-medium">{order.customer_name}</TableCell>
                       <TableCell>{order.customer_phone}</TableCell>
@@ -266,7 +311,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
             </div>
           </TabsContent>
 
-          {["pending", "confirmed", "preparing", "out_for_delivery", "delivered", "cancelled"].map((status) => (
+          {["pending", "preparing", "delivered"].map((status) => (
             <TabsContent key={status} value={status}>
               <div className="rounded-md border">
                 <Table>
