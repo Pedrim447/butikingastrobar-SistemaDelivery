@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { Order, OrderItem } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { CheckCircle, Home, Loader2 } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Order, OrderItem } from "@/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { CheckCircle, Home, Loader2 } from "lucide-react";
 
 const OrderConfirmation = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -24,14 +24,14 @@ const OrderConfirmation = () => {
   const fetchOrder = async () => {
     try {
       const [orderRes, itemsRes] = await Promise.all([
-        supabase.from('orders').select('*').eq('id', orderId).single(),
-        supabase.from('order_items').select('*').eq('order_id', orderId)
+        supabase.from("orders").select("*").eq("id", orderId).single(),
+        supabase.from("order_items").select("*").eq("order_id", orderId),
       ]);
 
       if (orderRes.data) setOrder(orderRes.data as Order);
       if (itemsRes.data) setOrderItems(itemsRes.data as OrderItem[]);
     } catch (error) {
-      console.error('Error fetching order:', error);
+      console.error("Error fetching order:", error);
     } finally {
       setLoading(false);
     }
@@ -51,7 +51,7 @@ const OrderConfirmation = () => {
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center">
             <p className="text-muted-foreground mb-4">Pedido não encontrado</p>
-            <Button onClick={() => navigate('/')}>
+            <Button onClick={() => navigate("/")}>
               <Home className="w-4 h-4 mr-2" />
               Voltar ao Início
             </Button>
@@ -69,9 +69,7 @@ const OrderConfirmation = () => {
             <CheckCircle className="w-12 h-12 text-success" />
           </div>
           <h1 className="text-3xl font-bold mb-2">Pedido Confirmado!</h1>
-          <p className="text-muted-foreground">
-            Seu pedido foi recebido e está sendo preparado
-          </p>
+          <p className="text-muted-foreground">Seu pedido foi recebido e está sendo preparado</p>
         </div>
 
         <Card className="mb-6">
@@ -80,11 +78,11 @@ const OrderConfirmation = () => {
               <div>
                 <CardTitle>Pedido #{order.id.slice(0, 8)}</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {new Date(order.created_at).toLocaleString('pt-BR')}
+                  {new Date(order.created_at).toLocaleString("pt-BR")}
                 </p>
               </div>
               <Badge variant="secondary" className="text-base">
-                {order.status === 'pending' ? 'Pendente' : order.status}
+                {order.status === "pending" ? "Pendente" : order.status}
               </Badge>
             </div>
           </CardHeader>
@@ -92,12 +90,21 @@ const OrderConfirmation = () => {
             <div>
               <h3 className="font-semibold mb-2">Dados de Entrega</h3>
               <div className="text-sm space-y-1">
-                <p><strong>Nome:</strong> {order.customer_name}</p>
-                <p><strong>Telefone:</strong> {order.customer_phone}</p>
-                <p><strong>Endereço:</strong> {order.customer_address}</p>
-                <p><strong>Bairro:</strong> {order.customer_neighborhood}</p>
-                <p><strong>Cidade:</strong> {order.customer_city} - {order.customer_state}</p>
-                <p><strong>CEP:</strong> {order.customer_cep}</p>
+                <p>
+                  <strong>Nome:</strong> {order.customer_name}
+                </p>
+                <p>
+                  <strong>Telefone:</strong> {order.customer_phone}
+                </p>
+                <p>
+                  <strong>Endereço:</strong> {order.customer_address}
+                </p>
+                <p>
+                  <strong>Bairro:</strong> {order.customer_neighborhood}
+                </p>
+                <p>
+                  <strong>CEP:</strong> {order.customer_cep}
+                </p>
               </div>
             </div>
 
@@ -115,23 +122,21 @@ const OrderConfirmation = () => {
             <CardTitle>Itens do Pedido</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {orderItems.map(item => (
+            {orderItems.map((item) => (
               <div key={item.id} className="flex justify-between items-start">
                 <div className="flex-1">
                   <p className="font-medium">{item.product_name}</p>
                   <p className="text-sm text-muted-foreground">
                     {item.quantity}x R$ {item.product_price.toFixed(2)}
                   </p>
-                  {item.notes && (
-                    <p className="text-xs text-muted-foreground mt-1">Obs: {item.notes}</p>
-                  )}
+                  {item.notes && <p className="text-xs text-muted-foreground mt-1">Obs: {item.notes}</p>}
                 </div>
                 <p className="font-semibold">R$ {item.subtotal.toFixed(2)}</p>
               </div>
             ))}
-            
+
             <Separator />
-            
+
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Subtotal</span>
@@ -151,11 +156,7 @@ const OrderConfirmation = () => {
         </Card>
 
         <div className="space-y-3">
-          <Button
-            onClick={() => navigate('/')}
-            size="lg"
-            className="w-full"
-          >
+          <Button onClick={() => navigate("/")} size="lg" className="w-full">
             <Home className="w-4 h-4 mr-2" />
             Voltar ao Cardápio
           </Button>
