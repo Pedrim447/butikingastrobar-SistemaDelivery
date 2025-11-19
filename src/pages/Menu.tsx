@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Product, Category } from "@/types";
-import { ProductCard } from "@/components/ProductCard";
-import { CategoryNav } from "@/components/CategoryNav";
+import { HeroSection } from "@/components/HeroSection";
+import { CategorySection } from "@/components/CategorySection";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Menu as MenuIcon, User, Package } from "lucide-react";
+import { ShoppingCart, Menu as MenuIcon, Package } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,11 +13,11 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 const Menu = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { getCartItemsCount, getCartTotal } = useCart();
   const navigate = useNavigate();
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchData();
@@ -40,26 +39,28 @@ const Menu = () => {
     }
   };
 
-  const filteredProducts = activeCategory
-    ? products.filter((p) => {
-        const category = categories.find((c) => c.slug === activeCategory);
-        return category && p.category_id === category.id;
-      })
-    : products;
+  const scrollToMenu = () => {
+    menuRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const getProductsByCategory = (categoryId: string) => {
+    return products.filter((p) => p.category_id === categoryId);
+  };
 
   const cartCount = getCartItemsCount();
   const cartTotal = getCartTotal();
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-card shadow-md">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      {/* Fixed Header */}
+      <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b shadow-sm">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            {/* Mobile Menu */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MenuIcon className="w-6 h-6" />
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <MenuIcon className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-72">
@@ -83,24 +84,17 @@ const Menu = () => {
                     </Button>
                     
                     <div className="border-t pt-2 mt-2">
-                      <Button
-                        variant="ghost"
-                        className="justify-start"
-                        onClick={() => {
-                          setActiveCategory(null);
-                          setMobileMenuOpen(false);
-                        }}
-                      >
-                        Todos os Produtos
-                      </Button>
-
+                      <p className="text-sm font-semibold text-muted-foreground mb-2 px-3">
+                        Categorias
+                      </p>
                       {categories.map((category) => (
                         <Button
                           key={category.id}
                           variant="ghost"
-                          className="justify-start"
+                          className="justify-start w-full"
                           onClick={() => {
-                            setActiveCategory(category.slug);
+                            const element = document.getElementById(`category-${category.id}`);
+                            element?.scrollIntoView({ behavior: 'smooth' });
                             setMobileMenuOpen(false);
                           }}
                         >
@@ -109,79 +103,114 @@ const Menu = () => {
                       ))}
                     </div>
                   </nav>
-
-                  <div className="pt-4 border-t mt-auto">
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        navigate("/auth");
-                        setMobileMenuOpen(false);
-                      }}
-                    >
-                      <User className="w-4 h-4 mr-2" />
-                      Acesso Administrativo
-                    </Button>
-                  </div>
                 </div>
               </SheetContent>
             </Sheet>
-            <h1 className="text-xl sm:text-2xl font-bold text-primary">Butikin Gastrobar</h1>
+
+            {/* Brand */}
+            <h1 className="text-xl md:text-2xl font-bold text-primary">
+              Butikin Gastrobar
+            </h1>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hidden md:flex"
+                onClick={() => navigate('/meus-pedidos')}
+              >
+                <Package className="h-5 w-5" />
+              </Button>
+              
+              <Button
+                variant="default"
+                size="sm"
+                className="relative"
+                onClick={() => navigate("/cart")}
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Carrinho</span>
+                {cartCount > 0 && (
+                  <span className="ml-2 bg-primary-foreground text-primary rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold">
+                    {cartCount}
+                  </span>
+                )}
+              </Button>
+            </div>
           </div>
-          <Button onClick={() => navigate("/cart")} variant="outline" size="lg" className="relative">
-            <ShoppingCart className="w-5 h-5 mr-2" />
-            <span className="hidden sm:inline">Carrinho</span>
-            {cartCount > 0 && (
-              <Badge className="absolute -top-2 -right-2 h-6 w-6 flex items-center justify-center p-0">
-                {cartCount}
-              </Badge>
-            )}
-          </Button>
         </div>
       </header>
 
-      {/* Category Navigation */}
-      {!loading && (
-        <CategoryNav categories={categories} activeCategory={activeCategory} onCategoryClick={setActiveCategory} />
-      )}
+      {/* Hero Section */}
+      <HeroSection onOrderNow={scrollToMenu} />
 
-      {/* Products Grid */}
-      <main className="container mx-auto px-4 py-8">
+      {/* Menu Sections */}
+      <div ref={menuRef}>
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(8)].map((_, i) => (
-              <Skeleton key={i} className="h-96" />
-            ))}
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-xl text-muted-foreground">Nenhum produto encontrado nesta categoria</p>
+          <div className="container mx-auto px-4 py-8">
+            <div className="space-y-12">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-4">
+                  <Skeleton className="h-8 w-48" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map((j) => (
+                      <Skeleton key={j} className="h-80" />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+          <div className="space-y-4">
+            {categories.map((category) => (
+              <div key={category.id} id={`category-${category.id}`}>
+                <CategorySection
+                  category={category}
+                  products={getProductsByCategory(category.id)}
+                />
+              </div>
             ))}
           </div>
         )}
-      </main>
+      </div>
 
-      {/* Floating Cart Summary (Mobile & Desktop) */}
+      {/* Floating Cart Button (Mobile) */}
       {cartCount > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-3rem)] max-w-md">
+        <div className="fixed bottom-4 right-4 z-40 md:hidden">
           <Button
-            onClick={() => navigate("/cart")}
             size="lg"
-            className="w-full h-14 shadow-2xl flex items-center justify-between px-6"
+            className="rounded-full shadow-lg h-14 px-6"
+            onClick={() => navigate("/cart")}
           >
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="w-5 h-5" />
-              <span className="font-bold">Ver Sacola ({cartCount})</span>
-            </div>
-            <span className="font-bold text-lg">R$ {cartTotal.toFixed(2)}</span>
+            <ShoppingCart className="h-5 w-5 mr-2" />
+            {cartCount} {cartCount === 1 ? 'item' : 'itens'}
+            <span className="ml-2 font-bold">
+              R$ {cartTotal.toFixed(2)}
+            </span>
           </Button>
         </div>
       )}
+
+      {/* Footer */}
+      <footer className="bg-card border-t mt-16 py-8">
+        <div className="container mx-auto px-4 text-center">
+          <h3 className="text-lg font-bold text-primary mb-2">
+            Butikin Gastrobar
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Sabor autêntico em cada pedido
+          </p>
+          <div className="flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
+            <span>Segunda a Domingo: 11h às 23h</span>
+            <span>•</span>
+            <span>Entrega rápida</span>
+            <span>•</span>
+            <span>(00) 0000-0000</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
