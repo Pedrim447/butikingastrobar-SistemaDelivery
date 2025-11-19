@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Printer, Search } from "lucide-react";
+import { OrderItemsGrouped } from "@/components/OrderItemsGrouped";
 
 interface Order {
   id: string;
@@ -33,6 +34,7 @@ interface Order {
   delivery_rider_id: string | null;
   cancellation_reason: string | null;
   order_items: Array<{
+    product_id: string;
     product_name: string;
     quantity: number;
     product_price: number;
@@ -346,13 +348,19 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                       <TableCell className="font-medium">{order.customer_name}</TableCell>
                       <TableCell>{order.customer_phone}</TableCell>
                       <TableCell>
-                        <div className="text-sm">
-                          {order.order_items.map((item, idx) => (
-                            <div key={idx}>
-                              {item.quantity}x {item.product_name}
-                            </div>
-                          ))}
-                        </div>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              Ver Itens ({order.order_items.length})
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>Itens do Pedido</DialogTitle>
+                            </DialogHeader>
+                            <OrderItemsGrouped items={order.order_items} />
+                          </DialogContent>
+                        </Dialog>
                       </TableCell>
                       <TableCell>R$ {order.total.toFixed(2)}</TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
