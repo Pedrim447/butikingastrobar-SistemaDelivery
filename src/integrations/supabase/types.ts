@@ -38,6 +38,36 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_riders: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          phone: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          phone: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          phone?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string | null
@@ -91,6 +121,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          cancellation_reason: string | null
           created_at: string | null
           customer_address: string
           customer_cep: string
@@ -100,6 +131,7 @@ export type Database = {
           customer_phone: string
           customer_state: string | null
           delivery_fee: number | null
+          delivery_rider_id: string | null
           id: string
           notes: string | null
           status: string | null
@@ -108,6 +140,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          cancellation_reason?: string | null
           created_at?: string | null
           customer_address: string
           customer_cep: string
@@ -117,6 +150,7 @@ export type Database = {
           customer_phone: string
           customer_state?: string | null
           delivery_fee?: number | null
+          delivery_rider_id?: string | null
           id?: string
           notes?: string | null
           status?: string | null
@@ -125,6 +159,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          cancellation_reason?: string | null
           created_at?: string | null
           customer_address?: string
           customer_cep?: string
@@ -134,6 +169,7 @@ export type Database = {
           customer_phone?: string
           customer_state?: string | null
           delivery_fee?: number | null
+          delivery_rider_id?: string | null
           id?: string
           notes?: string | null
           status?: string | null
@@ -141,7 +177,15 @@ export type Database = {
           total?: number
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_delivery_rider_id_fkey"
+            columns: ["delivery_rider_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_riders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -222,7 +266,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "delivery_rider"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -350,7 +394,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "delivery_rider"],
     },
   },
 } as const

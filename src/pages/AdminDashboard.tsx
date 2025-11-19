@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Printer, Search } from "lucide-react";
 
@@ -27,6 +30,8 @@ interface Order {
   status: string;
   created_at: string;
   notes: string;
+  delivery_rider_id: string | null;
+  cancellation_reason: string | null;
   order_items: Array<{
     product_name: string;
     quantity: number;
@@ -35,13 +40,25 @@ interface Order {
   }>;
 }
 
+interface DeliveryRider {
+  id: string;
+  name: string;
+  phone: string;
+  is_active: boolean;
+}
+
 export default function AdminDashboard() {
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [deliveryRiders, setDeliveryRiders] = useState<DeliveryRider[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedRiderId, setSelectedRiderId] = useState<string>("");
+  const [selectedOrderForRider, setSelectedOrderForRider] = useState<string | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -55,6 +72,7 @@ export default function AdminDashboard() {
     }
 
     fetchOrders();
+    fetchDeliveryRiders();
   }, [user, isAdmin, navigate]);
 
   const fetchOrders = async () => {
@@ -76,6 +94,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchDeliveryRiders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("delivery_riders")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
+
+      if (error) throw error;
+      setDeliveryRiders(data || []);
+    } catch (error) {
+      console.error("Erro ao buscar motoboys:", error);
+    }
+  };
+
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       const { error } = await supabase
@@ -90,6 +123,61 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error("Erro ao atualizar status:", error);
       toast.error("Erro ao atualizar status");
+    }
+  };
+
+  const assignRiderToOrder = async () => {
+    if (!selectedOrderForRider || !selectedRiderId) {
+      toast.error("Selecione um motoboy");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ 
+          delivery_rider_id: selectedRiderId,
+          status: "out_for_delivery"
+        })
+        .eq("id", selectedOrderForRider);
+
+      if (error) throw error;
+
+      toast.success("Motoboy atribuído!");
+      setSelectedOrderForRider(null);
+      setSelectedRiderId("");
+      fetchOrders();
+    } catch (error) {
+      console.error("Erro ao atribuir motoboy:", error);
+      toast.error("Erro ao atribuir motoboy");
+    }
+  };
+
+  const cancelOrder = async () => {
+    if (!selectedOrderForRider || !cancellationReason.trim()) {
+      toast.error("Informe o motivo do cancelamento");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ 
+          status: "cancelled",
+          cancellation_reason: cancellationReason
+        })
+        .eq("id", selectedOrderForRider);
+
+      if (error) throw error;
+
+      toast.success("Pedido cancelado");
+      setCancelDialogOpen(false);
+      setCancellationReason("");
+      setSelectedOrderForRider(null);
+      fetchOrders();
+    } catch (error) {
+      console.error("Erro ao cancelar pedido:", error);
+      toast.error("Erro ao cancelar pedido");
     }
   };
 
@@ -145,8 +233,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
       pending: { label: "Pendente", variant: "outline" },
-      confirmed: { label: "Confirmado", variant: "secondary" },
-      preparing: { label: "Preparando", variant: "default" },
+      preparing: { label: "Em Produção", variant: "secondary" },
       out_for_delivery: { label: "Saiu p/ Entrega", variant: "default" },
       delivered: { label: "Entregue", variant: "default" },
       cancelled: { label: "Cancelado", variant: "destructive" },
@@ -211,7 +298,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
           <TabsList className="mb-4">
             <TabsTrigger value="all">Histórico ({orders.filter(o => o.status !== "pending").length})</TabsTrigger>
             <TabsTrigger value="pending">Pendentes ({filterOrders("pending").length})</TabsTrigger>
-            <TabsTrigger value="preparing">Preparando ({filterOrders("preparing").length})</TabsTrigger>
+            <TabsTrigger value="preparing">Em Produção ({filterOrders("preparing").length})</TabsTrigger>
             <TabsTrigger value="delivered">Entregues ({filterOrders("delivered").length})</TabsTrigger>
           </TabsList>
 
@@ -233,8 +320,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                 <SelectContent>
                   <SelectItem value="all">Todos os status</SelectItem>
                   <SelectItem value="pending">Pendentes</SelectItem>
-                  <SelectItem value="confirmed">Confirmados</SelectItem>
-                  <SelectItem value="preparing">Preparando</SelectItem>
+                  <SelectItem value="preparing">Em Produção</SelectItem>
                   <SelectItem value="out_for_delivery">Saiu p/ Entrega</SelectItem>
                   <SelectItem value="delivered">Entregues</SelectItem>
                   <SelectItem value="cancelled">Cancelados</SelectItem>
@@ -274,36 +360,78 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                       <TableCell>
                         <div className="flex gap-2 flex-wrap">
                           {order.status === "pending" && (
-                            <Button size="sm" onClick={() => updateOrderStatus(order.id, "confirmed")}>
-                              Confirmar
-                            </Button>
-                          )}
-                          {order.status === "confirmed" && (
                             <Button size="sm" onClick={() => updateOrderStatus(order.id, "preparing")}>
-                              Preparar
+                              Iniciar Produção
                             </Button>
                           )}
                           {order.status === "preparing" && (
-                            <Button size="sm" onClick={() => updateOrderStatus(order.id, "out_for_delivery")}>
-                              Enviar
-                            </Button>
-                          )}
-                          {order.status === "out_for_delivery" && (
-                            <Button size="sm" onClick={() => updateOrderStatus(order.id, "delivered")}>
-                              Concluir
-                            </Button>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button size="sm" onClick={() => setSelectedOrderForRider(order.id)}>
+                                  Atribuir Motoboy
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Selecionar Motoboy</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label>Motoboy</Label>
+                                    <Select value={selectedRiderId} onValueChange={setSelectedRiderId}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Selecione um motoboy" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {deliveryRiders.map((rider) => (
+                                          <SelectItem key={rider.id} value={rider.id}>
+                                            {rider.name} - {rider.phone}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <Button onClick={assignRiderToOrder} className="w-full">
+                                    Confirmar
+                                  </Button>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                           )}
                           <Button size="sm" variant="outline" onClick={() => printLabel(order)}>
                             <Printer className="h-4 w-4" />
                           </Button>
                           {order.status !== "cancelled" && order.status !== "delivered" && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => updateOrderStatus(order.id, "cancelled")}
-                            >
-                              Cancelar
-                            </Button>
+                            <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+                              <DialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => setSelectedOrderForRider(order.id)}
+                                >
+                                  Cancelar
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Cancelar Pedido</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label>Motivo do Cancelamento</Label>
+                                    <Textarea
+                                      value={cancellationReason}
+                                      onChange={(e) => setCancellationReason(e.target.value)}
+                                      placeholder="Informe o motivo..."
+                                      rows={3}
+                                    />
+                                  </div>
+                                  <Button onClick={cancelOrder} variant="destructive" className="w-full">
+                                    Confirmar Cancelamento
+                                  </Button>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                           )}
                         </div>
                       </TableCell>
@@ -349,36 +477,78 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                         <TableCell>
                           <div className="flex gap-2 flex-wrap">
                             {order.status === "pending" && (
-                              <Button size="sm" onClick={() => updateOrderStatus(order.id, "confirmed")}>
-                                Confirmar
-                              </Button>
-                            )}
-                            {order.status === "confirmed" && (
                               <Button size="sm" onClick={() => updateOrderStatus(order.id, "preparing")}>
-                                Preparar
+                                Iniciar Produção
                               </Button>
                             )}
                             {order.status === "preparing" && (
-                              <Button size="sm" onClick={() => updateOrderStatus(order.id, "out_for_delivery")}>
-                                Enviar
-                              </Button>
-                            )}
-                            {order.status === "out_for_delivery" && (
-                              <Button size="sm" onClick={() => updateOrderStatus(order.id, "delivered")}>
-                                Concluir
-                              </Button>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button size="sm" onClick={() => setSelectedOrderForRider(order.id)}>
+                                    Atribuir Motoboy
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Selecionar Motoboy</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div>
+                                      <Label>Motoboy</Label>
+                                      <Select value={selectedRiderId} onValueChange={setSelectedRiderId}>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Selecione um motoboy" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {deliveryRiders.map((rider) => (
+                                            <SelectItem key={rider.id} value={rider.id}>
+                                              {rider.name} - {rider.phone}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <Button onClick={assignRiderToOrder} className="w-full">
+                                      Confirmar
+                                    </Button>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
                             )}
                             <Button size="sm" variant="outline" onClick={() => printLabel(order)}>
                               <Printer className="h-4 w-4" />
                             </Button>
                             {order.status !== "cancelled" && order.status !== "delivered" && (
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => updateOrderStatus(order.id, "cancelled")}
-                              >
-                                Cancelar
-                              </Button>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => setSelectedOrderForRider(order.id)}
+                                  >
+                                    Cancelar
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Cancelar Pedido</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div>
+                                      <Label>Motivo do Cancelamento</Label>
+                                      <Textarea
+                                        value={cancellationReason}
+                                        onChange={(e) => setCancellationReason(e.target.value)}
+                                        placeholder="Informe o motivo..."
+                                        rows={3}
+                                      />
+                                    </div>
+                                    <Button onClick={cancelOrder} variant="destructive" className="w-full">
+                                      Confirmar Cancelamento
+                                    </Button>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
                             )}
                           </div>
                         </TableCell>
