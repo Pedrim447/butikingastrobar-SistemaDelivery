@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Package, Phone, MapPin, CheckCircle, XCircle } from "lucide-react";
+import { useGeolocation } from "@/hooks/useGeolocation";
 
 interface Order {
   id: string;
@@ -38,6 +39,8 @@ export default function DeliveryDashboard() {
   const [loading, setLoading] = useState(true);
   const [cancellationReason, setCancellationReason] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [riderId, setRiderId] = useState<string | null>(null);
+  const { position } = useGeolocation(true);
 
   useEffect(() => {
     if (!user) {
@@ -66,6 +69,8 @@ export default function DeliveryDashboard() {
 
       if (riderError) throw riderError;
 
+      setRiderId(riderData.id);
+
       // Then fetch orders assigned to this rider
       const { data: ordersData, error } = await supabase
         .from("orders")
@@ -84,6 +89,32 @@ export default function DeliveryDashboard() {
       setLoading(false);
     }
   };
+
+  // Update rider location in real-time
+  useEffect(() => {
+    if (!position || !riderId || orders.length === 0) return;
+
+    const updateLocation = async () => {
+      try {
+        // Update location for each active order
+        for (const order of orders) {
+          await supabase.from("delivery_rider_locations").upsert({
+            delivery_rider_id: riderId,
+            order_id: order.id,
+            latitude: position.latitude,
+            longitude: position.longitude,
+          });
+        }
+      } catch (error) {
+        console.error("Erro ao atualizar localização:", error);
+      }
+    };
+
+    updateLocation();
+    const interval = setInterval(updateLocation, 10000); // Update every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [position, riderId, orders]);
 
   const completeDelivery = async (orderId: string) => {
     try {
