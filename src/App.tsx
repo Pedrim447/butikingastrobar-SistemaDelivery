@@ -15,6 +15,7 @@ import AdminStats from "./pages/AdminStats";
 import AdminDeliveryRiders from "./pages/AdminDeliveryRiders";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
 import OrderTracking from "./pages/OrderTracking";
+import MyOrders from "./pages/MyOrders";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/confirmacao" element={<OrderConfirmation />} />
               <Route path="/rastreamento" element={<OrderTracking />} />
+              <Route path="/meus-pedidos" element={<MyOrders />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/stats" element={<AdminStats />} />

@@ -5,7 +5,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Menu as MenuIcon, User } from "lucide-react";
+import { ShoppingCart, Menu as MenuIcon, User, Package } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -74,26 +74,40 @@ const Menu = () => {
                       variant="ghost"
                       className="justify-start"
                       onClick={() => {
-                        setActiveCategory(null);
+                        navigate('/meus-pedidos');
                         setMobileMenuOpen(false);
                       }}
                     >
-                      Todos os Produtos
+                      <Package className="w-4 h-4 mr-2" />
+                      Meus Pedidos
                     </Button>
-
-                    {categories.map((category) => (
+                    
+                    <div className="border-t pt-2 mt-2">
                       <Button
-                        key={category.id}
                         variant="ghost"
                         className="justify-start"
                         onClick={() => {
-                          setActiveCategory(category.slug);
+                          setActiveCategory(null);
                           setMobileMenuOpen(false);
                         }}
                       >
-                        {category.name}
+                        Todos os Produtos
                       </Button>
-                    ))}
+
+                      {categories.map((category) => (
+                        <Button
+                          key={category.id}
+                          variant="ghost"
+                          className="justify-start"
+                          onClick={() => {
+                            setActiveCategory(category.slug);
+                            setMobileMenuOpen(false);
+                          }}
+                        >
+                          {category.name}
+                        </Button>
+                      ))}
+                    </div>
                   </nav>
 
                   <div className="pt-4 border-t mt-auto">
@@ -134,7 +148,7 @@ const Menu = () => {
       {/* Products Grid */}
       <main className="container mx-auto px-4 py-8">
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(8)].map((_, i) => (
               <Skeleton key={i} className="h-96" />
             ))}
@@ -144,7 +158,7 @@ const Menu = () => {
             <p className="text-xl text-muted-foreground">Nenhum produto encontrado nesta categoria</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
