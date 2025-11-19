@@ -82,28 +82,28 @@ export const OrderItemsGrouped: React.FC<OrderItemsGroupedProps> = ({ items }) =
   }, {} as Record<string, OrderItem[]>);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {Object.entries(groupedItems).map(([categoryName, categoryItems]) => (
-        <div key={categoryName} className="space-y-3">
-          <h3 className="text-lg font-semibold border-b pb-2">{categoryName}</h3>
-          <div className="space-y-2">
+        <div key={categoryName} className="space-y-2">
+          <h3 className="text-base font-semibold border-b pb-1.5">{categoryName}</h3>
+          <div className="space-y-1.5">
             {categoryItems.map((item, idx) => (
-              <div key={idx} className="flex justify-between items-start p-3 bg-muted/50 rounded-lg">
+              <div key={idx} className="flex justify-between items-start p-2 bg-muted/50 rounded-lg">
                 <div className="flex-1">
-                  <div className="font-medium">
+                  <div className="font-medium text-sm">
                     {item.quantity}x {item.product_name}
                   </div>
                   {item.notes && (
-                    <div className="text-sm text-muted-foreground mt-1">
+                    <div className="text-xs text-muted-foreground mt-0.5">
                       Obs: {item.notes}
                     </div>
                   )}
                 </div>
                 <div className="text-right ml-4">
-                  <div className="font-medium">
+                  <div className="font-medium text-sm">
                     R$ {(item.product_price * item.quantity).toFixed(2)}
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-xs text-muted-foreground">
                     R$ {item.product_price.toFixed(2)} cada
                   </div>
                 </div>
