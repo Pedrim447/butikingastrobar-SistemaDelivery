@@ -96,7 +96,15 @@ const Checkout = () => {
 
       setLoading(true);
 
-      // Create order
+      // Generate tracking code
+      const { data: trackingData, error: trackingError } = await supabase
+        .rpc('generate_tracking_code');
+      
+      if (trackingError) throw trackingError;
+
+      const trackingCode = trackingData;
+
+      // Create order with tracking code
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -112,11 +120,15 @@ const Checkout = () => {
           total: total,
           status: 'pending',
           notes: formData.notes || null,
+          tracking_code: trackingCode,
         })
         .select()
         .single();
 
       if (orderError) throw orderError;
+
+      // Save tracking code to localStorage
+      localStorage.setItem("lastOrderCode", trackingCode);
 
       // Create order items
       const orderItems = cart.map(item => ({
@@ -137,7 +149,7 @@ const Checkout = () => {
 
       clearCart();
       toast.success('Pedido realizado com sucesso!');
-      navigate(`/order-confirmation/${order.id}`);
+      navigate(`/confirmacao?tracking=${trackingCode}`);
     } catch (error) {
       if (error instanceof z.ZodError) {
         error.errors.forEach(err => {
