@@ -75,35 +75,24 @@ export default function AdminDeliveryRiders() {
     }
 
     try {
-      // Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-      });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Sessão expirada. Faça login novamente.");
+        return;
+      }
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Erro ao criar usuário");
-
-      // Create delivery rider profile
-      const { error: riderError } = await supabase
-        .from("delivery_riders")
-        .insert({
-          user_id: authData.user.id,
+      // Call edge function to create delivery rider
+      const { data, error } = await supabase.functions.invoke('create-delivery-rider', {
+        body: {
+          email: formData.email,
+          password: formData.password,
           name: formData.name,
           phone: formData.phone,
-        });
+        },
+      });
 
-      if (riderError) throw riderError;
-
-      // Add delivery_rider role
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({
-          user_id: authData.user.id,
-          role: "delivery_rider",
-        });
-
-      if (roleError) throw roleError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast.success("Motoboy cadastrado com sucesso!");
       setDialogOpen(false);

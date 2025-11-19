@@ -15,11 +15,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const { signIn, user } = useAuth();
 
-  useEffect(() => {
-    if (user) {
-      navigate('/admin');
-    }
-  }, [user, navigate]);
+  // Remove useEffect - navigation handled in handleSignIn
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,12 +33,12 @@ const Auth = () => {
         ? 'Email ou senha incorretos' 
         : 'Erro ao fazer login'
       );
+      setLoading(false);
     } else {
       toast.success('Login realizado com sucesso!');
-      navigate('/admin');
+      // Don't setLoading(false) here - let navigation happen
+      // Navigation will occur when auth state changes
     }
-    
-    setLoading(false);
   };
 
   return (
