@@ -50,15 +50,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           )}
         </div>
         
-        <CardContent className="p-4">
-          <h3 className="font-bold text-lg mb-2">{product.name}</h3>
+        <CardContent className="p-3">
+          <h3 className="font-bold text-base mb-1">{product.name}</h3>
           {product.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
               {product.description}
             </p>
           )}
           <div className="flex items-center justify-between">
-            <span className="text-2xl font-bold text-primary">
+            <span className="text-xl font-bold text-primary">
               R$ {product.price.toFixed(2)}
             </span>
           </div>
