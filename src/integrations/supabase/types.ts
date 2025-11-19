@@ -38,6 +38,48 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_rider_locations: {
+        Row: {
+          delivery_rider_id: string
+          id: string
+          latitude: number
+          longitude: number
+          order_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          delivery_rider_id: string
+          id?: string
+          latitude: number
+          longitude: number
+          order_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          delivery_rider_id?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          order_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_rider_locations_delivery_rider_id_fkey"
+            columns: ["delivery_rider_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_riders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_rider_locations_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_riders: {
         Row: {
           created_at: string | null
@@ -137,6 +179,7 @@ export type Database = {
           status: string | null
           subtotal: number
           total: number
+          tracking_code: string | null
           updated_at: string | null
         }
         Insert: {
@@ -156,6 +199,7 @@ export type Database = {
           status?: string | null
           subtotal: number
           total: number
+          tracking_code?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -175,6 +219,7 @@ export type Database = {
           status?: string | null
           subtotal?: number
           total?: number
+          tracking_code?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -257,6 +302,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_tracking_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
