@@ -4,7 +4,7 @@ import { Product, Category } from "@/types";
 import { HeroSection } from "@/components/HeroSection";
 import { CategorySection } from "@/components/CategorySection";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Menu as MenuIcon, Package } from "lucide-react";
+import { ShoppingCart, Menu as MenuIcon, Package, LogIn } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -81,6 +81,18 @@ const Menu = () => {
                     >
                       <Package className="w-4 h-4 mr-2" />
                       Meus Pedidos
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      className="justify-start"
+                      onClick={() => {
+                        navigate('/auth');
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      <LogIn className="w-4 h-4 mr-2" />
+                      Painel Administrativo
                     </Button>
                     
                     <div className="border-t pt-2 mt-2">
