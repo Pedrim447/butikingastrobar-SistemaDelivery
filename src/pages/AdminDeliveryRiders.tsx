@@ -94,33 +94,6 @@ export default function AdminDeliveryRiders() {
       toast.error("Erro ao atualizar status");
     }
   };
-    } catch (error: any) {
-      console.error("Erro ao criar motoboy:", error);
-      toast.error(error.message || "Erro ao cadastrar motoboy");
-    }
-  };
-
-  const toggleRiderStatus = async (riderId: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase
-        .from("delivery_riders")
-        .update({ is_active: !currentStatus })
-        .eq("id", riderId);
-
-      if (error) throw error;
-
-      toast.success("Status atualizado!");
-      fetchRiders();
-    } catch (error) {
-      console.error("Erro ao atualizar status:", error);
-      toast.error("Erro ao atualizar status");
-    }
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
-  };
 
   if (loading) {
     return (
