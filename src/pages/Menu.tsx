@@ -24,14 +24,24 @@ const Menu = () => {
   }, []);
 
   const fetchData = async () => {
+    setLoading(true);
     try {
       const [categoriesRes, productsRes] = await Promise.all([
         supabase.from("categories").select("*").order("display_order"),
         supabase.from("products").select("*").eq("is_available", true),
       ]);
 
-      if (categoriesRes.data) setCategories(categoriesRes.data);
-      if (productsRes.data) setProducts(productsRes.data);
+      if (categoriesRes.error) {
+        console.error("Error fetching categories:", categoriesRes.error);
+      } else if (categoriesRes.data) {
+        setCategories(categoriesRes.data);
+      }
+
+      if (productsRes.error) {
+        console.error("Error fetching products:", productsRes.error);
+      } else if (productsRes.data) {
+        setProducts(productsRes.data);
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {

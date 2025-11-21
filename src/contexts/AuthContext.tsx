@@ -25,26 +25,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Check user role after state is set
+        // Defer role check and navigation with setTimeout to avoid deadlock
         if (session?.user) {
-          await checkUserRole(session.user.id);
-          
-          // Auto-redirect to admin if user is admin
-          if (event === 'SIGNED_IN') {
-            const { data } = await supabase
-              .from('user_roles')
-              .select('role')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
+          setTimeout(() => {
+            checkUserRole(session.user.id);
             
-            if (data?.role === 'admin') {
-              window.location.href = '/admin';
+            // Auto-redirect to admin if user is admin on sign in
+            if (event === 'SIGNED_IN') {
+              setTimeout(async () => {
+                const { data } = await supabase
+                  .from('user_roles')
+                  .select('role')
+                  .eq('user_id', session.user.id)
+                  .maybeSingle();
+                
+                if (data?.role === 'admin') {
+                  window.location.href = '/admin';
+                }
+              }, 0);
             }
-          }
+          }, 0);
         } else {
           setIsAdmin(false);
           setIsDeliveryRider(false);
