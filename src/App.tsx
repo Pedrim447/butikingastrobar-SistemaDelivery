@@ -10,6 +10,7 @@ import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import Auth from "./pages/Auth";
+import DeliveryAuth from "./pages/DeliveryAuth";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminStats from "./pages/AdminStats";
 import AdminDeliveryRiders from "./pages/AdminDeliveryRiders";
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/rastreamento" element={<OrderTracking />} />
               <Route path="/meus-pedidos" element={<MyOrders />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/delivery-auth" element={<DeliveryAuth />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/stats" element={<AdminStats />} />
               <Route path="/admin/delivery-riders" element={<AdminDeliveryRiders />} />

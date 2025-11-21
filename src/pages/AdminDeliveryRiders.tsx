@@ -69,35 +69,31 @@ export default function AdminDeliveryRiders() {
   };
 
   const createRider = async () => {
-    if (!formData.email || !formData.password || !formData.name || !formData.phone) {
-      toast.error("Preencha todos os campos");
-      return;
-    }
+    toast.info("Os entregadores devem se cadastrar em /delivery-auth");
+    setDialogOpen(false);
+  };
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
+  const toggleRiderStatus = async (riderId: string, currentStatus: boolean) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Sessão expirada. Faça login novamente.");
-        return;
-      }
-
-      // Call edge function to create delivery rider
-      const { data, error } = await supabase.functions.invoke('create-delivery-rider', {
-        body: {
-          email: formData.email,
-          password: formData.password,
-          name: formData.name,
-          phone: formData.phone,
-        },
-      });
+      const { error } = await supabase
+        .from("delivery_riders")
+        .update({ is_active: !currentStatus })
+        .eq("id", riderId);
 
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
 
-      toast.success("Motoboy cadastrado com sucesso!");
-      setDialogOpen(false);
-      setFormData({ email: "", password: "", name: "", phone: "" });
+      toast.success("Status atualizado com sucesso!");
       fetchRiders();
+    } catch (error) {
+      console.error("Erro ao atualizar status:", error);
+      toast.error("Erro ao atualizar status");
+    }
+  };
     } catch (error: any) {
       console.error("Erro ao criar motoboy:", error);
       toast.error(error.message || "Erro ao cadastrar motoboy");

@@ -27,16 +27,16 @@ const Menu = () => {
   useEffect(() => {
     fetchData();
     fetchActiveOrders();
-  }, [guestData.guest_id]);
+  }, [guestData.id]);
 
   const fetchActiveOrders = async () => {
-    if (!guestData.guest_id) return;
+    if (!guestData.id) return;
     
     try {
       const { data, error } = await supabase
         .from("orders")
         .select("*")
-        .eq("guest_id", guestData.guest_id)
+        .eq("guest_id", guestData.id)
         .in("status", ["pending", "preparing", "out_for_delivery"])
         .order("created_at", { ascending: false });
 
@@ -121,9 +121,9 @@ const Menu = () => {
                       </div>
                       <div>
                         <h2 className="text-lg font-bold">
-                          {guestData.guest_name ? `Olá, ${guestData.guest_name}!` : 'Menu'}
+                          {guestData.name ? `Olá, ${guestData.name}!` : 'Menu'}
                         </h2>
-                        {guestData.guest_name && (
+                        {guestData.name && (
                           <p className="text-xs text-muted-foreground">(convidado)</p>
                         )}
                       </div>
@@ -185,7 +185,7 @@ const Menu = () => {
                         Cardápio
                       </Button>
 
-                      {guestData.guest_name && (
+                      {guestData.name && (
                         <Button
                           variant="ghost"
                           className="justify-start h-12 text-base"
@@ -219,6 +219,20 @@ const Menu = () => {
                         <Info className="w-5 h-5 mr-3" />
                         Sobre Nós
                       </Button>
+
+                      <div className="border-t pt-4 mt-4">
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start h-12 text-base"
+                          onClick={() => {
+                            navigate('/delivery-auth');
+                            setMobileMenuOpen(false);
+                          }}
+                        >
+                          <Package className="w-5 h-5 mr-3" />
+                          Área do Entregador
+                        </Button>
+                      </div>
                     </div>
                   </nav>
                 </div>
