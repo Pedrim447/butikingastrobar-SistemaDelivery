@@ -174,6 +174,7 @@ export type Database = {
           customer_state: string | null
           delivery_fee: number | null
           delivery_rider_id: string | null
+          guest_id: string | null
           id: string
           notes: string | null
           status: string | null
@@ -194,6 +195,7 @@ export type Database = {
           customer_state?: string | null
           delivery_fee?: number | null
           delivery_rider_id?: string | null
+          guest_id?: string | null
           id?: string
           notes?: string | null
           status?: string | null
@@ -214,6 +216,7 @@ export type Database = {
           customer_state?: string | null
           delivery_fee?: number | null
           delivery_rider_id?: string | null
+          guest_id?: string | null
           id?: string
           notes?: string | null
           status?: string | null

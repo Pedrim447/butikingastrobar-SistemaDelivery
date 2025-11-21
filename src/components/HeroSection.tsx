@@ -1,15 +1,27 @@
-import { Clock, MapPin, Phone } from 'lucide-react';
+import { Clock, MapPin, Phone, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useGuestMode } from '@/hooks/useGuestMode';
 
 interface HeroSectionProps {
   onOrderNow: () => void;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ onOrderNow }) => {
+  const { guestData } = useGuestMode();
+
   return (
     <section className="relative bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 py-16 md:py-24">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto text-center">
+          {/* Guest Greeting */}
+          {guestData.name && (
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full text-primary mb-6 animate-fade-in">
+              <User className="w-4 h-4" />
+              <span className="text-sm font-medium">Olá, {guestData.name}!</span>
+              <span className="text-xs text-primary/60">(convidado)</span>
+            </div>
+          )}
+
           {/* Logo/Brand */}
           <div className="mb-6">
             <h1 className="text-4xl md:text-6xl font-bold text-primary mb-3">
