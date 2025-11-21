@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { createContext, useContext, useEffect, useState } from "react";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AuthContextType {
   user: User | null;
@@ -24,43 +24,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Defer role check and navigation with setTimeout to avoid deadlock
-        if (session?.user) {
-          setTimeout(() => {
-            checkUserRole(session.user.id);
-            
-            // Auto-redirect to admin if user is admin on sign in
-            if (event === 'SIGNED_IN') {
-              setTimeout(async () => {
-                const { data } = await supabase
-                  .from('user_roles')
-                  .select('role')
-                  .eq('user_id', session.user.id)
-                  .maybeSingle();
-                
-                if (data?.role === 'admin') {
-                  window.location.href = '/admin';
-                }
-              }, 0);
-            }
-          }, 0);
-        } else {
-          setIsAdmin(false);
-          setIsDeliveryRider(false);
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      // Defer role check and navigation with setTimeout to avoid deadlock
+      if (session?.user) {
+        setTimeout(() => {
+          checkUserRole(session.user.id);
+
+          // Auto-redirect to admin if user is admin on sign in
+          if (event === "SIGNED_IN") {
+            setTimeout(async () => {
+              const { data } = await supabase
+                .from("user_roles")
+                .select("role")
+                .eq("user_id", session.user.id)
+                .maybeSingle();
+
+              if (data?.role === "admin") {
+                window.location.href = "/admin";
+              }
+            }, 0);
+          }
+        }, 0);
+      } else {
+        setIsAdmin(false);
+        setIsDeliveryRider(false);
       }
-    );
+    });
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
         checkUserRole(session.user.id);
       }
@@ -72,21 +72,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkUserRole = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
+      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle();
 
       if (!error && data) {
-        setIsAdmin(data.role === 'admin');
-        setIsDeliveryRider(data.role === 'delivery_rider');
+        setIsAdmin(data.role === "admin");
+        setIsDeliveryRider(data.role === "delivery_rider");
       } else {
         setIsAdmin(false);
         setIsDeliveryRider(false);
       }
     } catch (error) {
-      console.error('Error checking user role:', error);
+      console.error("Error checking user role:", error);
       setIsAdmin(false);
       setIsDeliveryRider(false);
     }
@@ -102,13 +98,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: redirectUrl
-      }
+        emailRedirectTo: redirectUrl,
+      },
     });
     return { error };
   };
@@ -140,7 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+    throw new Error("useAuth must be used within AuthProvider");
   }
   return context;
 };
