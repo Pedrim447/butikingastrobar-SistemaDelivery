@@ -69,8 +69,58 @@ export default function AdminDeliveryRiders() {
   };
 
   const createRider = async () => {
-    toast.info("Os entregadores devem se cadastrar em /delivery-auth");
-    setDialogOpen(false);
+    if (!formData.email || !formData.password || !formData.name || !formData.phone) {
+      toast.error('Preencha todos os campos');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            name: formData.name,
+            phone: formData.phone,
+          },
+        },
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Erro ao criar usuário');
+
+      const { error: riderError } = await supabase
+        .from('delivery_riders')
+        .insert({
+          user_id: authData.user.id,
+          name: formData.name,
+          phone: formData.phone,
+        });
+
+      if (riderError) throw riderError;
+
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: authData.user.id,
+          role: 'delivery_rider',
+        });
+
+      if (roleError) throw roleError;
+
+      toast.success('Motoboy cadastrado com sucesso!');
+      setDialogOpen(false);
+      setFormData({ email: '', password: '', name: '', phone: '' });
+      fetchRiders();
+    } catch (error: any) {
+      console.error('Erro ao criar motoboy:', error);
+      toast.error(error.message || 'Erro ao cadastrar motoboy');
+    }
   };
 
   const handleSignOut = async () => {
