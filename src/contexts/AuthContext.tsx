@@ -30,26 +30,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
 
-      // Defer role check and navigation with setTimeout to avoid deadlock
       if (session?.user) {
-        setTimeout(() => {
-          checkUserRole(session.user.id);
-
-          // Auto-redirect to admin if user is admin on sign in
-          if (event === "SIGNED_IN") {
-            setTimeout(async () => {
-              const { data } = await supabase
-                .from("user_roles")
-                .select("role")
-                .eq("user_id", session.user.id)
-                .maybeSingle();
-
-              if (data?.role === "admin") {
-                window.location.href = "/admin";
-              }
-            }, 0);
-          }
-        }, 0);
+        checkUserRole(session.user.id);
       } else {
         setIsAdmin(false);
         setIsDeliveryRider(false);
