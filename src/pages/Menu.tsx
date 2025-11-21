@@ -4,24 +4,51 @@ import { Product, Category } from "@/types";
 import { HeroSection } from "@/components/HeroSection";
 import { CategorySection } from "@/components/CategorySection";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Menu as MenuIcon, Package, LogIn } from "lucide-react";
+import { ShoppingCart, Menu as MenuIcon, Package, LogOut, Tag, Info, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useGuestMode } from "@/hooks/useGuestMode";
+import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "sonner";
 
 const Menu = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const { getCartItemsCount, getCartTotal } = useCart();
+  const { guestData, clearGuestData } = useGuestMode();
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchData();
-  }, []);
+    fetchActiveOrders();
+  }, [guestData.guest_id]);
+
+  const fetchActiveOrders = async () => {
+    if (!guestData.guest_id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("guest_id", guestData.guest_id)
+        .in("status", ["pending", "preparing", "out_for_delivery"])
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching active orders:", error);
+      } else if (data) {
+        setActiveOrders(data);
+      }
+    } catch (error) {
+      console.error("Error fetching active orders:", error);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -59,6 +86,14 @@ const Menu = () => {
 
   const cartCount = getCartItemsCount();
   const cartTotal = getCartTotal();
+  const hasActiveOrders = activeOrders.length > 0;
+
+  const handleLogoutGuest = () => {
+    clearGuestData();
+    toast.success("Você saiu do modo convidado");
+    setMobileMenuOpen(false);
+    window.location.reload();
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,60 +104,121 @@ const Menu = () => {
             {/* Mobile Menu */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
+                <Button variant="ghost" size="icon" className="md:hidden relative">
                   <MenuIcon className="w-5 h-5" />
+                  {hasActiveOrders && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full animate-pulse" />
+                  )}
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-72">
-                <div className="flex flex-col gap-6 mt-6">
-                  <div className="flex items-center gap-3 pb-4 border-b">
-                    <MenuIcon className="w-8 h-8 text-primary" />
-                    <h2 className="text-xl font-bold text-primary">Butikin Gastrobar</h2>
+              <SheetContent side="left" className="w-80 p-0">
+                <div className="flex flex-col h-full">
+                  {/* Header */}
+                  <div className="p-6 border-b">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <MenuIcon className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold">
+                          {guestData.guest_name ? `Olá, ${guestData.guest_name}!` : 'Menu'}
+                        </h2>
+                        {guestData.guest_name && (
+                          <p className="text-xs text-muted-foreground">(convidado)</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  <nav className="flex flex-col gap-2">
-                    <Button
-                      variant="ghost"
-                      className="justify-start"
-                      onClick={() => {
-                        navigate('/meus-pedidos');
-                        setMobileMenuOpen(false);
-                      }}
-                    >
-                      <Package className="w-4 h-4 mr-2" />
-                      Meus Pedidos
-                    </Button>
+                  {/* Active Orders Section */}
+                  {hasActiveOrders && (
+                    <div className="p-4 bg-muted/30">
+                      <Card className="border-primary/20 bg-background">
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              <Package className="w-5 h-5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-muted-foreground mb-1">
+                                #{activeOrders[0].tracking_code}
+                              </p>
+                              <p className="font-semibold mb-2">
+                                Pedido em andamento!
+                              </p>
+                              <p className="text-xs text-muted-foreground mb-3">
+                                {activeOrders[0].status === 'pending' && 'Pedido confirmado pelo estabelecimento.'}
+                                {activeOrders[0].status === 'preparing' && 'Seu pedido está sendo preparado.'}
+                                {activeOrders[0].status === 'out_for_delivery' && 'Pedido saiu para entrega!'}
+                              </p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full justify-between"
+                                onClick={() => {
+                                  navigate('/meus-pedidos');
+                                  setMobileMenuOpen(false);
+                                }}
+                              >
+                                Acompanhar
+                                <ChevronRight className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
 
-                    <Button
-                      variant="ghost"
-                      className="justify-start"
-                      onClick={() => {
-                        navigate('/auth');
-                        setMobileMenuOpen(false);
-                      }}
-                    >
-                      <LogIn className="w-4 h-4 mr-2" />
-                      Painel Administrativo
-                    </Button>
-                    
-                    <div className="border-t pt-2 mt-2">
-                      <p className="text-sm font-semibold text-muted-foreground mb-2 px-3">
-                        Categorias
-                      </p>
-                      {categories.map((category) => (
+                  {/* Menu Items */}
+                  <nav className="flex-1 overflow-y-auto p-4">
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        variant="ghost"
+                        className="justify-start h-12 text-base"
+                        onClick={() => {
+                          scrollToMenu();
+                          setMobileMenuOpen(false);
+                        }}
+                      >
+                        <MenuIcon className="w-5 h-5 mr-3" />
+                        Cardápio
+                      </Button>
+
+                      {guestData.guest_name && (
                         <Button
-                          key={category.id}
                           variant="ghost"
-                          className="justify-start w-full"
-                          onClick={() => {
-                            const element = document.getElementById(`category-${category.id}`);
-                            element?.scrollIntoView({ behavior: 'smooth' });
-                            setMobileMenuOpen(false);
-                          }}
+                          className="justify-start h-12 text-base"
+                          onClick={handleLogoutGuest}
                         >
-                          {category.name}
+                          <LogOut className="w-5 h-5 mr-3" />
+                          Sair do modo convidado
                         </Button>
-                      ))}
+                      )}
+
+                      <Button
+                        variant="ghost"
+                        className="justify-start h-12 text-base"
+                        onClick={() => {
+                          toast.info("Em breve!");
+                          setMobileMenuOpen(false);
+                        }}
+                      >
+                        <Tag className="w-5 h-5 mr-3" />
+                        Cupons de Desconto
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        className="justify-start h-12 text-base"
+                        onClick={() => {
+                          toast.info("Em breve!");
+                          setMobileMenuOpen(false);
+                        }}
+                      >
+                        <Info className="w-5 h-5 mr-3" />
+                        Sobre Nós
+                      </Button>
                     </div>
                   </nav>
                 </div>
