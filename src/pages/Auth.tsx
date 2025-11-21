@@ -26,18 +26,23 @@ const Auth = () => {
     }
 
     setLoading(true);
-    const { error } = await signIn(email, password);
-    
-    if (error) {
-      toast.error(error.message === 'Invalid login credentials' 
-        ? 'Email ou senha incorretos' 
-        : 'Erro ao fazer login'
-      );
+    try {
+      const { error } = await signIn(email, password);
+      
+      if (error) {
+        toast.error(error.message === 'Invalid login credentials' 
+          ? 'Email ou senha incorretos' 
+          : 'Erro ao fazer login'
+        );
+        setLoading(false);
+      } else {
+        toast.success('Login realizado com sucesso!');
+        // Loading state will be cleared by navigation
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Erro ao fazer login');
       setLoading(false);
-    } else {
-      toast.success('Login realizado com sucesso!');
-      // Don't setLoading(false) here - let navigation happen
-      // Navigation will occur when auth state changes
     }
   };
 
