@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCart } from '@/contexts/CartContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { useGuestMode } from '@/hooks/useGuestMode';
 
 const checkoutSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100),
@@ -26,6 +27,7 @@ const checkoutSchema = z.object({
 const Checkout = () => {
   const { cart, getCartTotal, clearCart } = useCart();
   const navigate = useNavigate();
+  const { guestData, saveGuestData } = useGuestMode();
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
   
@@ -39,6 +41,26 @@ const Checkout = () => {
     state: '',
     notes: '',
   });
+
+  // Load guest data on mount
+  useEffect(() => {
+    if (guestData.name) {
+      setFormData(prev => ({ ...prev, name: guestData.name }));
+    }
+    if (guestData.phone) {
+      setFormData(prev => ({ ...prev, phone: guestData.phone }));
+    }
+    if (guestData.address) {
+      setFormData(prev => ({
+        ...prev,
+        cep: guestData.address.cep,
+        address: guestData.address.address,
+        neighborhood: guestData.address.neighborhood,
+        city: guestData.address.city,
+        state: guestData.address.state,
+      }));
+    }
+  }, [guestData]);
 
   const subtotal = getCartTotal();
   const deliveryFee = 5.0;
@@ -104,10 +126,24 @@ const Checkout = () => {
 
       const trackingCode = trackingData;
 
-      // Create order with tracking code
+      // Save guest data to localStorage
+      saveGuestData(
+        formData.name,
+        formData.phone,
+        {
+          cep: formData.cep,
+          address: formData.address,
+          neighborhood: formData.neighborhood,
+          city: formData.city,
+          state: formData.state,
+        }
+      );
+
+      // Create order with tracking code and guest_id
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
+          guest_id: guestData.id,
           customer_name: formData.name,
           customer_phone: formData.phone,
           customer_cep: formData.cep,
