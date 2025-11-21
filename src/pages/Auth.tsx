@@ -13,9 +13,19 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { signIn, user } = useAuth();
+  const { signIn, user, isAdmin, isDeliveryRider } = useAuth();
 
-  // Remove useEffect - navigation handled in handleSignIn
+  useEffect(() => {
+    if (user && !loading) {
+      if (isAdmin) {
+        navigate('/admin');
+      } else if (isDeliveryRider) {
+        navigate('/delivery');
+      } else {
+        navigate('/');
+      }
+    }
+  }, [user, isAdmin, isDeliveryRider, navigate, loading]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +47,7 @@ const Auth = () => {
         setLoading(false);
       } else {
         toast.success('Login realizado com sucesso!');
-        // Loading state will be cleared by navigation
+        // Navigation handled by useEffect
       }
     } catch (error) {
       console.error('Login error:', error);
