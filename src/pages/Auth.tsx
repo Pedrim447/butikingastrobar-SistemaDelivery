@@ -96,7 +96,11 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      const { error: signUpError } = await signUp(signupEmail, signupPassword);
+      // Sign up with metadata (name and phone will be stored and used by the trigger)
+      const { error: signUpError } = await signUp(signupEmail, signupPassword, {
+        name: signupName,
+        phone: signupPhone
+      });
 
       if (signUpError) {
         if (signUpError.message.includes('User already registered') || 
@@ -109,40 +113,8 @@ const Auth = () => {
         return;
       }
 
-      // Após signup bem sucedido, criar perfil e role 'user'
-      const { data: { user: newUser } } = await supabase.auth.getUser();
-      
-      if (newUser) {
-        // Criar perfil do usuário
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: newUser.id,
-            name: signupName,
-            phone: signupPhone,
-          });
-
-        if (profileError) {
-          console.error('Error creating user profile:', profileError);
-          toast.error('Erro ao criar perfil do usuário');
-          setLoading(false);
-          return;
-        }
-
-        // Criar role 'user'
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: newUser.id,
-            role: 'user',
-          });
-
-        if (roleError) {
-          console.error('Error adding user role:', roleError);
-        }
-      }
-
       toast.success('Conta criada com sucesso! Você será redirecionado...');
+      
       // Limpar campos
       setSignupName('');
       setSignupPhone('');
