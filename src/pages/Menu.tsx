@@ -50,11 +50,14 @@ const Menu = () => {
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("Error fetching user profile:", error);
-      } else if (data) {
+        return;
+      }
+      
+      if (data) {
         setUserProfile(data);
       }
     } catch (error) {

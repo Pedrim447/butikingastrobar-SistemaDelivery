@@ -101,12 +101,17 @@ export default function DeliveryDashboard() {
       try {
         // Update location for each active order
         for (const order of orders) {
-          await supabase.from("delivery_rider_locations").upsert({
-            delivery_rider_id: riderId,
-            order_id: order.id,
-            latitude: position.latitude,
-            longitude: position.longitude,
-          });
+          await supabase.from("delivery_rider_locations").upsert(
+            {
+              delivery_rider_id: riderId,
+              order_id: order.id,
+              latitude: position.latitude,
+              longitude: position.longitude,
+            },
+            {
+              onConflict: 'delivery_rider_id,order_id'
+            }
+          );
         }
       } catch (error) {
         console.error("Erro ao atualizar localização:", error);
