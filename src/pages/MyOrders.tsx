@@ -11,6 +11,7 @@ import { ArrowLeft, Package, MapPin, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useGuestMode } from '@/hooks/useGuestMode';
+import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Order {
@@ -50,37 +51,80 @@ const statusColors: Record<string, string> = {
 export default function MyOrders() {
   const navigate = useNavigate();
   const { guestToken, guestData } = useGuestMode();
+  const { user } = useAuth();
   const [phone, setPhone] = useState('');
   const [orders, setOrders] = useState<Order[]>([]);
-  const [guestOrders, setGuestOrders] = useState<Order[]>([]);
+  const [myOrders, setMyOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingGuest, setLoadingGuest] = useState(false);
+  const [loadingMyOrders, setLoadingMyOrders] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
 
-  // Automatically load guest orders on mount
+  // Fetch user profile if logged in
   useEffect(() => {
-    const loadGuestOrders = async () => {
-      if (!guestToken) return;
-
-      setLoadingGuest(true);
+    const fetchUserProfile = async () => {
+      if (!user) return;
+      
       try {
         const { data, error } = await supabase
-          .from('orders')
-          .select('*, order_items(*)')
-          .eq('guest_token', guestToken)
-          .order('created_at', { ascending: false });
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle();
 
         if (error) throw error;
-        setGuestOrders(data || []);
+        if (data) setUserProfile(data);
       } catch (error) {
-        console.error('Erro ao buscar pedidos do convidado:', error);
-      } finally {
-        setLoadingGuest(false);
+        console.error('Erro ao buscar perfil:', error);
       }
     };
 
-    loadGuestOrders();
-  }, [guestToken]);
+    fetchUserProfile();
+  }, [user]);
+
+  // Automatically load user's orders on mount
+  useEffect(() => {
+    const loadMyOrders = async () => {
+      // Se é usuário logado, busca por telefone do perfil
+      if (user && userProfile?.phone) {
+        setLoadingMyOrders(true);
+        try {
+          const { data, error } = await supabase
+            .from('orders')
+            .select('*, order_items(*)')
+            .eq('customer_phone', userProfile.phone)
+            .order('created_at', { ascending: false });
+
+          if (error) throw error;
+          setMyOrders(data || []);
+        } catch (error) {
+          console.error('Erro ao buscar pedidos do usuário:', error);
+        } finally {
+          setLoadingMyOrders(false);
+        }
+      }
+      // Se é convidado, busca por guest_token
+      else if (guestToken) {
+        setLoadingMyOrders(true);
+        try {
+          const { data, error } = await supabase
+            .from('orders')
+            .select('*, order_items(*)')
+            .eq('guest_token', guestToken)
+            .order('created_at', { ascending: false });
+
+          if (error) throw error;
+          setMyOrders(data || []);
+        } catch (error) {
+          console.error('Erro ao buscar pedidos do convidado:', error);
+        } finally {
+          setLoadingMyOrders(false);
+        }
+      }
+    };
+
+    loadMyOrders();
+  }, [guestToken, user, userProfile]);
 
   const searchOrders = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,9 +235,9 @@ export default function MyOrders() {
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="guest" className="flex items-center gap-2">
               <User className="h-4 w-4" />
-              Meus Pedidos
-              {guestOrders.length > 0 && (
-                <Badge variant="secondary" className="ml-1">{guestOrders.length}</Badge>
+              {user ? 'Minha Conta' : 'Meus Pedidos'}
+              {myOrders.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{myOrders.length}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="search" className="flex items-center gap-2">
@@ -203,7 +247,16 @@ export default function MyOrders() {
           </TabsList>
 
           <TabsContent value="guest" className="space-y-4">
-            {guestData?.name && (
+            {user && userProfile ? (
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="pt-6">
+                  <p className="text-sm">
+                    <span className="font-semibold">Olá, {userProfile.name}!</span>
+                    <span className="text-muted-foreground ml-2">(conta)</span>
+                  </p>
+                </CardContent>
+              </Card>
+            ) : guestData?.name ? (
               <Card className="bg-primary/5 border-primary/20">
                 <CardContent className="pt-6">
                   <p className="text-sm">
@@ -212,16 +265,16 @@ export default function MyOrders() {
                   </p>
                 </CardContent>
               </Card>
-            )}
+            ) : null}
 
-            {loadingGuest ? (
+            {loadingMyOrders ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground animate-pulse" />
                   <p className="text-muted-foreground">Carregando seus pedidos...</p>
                 </CardContent>
               </Card>
-            ) : guestOrders.length === 0 ? (
+            ) : myOrders.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -236,9 +289,9 @@ export default function MyOrders() {
             ) : (
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold">
-                  Seus Pedidos ({guestOrders.length})
+                  Seus Pedidos ({myOrders.length})
                 </h2>
-                {guestOrders.map(renderOrderCard)}
+                {myOrders.map(renderOrderCard)}
               </div>
             )}
           </TabsContent>

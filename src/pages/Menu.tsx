@@ -30,11 +30,17 @@ const Menu = () => {
 
   useEffect(() => {
     fetchData();
-    fetchActiveOrders();
     if (user) {
       fetchUserProfile();
     }
-  }, [guestToken, user]);
+  }, [user]);
+
+  // Buscar pedidos ativos quando o perfil do usuário for carregado ou o guest token mudar
+  useEffect(() => {
+    if ((user && userProfile) || guestToken) {
+      fetchActiveOrders();
+    }
+  }, [user, userProfile, guestToken]);
 
   const fetchUserProfile = async () => {
     if (!user) return;
@@ -57,15 +63,27 @@ const Menu = () => {
   };
 
   const fetchActiveOrders = async () => {
-    if (!guestToken) return;
-    
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("orders")
         .select("*")
-        .eq("guest_token", guestToken)
         .in("status", ["pending", "preparing", "out_for_delivery"])
         .order("created_at", { ascending: false });
+
+      // Se usuário está logado, busca por telefone do perfil
+      if (user && userProfile) {
+        query = query.eq("customer_phone", userProfile.phone);
+      } 
+      // Se é convidado, busca por guest_token
+      else if (guestToken) {
+        query = query.eq("guest_token", guestToken);
+      }
+      // Se não tem usuário nem guest_token, não busca
+      else {
+        return;
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error("Error fetching active orders:", error);
@@ -214,10 +232,17 @@ const Menu = () => {
                       </div>
                       <div>
                         <h2 className="text-lg font-bold">
-                          {guestData?.name ? `Olá, ${guestData.name}!` : 'Menu'}
+                          {user && userProfile 
+                            ? `Olá, ${userProfile.name}!` 
+                            : guestData?.name 
+                            ? `Olá, ${guestData.name}!` 
+                            : 'Menu'}
                         </h2>
                         {guestData?.name && (
                           <p className="text-xs text-muted-foreground">(convidado)</p>
+                        )}
+                        {user && userProfile && (
+                          <p className="text-xs text-muted-foreground">(conta)</p>
                         )}
                       </div>
                     </div>
@@ -278,7 +303,31 @@ const Menu = () => {
                         Cardápio
                       </Button>
 
-                      {guestData?.name && (
+                      <Button
+                        variant="ghost"
+                        className="justify-start h-12 text-base"
+                        onClick={() => {
+                          navigate('/meus-pedidos');
+                          setMobileMenuOpen(false);
+                        }}
+                      >
+                        <Package className="w-5 h-5 mr-3" />
+                        Meus Pedidos
+                        {hasActiveOrders && (
+                          <span className="ml-2 w-2 h-2 bg-primary rounded-full animate-pulse" />
+                        )}
+                      </Button>
+
+                      {user ? (
+                        <Button
+                          variant="ghost"
+                          className="justify-start h-12 text-base"
+                          onClick={handleLogout}
+                        >
+                          <LogOut className="w-5 h-5 mr-3" />
+                          Sair
+                        </Button>
+                      ) : guestData?.name && (
                         <Button
                           variant="ghost"
                           className="justify-start h-12 text-base"
