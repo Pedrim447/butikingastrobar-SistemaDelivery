@@ -19,10 +19,10 @@ const checkoutSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100),
   phone: z.string().min(10, 'Telefone inválido').max(15),
   cep: z.string().length(8, 'CEP deve ter 8 dígitos').regex(/^\d+$/, 'CEP deve conter apenas números'),
-  address: z.string().min(10, 'Endereço completo obrigatório').max(200),
+  address: z.string().min(5, 'Endereço obrigatório').max(200),
+  number: z.string().min(1, 'Número obrigatório').max(10),
+  reference: z.string().max(200).optional(),
   neighborhood: z.string().min(3, 'Bairro obrigatório').max(100),
-  city: z.string().min(3, 'Cidade obrigatória').max(100),
-  state: z.string().length(2, 'Estado deve ter 2 letras (ex: SP)'),
   notes: z.string().max(500).optional(),
 });
 
@@ -40,10 +40,16 @@ const Checkout = () => {
     phone: '',
     cep: '',
     address: '',
+    number: '',
+    reference: '',
     neighborhood: '',
+    notes: '',
+  });
+
+  // Store city and state internally (from CEP)
+  const [addressData, setAddressData] = useState({
     city: '',
     state: '',
-    notes: '',
   });
 
   // Check if user needs to provide guest data
@@ -92,11 +98,16 @@ const Checkout = () => {
         name: guestData.name,
         phone: guestData.phone,
         cep: guestData.address.cep,
-        address: guestData.address.street + ', ' + guestData.address.number + (guestData.address.complement ? ', ' + guestData.address.complement : ''),
+        address: guestData.address.street,
+        number: guestData.address.number || '',
+        reference: guestData.address.complement || '',
         neighborhood: guestData.address.neighborhood,
+      }));
+      
+      setAddressData({
         city: guestData.address.city,
         state: guestData.address.state,
-      }));
+      });
     }
   }, [guestData]);
 
@@ -121,9 +132,12 @@ const Checkout = () => {
         ...prev,
         address: data.logradouro || prev.address,
         neighborhood: data.bairro || prev.neighborhood,
-        city: data.localidade || prev.city,
-        state: data.uf || prev.state,
       }));
+      
+      setAddressData({
+        city: data.localidade || '',
+        state: data.uf || '',
+      });
       
       toast.success('Endereço encontrado!');
     } catch (error) {
@@ -171,10 +185,11 @@ const Checkout = () => {
           formData.phone,
           {
             street: formData.address,
-            number: '',
+            number: formData.number,
+            complement: formData.reference,
             neighborhood: formData.neighborhood,
-            city: formData.city,
-            state: formData.state,
+            city: addressData.city,
+            state: addressData.state,
             cep: formData.cep,
           }
         );
@@ -189,10 +204,10 @@ const Checkout = () => {
           customer_name: formData.name,
           customer_phone: formData.phone,
           customer_cep: formData.cep,
-          customer_address: formData.address,
+          customer_address: `${formData.address}, ${formData.number}${formData.reference ? ' - ' + formData.reference : ''}`,
           customer_neighborhood: formData.neighborhood,
-          customer_city: formData.city,
-          customer_state: formData.state,
+          customer_city: addressData.city,
+          customer_state: addressData.state,
           delivery_fee: deliveryFee,
           subtotal: subtotal,
           total: total,
@@ -334,17 +349,27 @@ const Checkout = () => {
               </div>
 
               <div>
-                <Label htmlFor="address">Endereço Completo *</Label>
+                <Label htmlFor="address">Endereço (Rua/Avenida) *</Label>
                 <Input
                   id="address"
                   value={formData.address}
                   onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="Rua, número, complemento"
+                  placeholder="Rua, Avenida..."
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="number">Número *</Label>
+                  <Input
+                    id="number"
+                    value={formData.number}
+                    onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value }))}
+                    placeholder="123"
+                    required
+                  />
+                </div>
                 <div>
                   <Label htmlFor="neighborhood">Bairro *</Label>
                   <Input
@@ -355,29 +380,25 @@ const Checkout = () => {
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="city">Cidade *</Label>
-                  <Input
-                    id="city"
-                    value={formData.city}
-                    onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
-                    placeholder="Cidade"
-                    required
-                  />
-                </div>
               </div>
 
               <div>
-                <Label htmlFor="state">Estado (UF) *</Label>
+                <Label htmlFor="reference">Ponto de Referência</Label>
                 <Input
-                  id="state"
-                  value={formData.state}
-                  onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value.toUpperCase() }))}
-                  placeholder="SP"
-                  maxLength={2}
-                  required
+                  id="reference"
+                  value={formData.reference}
+                  onChange={(e) => setFormData(prev => ({ ...prev, reference: e.target.value }))}
+                  placeholder="Próximo ao mercado, em frente à praça..."
                 />
               </div>
+
+              {addressData.city && addressData.state && (
+                <div className="p-3 bg-muted/50 rounded-lg border">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium">Cidade:</span> {addressData.city} - {addressData.state}
+                  </p>
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="notes">Observações</Label>
