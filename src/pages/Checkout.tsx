@@ -284,164 +284,138 @@ const Checkout = () => {
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <form onSubmit={handleSubmit} className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Dados de Entrega</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Entrega</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="name">Nome Completo *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Seu nome completo"
-                  disabled={true}
-                  className="bg-muted cursor-not-allowed"
-                  required
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Nome não pode ser alterado
-                </p>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Nome</p>
+                  <p className="text-sm font-medium">{formData.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Telefone</p>
+                  <p className="text-sm font-medium">{formData.phone}</p>
+                </div>
               </div>
 
-              <div>
-                <Label htmlFor="phone">Telefone *</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder="(00) 00000-0000"
-                  disabled={true}
-                  className="bg-muted cursor-not-allowed"
-                  required
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Telefone não pode ser alterado
-                </p>
-              </div>
-
-              <Separator className="my-4" />
+              <Separator />
               
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-medium text-sm">Endereço de Entrega</h3>
+                  <p className="text-xs text-muted-foreground">Endereço</p>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => setIsEditingAddress(!isEditingAddress)}
-                    className="h-8 gap-2"
+                    className="h-7 px-2 text-xs gap-1"
                   >
                     <Pencil className="w-3 h-3" />
-                    {isEditingAddress ? 'Fechar' : 'Alterar endereço'}
+                    {isEditingAddress ? 'Fechar' : 'Alterar'}
                   </Button>
                 </div>
 
                 {!isEditingAddress && formData.cep ? (
-                  <div className="p-3 bg-muted/30 rounded-lg border flex gap-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <div className="text-sm space-y-1">
-                      <p className="font-medium">
-                        {formData.address}, {formData.number}
+                  <div className="p-2.5 bg-muted/30 rounded-md border text-sm space-y-0.5">
+                    <p className="font-medium">
+                      {formData.address}, {formData.number}
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      {formData.neighborhood} • CEP {formData.cep}
+                    </p>
+                    {addressData.city && addressData.state && (
+                      <p className="text-muted-foreground text-xs">
+                        {addressData.city} - {addressData.state}
                       </p>
-                      <p className="text-muted-foreground">
-                        {formData.neighborhood}
-                      </p>
-                      {addressData.city && addressData.state && (
-                        <p className="text-muted-foreground">
-                          {addressData.city} - {addressData.state}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        CEP: {formData.cep}
-                      </p>
-                    </div>
+                    )}
                   </div>
                 ) : (
-                  <div className="space-y-4 p-4 bg-muted/20 rounded-lg border">
+                  <div className="space-y-3 p-3 bg-muted/20 rounded-md border">
                     <div>
-                      <Label htmlFor="cep">CEP *</Label>
+                      <Label htmlFor="cep" className="text-xs">CEP *</Label>
                       <div className="relative">
                         <Input
                           id="cep"
                           value={formData.cep}
                           onChange={(e) => handleCepChange(e.target.value)}
-                          placeholder="00000-000"
+                          placeholder="00000000"
                           maxLength={8}
+                          className="h-9 text-sm"
                           required
                         />
                         {loadingCep && (
-                          <Loader2 className="w-4 h-4 animate-spin absolute right-3 top-3 text-muted-foreground" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin absolute right-2.5 top-2.5 text-muted-foreground" />
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Digite o CEP para autocompletar o endereço
-                      </p>
                     </div>
 
                     <div>
-                      <Label htmlFor="address">Endereço (Rua/Avenida) *</Label>
+                      <Label htmlFor="address" className="text-xs">Rua/Avenida *</Label>
                       <Input
                         id="address"
                         value={formData.address}
                         onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                        placeholder="Rua, Avenida..."
+                        placeholder="Nome da rua"
+                        className="h-9 text-sm"
                         required
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <Label htmlFor="number">Número *</Label>
+                        <Label htmlFor="number" className="text-xs">Número *</Label>
                         <Input
                           id="number"
                           value={formData.number}
                           onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value }))}
                           placeholder="123"
+                          className="h-9 text-sm"
                           required
                         />
                       </div>
                       <div>
-                        <Label htmlFor="neighborhood">Bairro *</Label>
+                        <Label htmlFor="neighborhood" className="text-xs">Bairro *</Label>
                         <Input
                           id="neighborhood"
                           value={formData.neighborhood}
                           onChange={(e) => setFormData(prev => ({ ...prev, neighborhood: e.target.value }))}
                           placeholder="Bairro"
+                          className="h-9 text-sm"
                           required
                         />
                       </div>
                     </div>
 
                     {addressData.city && addressData.state && (
-                      <div className="p-3 bg-background/50 rounded-lg border">
-                        <p className="text-sm text-muted-foreground">
-                          <span className="font-medium">Cidade:</span> {addressData.city} - {addressData.state}
-                        </p>
-                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {addressData.city} - {addressData.state}
+                      </p>
                     )}
                   </div>
                 )}
               </div>
 
               <div>
-                <Label htmlFor="reference">Ponto de Referência</Label>
+                <Label htmlFor="reference" className="text-xs">Referência</Label>
                 <Input
                   id="reference"
                   value={formData.reference}
                   onChange={(e) => setFormData(prev => ({ ...prev, reference: e.target.value }))}
-                  placeholder="Próximo ao mercado, em frente à praça..."
+                  placeholder="Ponto de referência"
+                  className="h-9 text-sm"
                 />
               </div>
 
               <div>
-                <Label htmlFor="notes">Observações</Label>
+                <Label htmlFor="notes" className="text-xs">Observações</Label>
                 <Textarea
                   id="notes"
                   value={formData.notes}
                   onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Instruções adicionais de entrega..."
-                  rows={3}
+                  placeholder="Instruções de entrega..."
+                  rows={2}
+                  className="text-sm resize-none"
                 />
               </div>
             </CardContent>
