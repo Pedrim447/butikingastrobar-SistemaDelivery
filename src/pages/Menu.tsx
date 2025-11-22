@@ -23,7 +23,7 @@ const Menu = () => {
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
   const { getCartItemsCount, getCartTotal } = useCart();
-  const { guestData, clearGuestData } = useGuestMode();
+  const { guestToken, guestData, clearGuestData } = useGuestMode();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -34,7 +34,7 @@ const Menu = () => {
     if (user) {
       fetchUserProfile();
     }
-  }, [guestData.id, user]);
+  }, [guestToken, user]);
 
   const fetchUserProfile = async () => {
     if (!user) return;
@@ -57,13 +57,13 @@ const Menu = () => {
   };
 
   const fetchActiveOrders = async () => {
-    if (!guestData.id) return;
+    if (!guestToken) return;
     
     try {
       const { data, error } = await supabase
         .from("orders")
         .select("*")
-        .eq("guest_id", guestData.id)
+        .eq("guest_token", guestToken)
         .in("status", ["pending", "preparing", "out_for_delivery"])
         .order("created_at", { ascending: false });
 
@@ -142,7 +142,7 @@ const Menu = () => {
                   <span className="text-sm font-medium">{userProfile.name}</span>
                   <Badge variant="outline" className="text-xs">Logado</Badge>
                 </>
-              ) : guestData.name ? (
+              ) : guestData?.name ? (
                 <>
                   <User className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">{guestData.name}</span>
@@ -166,7 +166,7 @@ const Menu = () => {
                   <LogOut className="w-3 h-3 mr-1" />
                   Sair
                 </Button>
-              ) : guestData.name ? (
+              ) : guestData?.name ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -211,9 +211,9 @@ const Menu = () => {
                       </div>
                       <div>
                         <h2 className="text-lg font-bold">
-                          {guestData.name ? `Olá, ${guestData.name}!` : 'Menu'}
+                          {guestData?.name ? `Olá, ${guestData.name}!` : 'Menu'}
                         </h2>
-                        {guestData.name && (
+                        {guestData?.name && (
                           <p className="text-xs text-muted-foreground">(convidado)</p>
                         )}
                       </div>
@@ -275,7 +275,7 @@ const Menu = () => {
                         Cardápio
                       </Button>
 
-                      {guestData.name && (
+                      {guestData?.name && (
                         <Button
                           variant="ghost"
                           className="justify-start h-12 text-base"
