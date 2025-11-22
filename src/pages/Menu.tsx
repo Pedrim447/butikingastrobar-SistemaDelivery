@@ -35,12 +35,12 @@ const Menu = () => {
     }
   }, [user]);
 
-  // Buscar pedidos ativos quando o perfil do usuário for carregado ou o guest token mudar
+  // Buscar pedidos ativos quando o usuário ou guest token mudar
   useEffect(() => {
-    if ((user && userProfile) || guestToken) {
+    if (user || guestToken) {
       fetchActiveOrders();
     }
-  }, [user, userProfile, guestToken]);
+  }, [user, guestToken]);
 
   const fetchUserProfile = async () => {
     if (!user) return;
@@ -70,9 +70,9 @@ const Menu = () => {
         .in("status", ["pending", "preparing", "out_for_delivery"])
         .order("created_at", { ascending: false });
 
-      // Se usuário está logado, busca por telefone do perfil
-      if (user && userProfile) {
-        query = query.eq("customer_phone", userProfile.phone);
+      // Se usuário está logado, busca por user_id
+      if (user) {
+        query = query.eq("user_id", user.id);
       } 
       // Se é convidado, busca por guest_token
       else if (guestToken) {

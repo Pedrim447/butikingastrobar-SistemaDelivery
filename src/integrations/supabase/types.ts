@@ -237,6 +237,7 @@ export type Database = {
           total: number
           tracking_code: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           cancellation_reason?: string | null
@@ -259,6 +260,7 @@ export type Database = {
           total: number
           tracking_code?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           cancellation_reason?: string | null
@@ -281,6 +283,7 @@ export type Database = {
           total?: number
           tracking_code?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {

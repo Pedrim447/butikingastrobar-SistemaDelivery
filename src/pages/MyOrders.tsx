@@ -58,41 +58,18 @@ export default function MyOrders() {
   const [loading, setLoading] = useState(false);
   const [loadingMyOrders, setLoadingMyOrders] = useState(false);
   const [searched, setSearched] = useState(false);
-  const [userProfile, setUserProfile] = useState<any>(null);
-
-  // Fetch user profile if logged in
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!user) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (error) throw error;
-        if (data) setUserProfile(data);
-      } catch (error) {
-        console.error('Erro ao buscar perfil:', error);
-      }
-    };
-
-    fetchUserProfile();
-  }, [user]);
 
   // Automatically load user's orders on mount
   useEffect(() => {
     const loadMyOrders = async () => {
-      // Se é usuário logado, busca por telefone do perfil
-      if (user && userProfile?.phone) {
+      // Se é usuário logado, busca por user_id
+      if (user) {
         setLoadingMyOrders(true);
         try {
           const { data, error } = await supabase
             .from('orders')
             .select('*, order_items(*)')
-            .eq('customer_phone', userProfile.phone)
+            .eq('user_id', user.id)
             .order('created_at', { ascending: false });
 
           if (error) throw error;
@@ -124,7 +101,7 @@ export default function MyOrders() {
     };
 
     loadMyOrders();
-  }, [guestToken, user, userProfile]);
+  }, [guestToken, user]);
 
   const searchOrders = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,11 +224,11 @@ export default function MyOrders() {
           </TabsList>
 
           <TabsContent value="guest" className="space-y-4">
-            {user && userProfile ? (
+            {user ? (
               <Card className="bg-primary/5 border-primary/20">
                 <CardContent className="pt-6">
                   <p className="text-sm">
-                    <span className="font-semibold">Olá, {userProfile.name}!</span>
+                    <span className="font-semibold">Olá!</span>
                     <span className="text-muted-foreground ml-2">(conta)</span>
                   </p>
                 </CardContent>
