@@ -4,7 +4,7 @@ import { Product, Category } from "@/types";
 import { HeroSection } from "@/components/HeroSection";
 import { CategorySection } from "@/components/CategorySection";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Menu as MenuIcon, Package, LogOut, Tag, Info, ChevronRight, Shield } from "lucide-react";
+import { ShoppingCart, Menu as MenuIcon, Package, LogOut, Tag, Info, ChevronRight, Shield, User } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +13,7 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { Badge } from "@/components/ui/badge";
 
 const Menu = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -20,16 +21,40 @@ const Menu = () => {
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const { getCartItemsCount, getCartTotal } = useCart();
   const { guestData, clearGuestData } = useGuestMode();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchData();
     fetchActiveOrders();
-  }, [guestData.id]);
+    if (user) {
+      fetchUserProfile();
+    }
+  }, [guestData.id, user]);
+
+  const fetchUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        console.error("Error fetching user profile:", error);
+      } else if (data) {
+        setUserProfile(data);
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  };
 
   const fetchActiveOrders = async () => {
     if (!guestData.id) return;
@@ -97,11 +122,74 @@ const Menu = () => {
     window.location.reload();
   };
 
+  const handleLogout = async () => {
+    await signOut();
+    toast.success("Você saiu da sua conta");
+    navigate('/auth');
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Fixed Header */}
       <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b shadow-sm">
         <div className="container mx-auto px-4 py-3">
+          {/* Status Bar */}
+          <div className="flex items-center justify-between mb-2 pb-2 border-b border-border/50">
+            <div className="flex items-center gap-2">
+              {user && userProfile ? (
+                <>
+                  <User className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">{userProfile.name}</span>
+                  <Badge variant="outline" className="text-xs">Logado</Badge>
+                </>
+              ) : guestData.name ? (
+                <>
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">{guestData.name}</span>
+                  <Badge variant="secondary" className="text-xs">Modo Convidado</Badge>
+                </>
+              ) : (
+                <>
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Visitante</span>
+                </>
+              )}
+            </div>
+            <div>
+              {user ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="h-7 text-xs"
+                >
+                  <LogOut className="w-3 h-3 mr-1" />
+                  Sair
+                </Button>
+              ) : guestData.name ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogoutGuest}
+                  className="h-7 text-xs"
+                >
+                  <LogOut className="w-3 h-3 mr-1" />
+                  Sair
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/auth')}
+                  className="h-7 text-xs"
+                >
+                  <User className="w-3 h-3 mr-1" />
+                  Entrar
+                </Button>
+              )}
+            </div>
+          </div>
+          
           <div className="flex items-center justify-between">
             {/* Mobile Menu */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
