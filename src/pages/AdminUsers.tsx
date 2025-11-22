@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminSidebar } from "@/components/AdminSidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -234,9 +235,10 @@ const AdminUsers = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <AdminSidebar onSignOut={signOut} />
-      <main className="flex-1 p-8">
+    <SidebarProvider>
+      <div className="flex min-h-screen bg-background w-full">
+        <AdminSidebar onSignOut={signOut} />
+        <main className="flex-1 p-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-bold">Gerenciar Usuários</h1>
@@ -364,7 +366,8 @@ const AdminUsers = () => {
           </div>
         </div>
       </main>
-    </div>
+      </div>
+    </SidebarProvider>
   );
 };
 
