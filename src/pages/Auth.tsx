@@ -8,11 +8,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { ArrowLeft, Lock, Mail, User } from 'lucide-react';
 
 const Auth = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // Estados separados para Login
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  
+  // Estados separados para Cadastro
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+  
+  // Estado para recuperação de senha
   const [resetEmail, setResetEmail] = useState('');
+  
   const [loading, setLoading] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const navigate = useNavigate();
@@ -33,14 +43,14 @@ const Auth = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    if (!loginEmail || !loginPassword) {
       toast.error('Por favor, preencha todos os campos');
       return;
     }
 
     setLoading(true);
     try {
-      const { error } = await signIn(email, password);
+      const { error } = await signIn(loginEmail, loginPassword);
       
       if (error) {
         toast.error(error.message === 'Invalid login credentials' 
@@ -61,25 +71,30 @@ const Auth = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
-      toast.error('Preencha todos os campos');
+    if (!signupEmail || !signupPassword || !signupConfirmPassword) {
+      toast.error('Por favor, preencha todos os campos');
       return;
     }
 
-    if (password.length < 6) {
+    if (signupPassword !== signupConfirmPassword) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+
+    if (signupPassword.length < 6) {
       toast.error('A senha deve ter pelo menos 6 caracteres');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(signupEmail)) {
       toast.error('Email inválido');
       return;
     }
 
     setLoading(true);
     try {
-      const { error: signUpError } = await signUp(email, password);
+      const { error: signUpError } = await signUp(signupEmail, signupPassword);
 
       if (signUpError) {
         if (signUpError.message.includes('User already registered') || 
@@ -109,6 +124,10 @@ const Auth = () => {
       }
 
       toast.success('Conta criada com sucesso! Você será redirecionado...');
+      // Limpar campos
+      setSignupEmail('');
+      setSignupPassword('');
+      setSignupConfirmPassword('');
       setLoading(false);
     } catch (error) {
       console.error('Signup error:', error);
@@ -166,14 +185,18 @@ const Auth = () => {
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="reset-email">Email</Label>
-                <Input
-                  id="reset-email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  disabled={loading}
-                />
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    disabled={loading}
+                    className="pl-10"
+                  />
+                </div>
               </div>
               <Button 
                 type="submit" 
@@ -190,6 +213,7 @@ const Auth = () => {
                 onClick={() => setShowResetPassword(false)}
                 disabled={loading}
               >
+                <ArrowLeft className="w-4 h-4 mr-2" />
                 Voltar
               </Button>
             </form>
@@ -205,44 +229,54 @@ const Auth = () => {
         <CardHeader className="space-y-3">
           <CardTitle className="text-2xl text-center">Acesso ao Sistema</CardTitle>
           <CardDescription className="text-center">
-            Entre ou crie sua conta
+            Entre com sua conta ou crie uma nova
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Cadastrar</TabsTrigger>
+              <TabsTrigger value="signup">Criar Conta</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="login">
-              <form onSubmit={handleSignIn} className="space-y-4 mt-4">
+            <TabsContent value="login" className="space-y-4">
+              <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="login-email">Email</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={loading}
-                  />
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      disabled={loading}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="login-password">Senha</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={loading}
-                  />
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      disabled={loading}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
                 </div>
                 <Button
                   type="button"
                   variant="link"
-                  className="px-0 text-sm"
+                  className="px-0 text-sm h-auto"
                   onClick={() => setShowResetPassword(true)}
                   disabled={loading}
                 >
@@ -259,29 +293,57 @@ const Auth = () => {
               </form>
             </TabsContent>
             
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4 mt-4">
+            <TabsContent value="signup" className="space-y-4">
+              <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={loading}
-                  />
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={signupEmail}
+                      onChange={(e) => setSignupEmail(e.target.value)}
+                      disabled={loading}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Senha</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={loading}
-                  />
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      placeholder="Mínimo 6 caracteres"
+                      value={signupPassword}
+                      onChange={(e) => setSignupPassword(e.target.value)}
+                      disabled={loading}
+                      className="pl-10"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-confirm-password">Confirmar Senha</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="signup-confirm-password"
+                      type="password"
+                      placeholder="Digite a senha novamente"
+                      value={signupConfirmPassword}
+                      onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                      disabled={loading}
+                      className="pl-10"
+                      required
+                      minLength={6}
+                    />
+                  </div>
                 </div>
                 <Button 
                   type="submit" 
@@ -301,6 +363,7 @@ const Auth = () => {
             className="w-full mt-4"
             onClick={() => navigate('/')}
           >
+            <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar ao Cardápio
           </Button>
         </CardContent>
