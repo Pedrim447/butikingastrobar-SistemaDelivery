@@ -376,15 +376,25 @@ const Auth = () => {
             </TabsContent>
           </Tabs>
           
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-full mt-4"
-            onClick={() => navigate('/')}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar ao Cardápio
-          </Button>
+          <div className="space-y-2 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate('/guest')}
+            >
+              Continuar como Convidado
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => navigate('/')}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar ao Cardápio
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

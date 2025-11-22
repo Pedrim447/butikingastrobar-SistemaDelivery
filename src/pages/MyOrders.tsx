@@ -49,7 +49,7 @@ const statusColors: Record<string, string> = {
 
 export default function MyOrders() {
   const navigate = useNavigate();
-  const { guestData } = useGuestMode();
+  const { guestToken, guestData } = useGuestMode();
   const [phone, setPhone] = useState('');
   const [orders, setOrders] = useState<Order[]>([]);
   const [guestOrders, setGuestOrders] = useState<Order[]>([]);
@@ -60,14 +60,14 @@ export default function MyOrders() {
   // Automatically load guest orders on mount
   useEffect(() => {
     const loadGuestOrders = async () => {
-      if (!guestData.id) return;
+      if (!guestToken) return;
 
       setLoadingGuest(true);
       try {
         const { data, error } = await supabase
           .from('orders')
           .select('*, order_items(*)')
-          .eq('guest_id', guestData.id)
+          .eq('guest_token', guestToken)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -80,7 +80,7 @@ export default function MyOrders() {
     };
 
     loadGuestOrders();
-  }, [guestData.id]);
+  }, [guestToken]);
 
   const searchOrders = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,7 +203,7 @@ export default function MyOrders() {
           </TabsList>
 
           <TabsContent value="guest" className="space-y-4">
-            {guestData.name && (
+            {guestData?.name && (
               <Card className="bg-primary/5 border-primary/20">
                 <CardContent className="pt-6">
                   <p className="text-sm">
