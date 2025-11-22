@@ -32,7 +32,7 @@ interface MonthlyStats extends DailyStats {}
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
 
 export default function AdminStats() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [dailyStats, setDailyStats] = useState<DailyStats>({
     revenue: 0,
@@ -51,6 +51,9 @@ export default function AdminStats() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Aguarda o carregamento da autenticação
+    if (authLoading) return;
+
     if (!user) {
       navigate("/auth");
       return;
@@ -62,7 +65,7 @@ export default function AdminStats() {
     }
 
     fetchStats();
-  }, [user, isAdmin, navigate]);
+  }, [user, isAdmin, navigate, authLoading]);
 
   const fetchStats = async () => {
     try {
@@ -111,7 +114,7 @@ export default function AdminStats() {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg">Carregando estatísticas...</div>
