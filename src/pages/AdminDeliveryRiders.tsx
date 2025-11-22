@@ -24,7 +24,7 @@ interface DeliveryRider {
 }
 
 export default function AdminDeliveryRiders() {
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, isAdmin, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [riders, setRiders] = useState<DeliveryRider[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +37,9 @@ export default function AdminDeliveryRiders() {
   });
 
   useEffect(() => {
+    // Aguarda o carregamento da autenticação
+    if (authLoading) return;
+
     if (!user) {
       navigate("/auth");
       return;
@@ -48,7 +51,7 @@ export default function AdminDeliveryRiders() {
     }
 
     fetchRiders();
-  }, [user, isAdmin, navigate]);
+  }, [user, isAdmin, navigate, authLoading]);
 
   const fetchRiders = async () => {
     try {
@@ -145,7 +148,7 @@ export default function AdminDeliveryRiders() {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg">Carregando...</div>

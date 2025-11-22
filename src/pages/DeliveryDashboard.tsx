@@ -33,7 +33,7 @@ interface Order {
 }
 
 export default function DeliveryDashboard() {
-  const { user, isDeliveryRider, signOut } = useAuth();
+  const { user, isDeliveryRider, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +43,9 @@ export default function DeliveryDashboard() {
   const { position } = useGeolocation(true);
 
   useEffect(() => {
+    // Aguarda o carregamento da autenticação
+    if (authLoading) return;
+
     if (!user) {
       navigate("/auth");
       return;
@@ -54,7 +57,7 @@ export default function DeliveryDashboard() {
     }
 
     fetchMyOrders();
-  }, [user, isDeliveryRider, navigate]);
+  }, [user, isDeliveryRider, navigate, authLoading]);
 
   const fetchMyOrders = async () => {
     try {
@@ -165,7 +168,7 @@ export default function DeliveryDashboard() {
     navigate("/");
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg">Carregando...</div>

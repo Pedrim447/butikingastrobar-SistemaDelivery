@@ -50,7 +50,7 @@ interface DeliveryRider {
 }
 
 export default function AdminDashboard() {
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, isAdmin, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [deliveryRiders, setDeliveryRiders] = useState<DeliveryRider[]>([]);
@@ -63,6 +63,9 @@ export default function AdminDashboard() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
   useEffect(() => {
+    // Aguarda o carregamento da autenticação
+    if (authLoading) return;
+
     if (!user) {
       navigate("/auth");
       return;
@@ -75,7 +78,7 @@ export default function AdminDashboard() {
 
     fetchOrders();
     fetchDeliveryRiders();
-  }, [user, isAdmin, navigate]);
+  }, [user, isAdmin, navigate, authLoading]);
 
   const fetchOrders = async () => {
     try {
@@ -277,7 +280,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
     navigate("/");
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg">Carregando...</div>
