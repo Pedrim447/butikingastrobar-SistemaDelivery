@@ -167,9 +167,14 @@ export default function AdminDeliveryRiders() {
               <h1 className="text-3xl font-bold text-foreground">Motoboys</h1>
               <p className="text-muted-foreground">Gerencie os entregadores</p>
             </div>
-            <Button variant="outline" onClick={() => navigate('/admin')}>
-              Voltar
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate('/admin')}>
+                Voltar
+              </Button>
+              <Button variant="outline" onClick={handleSignOut}>
+                Sair
+              </Button>
+            </div>
           </div>
 
           {/* Pendentes de Aprovação */}

@@ -240,9 +240,17 @@ const AdminUsers = () => {
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-bold">Gerenciar Usuários</h1>
-            <Button variant="outline" onClick={() => navigate('/admin')}>
-              Voltar
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate('/admin')}>
+                Voltar
+              </Button>
+              <Button variant="outline" onClick={async () => {
+                await signOut();
+                navigate('/');
+              }}>
+                Sair
+              </Button>
+            </div>
           </div>
 
           <div className="mb-4">

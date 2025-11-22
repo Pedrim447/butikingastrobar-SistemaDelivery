@@ -34,7 +34,7 @@ interface MonthlyStats extends DailyStats {}
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
 
 export default function AdminStats() {
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [dailyStats, setDailyStats] = useState<DailyStats>({
     revenue: 0,
@@ -142,10 +142,18 @@ export default function AdminStats() {
           <h1 className="text-3xl font-bold text-foreground">Estatísticas</h1>
           <p className="text-muted-foreground">Análise detalhada de vendas e pedidos</p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/admin')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate('/admin')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+          <Button variant="outline" onClick={async () => {
+            await signOut();
+            navigate('/');
+          }}>
+            Sair
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
