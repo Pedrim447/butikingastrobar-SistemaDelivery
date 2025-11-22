@@ -113,6 +113,57 @@ export type Database = {
         }
         Relationships: []
       }
+      guest_customers: {
+        Row: {
+          address_cep: string
+          address_city: string
+          address_complement: string | null
+          address_neighborhood: string
+          address_number: string
+          address_state: string
+          address_street: string
+          converted_to_user_id: string | null
+          created_at: string | null
+          guest_token: string
+          id: string
+          name: string
+          phone: string
+          updated_at: string | null
+        }
+        Insert: {
+          address_cep: string
+          address_city: string
+          address_complement?: string | null
+          address_neighborhood: string
+          address_number: string
+          address_state: string
+          address_street: string
+          converted_to_user_id?: string | null
+          created_at?: string | null
+          guest_token?: string
+          id?: string
+          name: string
+          phone: string
+          updated_at?: string | null
+        }
+        Update: {
+          address_cep?: string
+          address_city?: string
+          address_complement?: string | null
+          address_neighborhood?: string
+          address_number?: string
+          address_state?: string
+          address_street?: string
+          converted_to_user_id?: string | null
+          created_at?: string | null
+          guest_token?: string
+          id?: string
+          name?: string
+          phone?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string | null
@@ -178,6 +229,7 @@ export type Database = {
           delivery_fee: number | null
           delivery_rider_id: string | null
           guest_id: string | null
+          guest_token: string | null
           id: string
           notes: string | null
           status: string | null
@@ -199,6 +251,7 @@ export type Database = {
           delivery_fee?: number | null
           delivery_rider_id?: string | null
           guest_id?: string | null
+          guest_token?: string | null
           id?: string
           notes?: string | null
           status?: string | null
@@ -220,6 +273,7 @@ export type Database = {
           delivery_fee?: number | null
           delivery_rider_id?: string | null
           guest_id?: string | null
+          guest_token?: string | null
           id?: string
           notes?: string | null
           status?: string | null
@@ -235,6 +289,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "delivery_riders"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_guest_token_fkey"
+            columns: ["guest_token"]
+            isOneToOne: false
+            referencedRelation: "guest_customers"
+            referencedColumns: ["guest_token"]
           },
         ]
       }

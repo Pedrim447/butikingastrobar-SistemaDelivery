@@ -27,7 +27,7 @@ const checkoutSchema = z.object({
 const Checkout = () => {
   const { cart, getCartTotal, clearCart } = useCart();
   const navigate = useNavigate();
-  const { guestData, saveGuestData } = useGuestMode();
+  const { guestToken, guestData, updateGuestCustomer } = useGuestMode();
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
   
@@ -44,17 +44,13 @@ const Checkout = () => {
 
   // Load guest data on mount
   useEffect(() => {
-    if (guestData.name) {
-      setFormData(prev => ({ ...prev, name: guestData.name }));
-    }
-    if (guestData.phone) {
-      setFormData(prev => ({ ...prev, phone: guestData.phone }));
-    }
-    if (guestData.address) {
+    if (guestData) {
       setFormData(prev => ({
         ...prev,
+        name: guestData.name,
+        phone: guestData.phone,
         cep: guestData.address.cep,
-        address: guestData.address.address,
+        address: guestData.address.street + ', ' + guestData.address.number + (guestData.address.complement ? ', ' + guestData.address.complement : ''),
         neighborhood: guestData.address.neighborhood,
         city: guestData.address.city,
         state: guestData.address.state,
@@ -126,24 +122,27 @@ const Checkout = () => {
 
       const trackingCode = trackingData;
 
-      // Save guest data to localStorage
-      saveGuestData(
-        formData.name,
-        formData.phone,
-        {
-          cep: formData.cep,
-          address: formData.address,
-          neighborhood: formData.neighborhood,
-          city: formData.city,
-          state: formData.state,
-        }
-      );
+      // Update guest customer if exists, otherwise we'll just create the order
+      if (guestToken) {
+        await updateGuestCustomer(
+          formData.name,
+          formData.phone,
+          {
+            street: formData.address,
+            number: '',
+            neighborhood: formData.neighborhood,
+            city: formData.city,
+            state: formData.state,
+            cep: formData.cep,
+          }
+        );
+      }
 
-      // Create order with tracking code and guest_id
+      // Create order with tracking code and guest_token
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
-          guest_id: guestData.id,
+          guest_token: guestToken || null,
           customer_name: formData.name,
           customer_phone: formData.phone,
           customer_cep: formData.cep,

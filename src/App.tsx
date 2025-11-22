@@ -10,6 +10,7 @@ import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import Auth from "./pages/Auth";
+import GuestMode from "./pages/GuestMode";
 
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminStats from "./pages/AdminStats";
@@ -37,7 +38,8 @@ const App = () => (
               <Route path="/confirmacao" element={<OrderConfirmation />} />
               <Route path="/rastreamento" element={<OrderTracking />} />
               <Route path="/meus-pedidos" element={<MyOrders />} />
-              <Route path="/auth" element={<Auth />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/guest" element={<GuestMode />} />
               
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/stats" element={<AdminStats />} />
