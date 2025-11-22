@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { AdminSidebar } from "@/components/AdminSidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
@@ -135,8 +137,17 @@ export default function AdminStats() {
     { name: 'Mês', value: monthlyStats.revenue },
   ];
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
   return (
-    <div className="p-6 space-y-6">
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AdminSidebar onSignOut={handleSignOut} />
+        
+        <main className="flex-1 p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Estatísticas</h1>
@@ -285,6 +296,8 @@ export default function AdminStats() {
           </CardContent>
         </Card>
       </div>
-    </div>
+        </main>
+      </div>
+    </SidebarProvider>
   );
 }
