@@ -14,6 +14,11 @@ interface Location {
   longitude: number;
 }
 
+interface Coordinates {
+  lng: number;
+  lat: number;
+}
+
 export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   orderId,
   deliveryRiderId,
@@ -22,13 +27,41 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const riderMarker = useRef<mapboxgl.Marker | null>(null);
+  const destinationMarker = useRef<mapboxgl.Marker | null>(null);
   const [riderLocation, setRiderLocation] = useState<Location | null>(null);
+  const [destinationCoords, setDestinationCoords] = useState<Coordinates | null>(null);
+  const accessToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN || "";
+
+  // Geocode destination address
+  useEffect(() => {
+    const geocodeDestination = async () => {
+      try {
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+            destinationAddress
+          )}.json?access_token=${accessToken}&country=BR`
+        );
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+          const [lng, lat] = data.features[0].center;
+          setDestinationCoords({ lng, lat });
+        }
+      } catch (error) {
+        console.error("Erro ao geocodificar endereço:", error);
+      }
+    };
+
+    if (destinationAddress) {
+      geocodeDestination();
+    }
+  }, [destinationAddress, accessToken]);
 
   useEffect(() => {
     if (!mapContainer.current) return;
 
     // Initialize Mapbox
-    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN || "";
+    mapboxgl.accessToken = accessToken;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -38,6 +71,21 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     });
 
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+
+    // Add destination marker when coords are available
+    if (destinationCoords && map.current) {
+      const destEl = document.createElement("div");
+      destEl.className = "destination-marker";
+      destEl.style.backgroundImage = "url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDRDMTIuMjY4IDQgNiAxMC4yNjggNiAxOEM2IDI3Ljk5MyAxOS41IDE0MCAyMCAzNkMyMC41IDM2IDM0IDI3Ljk5MyAzNCAxOEMzNCAxMC4yNjggMjcuNzMyIDQgMjAgNFoiIGZpbGw9IiNFRjQ0NDQiLz4KPGNpcmNsZSBjeD0iMjAiIGN5PSIxOCIgcj0iNiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+)";
+      destEl.style.width = "40px";
+      destEl.style.height = "40px";
+      destEl.style.backgroundSize = "100%";
+
+      destinationMarker.current = new mapboxgl.Marker(destEl)
+        .setLngLat([destinationCoords.lng, destinationCoords.lat])
+        .setPopup(new mapboxgl.Popup().setHTML("<strong>Destino</strong><br>" + destinationAddress))
+        .addTo(map.current);
+    }
 
     // Fetch initial location
     fetchRiderLocation();
@@ -66,7 +114,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       channel.unsubscribe();
       map.current?.remove();
     };
-  }, [deliveryRiderId, orderId]);
+  }, [deliveryRiderId, orderId, destinationCoords, accessToken]);
 
   const fetchRiderLocation = async () => {
     try {
@@ -84,6 +132,66 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       }
     } catch (error) {
       console.error("Error fetching rider location:", error);
+    }
+  };
+
+  const drawRoute = async (riderLng: number, riderLat: number) => {
+    if (!map.current || !destinationCoords) return;
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${riderLng},${riderLat};${destinationCoords.lng},${destinationCoords.lat}?geometries=geojson&access_token=${accessToken}`
+      );
+      const data = await response.json();
+
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0].geometry;
+
+        // Remove existing route layer and source if they exist
+        if (map.current.getLayer("route")) {
+          map.current.removeLayer("route");
+        }
+        if (map.current.getSource("route")) {
+          map.current.removeSource("route");
+        }
+
+        // Add route to map
+        map.current.addSource("route", {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            properties: {},
+            geometry: route,
+          },
+        });
+
+        map.current.addLayer({
+          id: "route",
+          type: "line",
+          source: "route",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": "#8B5CF6",
+            "line-width": 4,
+            "line-opacity": 0.8,
+          },
+        });
+
+        // Fit map to show both markers and route
+        const bounds = new mapboxgl.LngLatBounds();
+        bounds.extend([riderLng, riderLat]);
+        bounds.extend([destinationCoords.lng, destinationCoords.lat]);
+        
+        map.current.fitBounds(bounds, {
+          padding: 80,
+          maxZoom: 15,
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao desenhar rota:", error);
     }
   };
 
@@ -111,11 +219,8 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       .setPopup(new mapboxgl.Popup().setHTML("<strong>Entregador</strong><br>Localização atual"))
       .addTo(map.current);
 
-    // Center map on rider
-    map.current.flyTo({
-      center: [longitude, latitude],
-      zoom: 15,
-    });
+    // Draw route from rider to destination
+    drawRoute(longitude, latitude);
   };
 
   return (
