@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Package, Phone, MapPin, CheckCircle, XCircle } from "lucide-react";
+import { Package, Phone, MapPin, CheckCircle, XCircle, ArrowLeft } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
 interface Order {
@@ -184,9 +184,15 @@ export default function DeliveryDashboard() {
             <h1 className="text-3xl font-bold text-foreground">Minhas Entregas</h1>
             <p className="text-muted-foreground">Pedidos atribuídos a você</p>
           </div>
-          <Button variant="outline" onClick={handleSignOut}>
-            Sair
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/')}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar
+            </Button>
+            <Button variant="outline" onClick={handleSignOut}>
+              Sair
+            </Button>
+          </div>
         </div>
 
         {orders.length === 0 ? (

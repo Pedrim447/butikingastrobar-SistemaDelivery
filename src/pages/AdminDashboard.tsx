@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Printer, Search } from "lucide-react";
+import { Printer, Search, ArrowLeft } from "lucide-react";
 import { OrderItemsGrouped } from "@/components/OrderItemsGrouped";
 
 interface Order {
