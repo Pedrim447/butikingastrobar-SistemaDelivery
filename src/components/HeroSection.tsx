@@ -14,7 +14,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOrderNow }) => {
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto text-center">
           {/* Guest Greeting */}
-          {guestData.name && (
+          {guestData?.name && (
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full text-primary mb-6 animate-fade-in">
               <User className="w-4 h-4" />
               <span className="text-sm font-medium">Olá, {guestData.name}!</span>
