@@ -16,6 +16,8 @@ const Auth = () => {
   const [loginPassword, setLoginPassword] = useState('');
   
   // Estados separados para Cadastro
+  const [signupName, setSignupName] = useState('');
+  const [signupPhone, setSignupPhone] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
@@ -71,7 +73,7 @@ const Auth = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!signupEmail || !signupPassword || !signupConfirmPassword) {
+    if (!signupName || !signupPhone || !signupEmail || !signupPassword || !signupConfirmPassword) {
       toast.error('Por favor, preencha todos os campos');
       return;
     }
@@ -107,10 +109,27 @@ const Auth = () => {
         return;
       }
 
-      // Após signup bem sucedido, criar role 'user'
+      // Após signup bem sucedido, criar perfil e role 'user'
       const { data: { user: newUser } } = await supabase.auth.getUser();
       
       if (newUser) {
+        // Criar perfil do usuário
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: newUser.id,
+            name: signupName,
+            phone: signupPhone,
+          });
+
+        if (profileError) {
+          console.error('Error creating user profile:', profileError);
+          toast.error('Erro ao criar perfil do usuário');
+          setLoading(false);
+          return;
+        }
+
+        // Criar role 'user'
         const { error: roleError } = await supabase
           .from('user_roles')
           .insert({
@@ -125,6 +144,8 @@ const Auth = () => {
 
       toast.success('Conta criada com sucesso! Você será redirecionado...');
       // Limpar campos
+      setSignupName('');
+      setSignupPhone('');
       setSignupEmail('');
       setSignupPassword('');
       setSignupConfirmPassword('');
@@ -295,6 +316,38 @@ const Auth = () => {
             
             <TabsContent value="signup" className="space-y-4">
               <form onSubmit={handleSignUp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-name">Nome Completo</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      placeholder="Seu nome completo"
+                      value={signupName}
+                      onChange={(e) => setSignupName(e.target.value)}
+                      disabled={loading}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-phone">Telefone</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="signup-phone"
+                      type="tel"
+                      placeholder="(00) 00000-0000"
+                      value={signupPhone}
+                      onChange={(e) => setSignupPhone(e.target.value)}
+                      disabled={loading}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <div className="relative">
