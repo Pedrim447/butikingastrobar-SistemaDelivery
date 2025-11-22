@@ -7,10 +7,10 @@ interface AuthContextType {
   session: Session | null;
   isAdmin: boolean;
   isDeliveryRider: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, metadata?: { name: string; phone: string }) => Promise<{ error: any }>;
-  signOut: () => Promise<void>;
   loading: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, name: string, phone: string) => Promise<{ error: any }>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,15 +23,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    // Setup auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        checkUserRole(session.user.id);
+        setTimeout(() => {
+          checkUserRole(session.user.id);
+        }, 0);
       } else {
         setIsAdmin(false);
         setIsDeliveryRider(false);
@@ -44,9 +44,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        checkUserRole(session.user.id);
+        checkUserRole(session.user.id).finally(() => setLoading(false));
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -54,7 +55,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkUserRole = async (userId: string) => {
     try {
-      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle();
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle();
 
       if (!error && data) {
         setIsAdmin(data.role === "admin");
@@ -79,7 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
-  const signUp = async (email: string, password: string, metadata?: { name: string; phone: string }) => {
+  const signUp = async (email: string, password: string, name: string, phone: string) => {
     const redirectUrl = `${window.location.origin}/`;
 
     const { error } = await supabase.auth.signUp({
@@ -87,9 +92,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password,
       options: {
         emailRedirectTo: redirectUrl,
-        data: metadata || {}
+        data: {
+          name,
+          phone
+        }
       },
     });
+
     return { error };
   };
 
@@ -106,10 +115,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session,
         isAdmin,
         isDeliveryRider,
+        loading,
         signIn,
         signUp,
         signOut,
-        loading,
       }}
     >
       {children}

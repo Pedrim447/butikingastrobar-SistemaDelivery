@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Lock, Mail, User } from 'lucide-react';
+import { ArrowLeft, Lock, Mail, User, Phone } from 'lucide-react';
 
 const Auth = () => {
   // Estados separados para Login
@@ -96,26 +96,20 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      // Sign up with metadata (name and phone will be stored and used by the trigger)
-      const { error: signUpError } = await signUp(signupEmail, signupPassword, {
-        name: signupName,
-        phone: signupPhone
-      });
+      const { error } = await signUp(signupEmail, signupPassword, signupName, signupPhone);
 
-      if (signUpError) {
-        if (signUpError.message.includes('User already registered') || 
-            signUpError.message.includes('already registered')) {
-          toast.error('Este email já está cadastrado. Faça login na aba "Entrar".');
+      if (error) {
+        if (error.message.includes('User already registered')) {
+          toast.error('Este email já está cadastrado');
         } else {
-          toast.error(signUpError.message || 'Erro ao criar conta');
+          toast.error('Erro ao criar conta');
         }
         setLoading(false);
         return;
       }
 
-      toast.success('Conta criada com sucesso! Você será redirecionado...');
+      toast.success('Conta criada com sucesso!');
       
-      // Limpar campos
       setSignupName('');
       setSignupPhone('');
       setSignupEmail('');
@@ -307,7 +301,7 @@ const Auth = () => {
                 <div className="space-y-2">
                   <Label htmlFor="signup-phone">Telefone</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signup-phone"
                       type="tel"
