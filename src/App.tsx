@@ -15,6 +15,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminStats from "./pages/AdminStats";
 import AdminDeliveryRiders from "./pages/AdminDeliveryRiders";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
+import DeliveryAuth from "./pages/DeliveryAuth";
 import OrderTracking from "./pages/OrderTracking";
 import MyOrders from "./pages/MyOrders";
 import NotFound from "./pages/NotFound";
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/admin/stats" element={<AdminStats />} />
               <Route path="/admin/delivery-riders" element={<AdminDeliveryRiders />} />
               <Route path="/delivery" element={<DeliveryDashboard />} />
+              <Route path="/delivery-auth" element={<DeliveryAuth />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </CartProvider>

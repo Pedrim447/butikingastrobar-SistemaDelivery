@@ -3,16 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Bike, Plus } from "lucide-react";
+import { Bike } from "lucide-react";
 
 interface DeliveryRider {
   id: string;
@@ -20,6 +17,7 @@ interface DeliveryRider {
   name: string;
   phone: string;
   is_active: boolean;
+  approved: boolean;
   created_at: string;
 }
 
@@ -27,14 +25,8 @@ export default function AdminDeliveryRiders() {
   const { user, isAdmin, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [riders, setRiders] = useState<DeliveryRider[]>([]);
+  const [pendingRiders, setPendingRiders] = useState<DeliveryRider[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    name: "",
-    phone: "",
-  });
 
   useEffect(() => {
     // Aguarda o carregamento da autenticação
@@ -56,13 +48,26 @@ export default function AdminDeliveryRiders() {
   const fetchRiders = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Buscar motoboys aprovados
+      const { data: approvedData, error: approvedError } = await supabase
         .from("delivery_riders")
         .select("*")
+        .eq("approved", true)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setRiders(data || []);
+      if (approvedError) throw approvedError;
+      setRiders(approvedData || []);
+
+      // Buscar motoboys pendentes de aprovação
+      const { data: pendingData, error: pendingError } = await supabase
+        .from("delivery_riders")
+        .select("*")
+        .eq("approved", false)
+        .order("created_at", { ascending: false });
+
+      if (pendingError) throw pendingError;
+      setPendingRiders(pendingData || []);
     } catch (error) {
       console.error("Erro ao buscar motoboys:", error);
       toast.error("Erro ao carregar motoboys");
@@ -71,99 +76,53 @@ export default function AdminDeliveryRiders() {
     }
   };
 
-  const createRider = async () => {
-    // Validação dos campos
-    if (!formData.email || !formData.password || !formData.name || !formData.phone) {
-      toast.error('Preencha todos os campos');
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      toast.error('A senha deve ter pelo menos 6 caracteres');
-      return;
-    }
-
-    // Validação de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      toast.error('Email inválido');
-      return;
-    }
-
-    // Validação de telefone (básica)
-    const phoneRegex = /^\(\d{2}\)\s?\d{4,5}-?\d{4}$/;
-    if (!phoneRegex.test(formData.phone)) {
-      toast.error('Telefone inválido. Use o formato (00) 00000-0000');
-      return;
-    }
-
+  const approveRider = async (riderId: string) => {
     try {
-      // Criar usuário
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            name: formData.name,
-            phone: formData.phone,
-          },
-        },
-      });
+      const { error } = await supabase
+        .from("delivery_riders")
+        .update({ approved: true, is_active: true })
+        .eq("id", riderId);
 
-      if (authError) {
-        // Tratar erro de usuário já registrado
-        if (authError.message.includes('User already registered') || 
-            authError.message.includes('already registered') ||
-            authError.message.includes('already been registered')) {
-          toast.error('Este email já está cadastrado no sistema');
-        } else {
-          toast.error(authError.message || 'Erro ao criar conta');
-        }
-        return;
-      }
+      if (error) throw error;
 
-      if (!authData.user) {
-        toast.error('Erro ao criar usuário');
-        return;
-      }
-
-      // Criar perfil do entregador
-      const { error: riderError } = await supabase
-        .from('delivery_riders')
-        .insert({
-          user_id: authData.user.id,
-          name: formData.name,
-          phone: formData.phone,
-          is_active: true,
-        });
-
-      if (riderError) {
-        console.error('Error creating rider profile:', riderError);
-        toast.error('Erro ao criar perfil de entregador');
-        return;
-      }
-
-      // Adicionar role de delivery_rider
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: 'delivery_rider',
-        });
-
-      if (roleError) {
-        console.error('Error adding role:', roleError);
-        toast.error('Erro ao configurar permissões');
-        return;
-      }
-
-      toast.success('Motoboy cadastrado com sucesso!');
-      setDialogOpen(false);
-      setFormData({ email: '', password: '', name: '', phone: '' });
+      toast.success("Motoboy aprovado com sucesso!");
       fetchRiders();
-    } catch (error: any) {
-      console.error('Erro ao criar motoboy:', error);
-      toast.error('Erro ao cadastrar motoboy. Tente novamente.');
+    } catch (error) {
+      console.error("Erro ao aprovar motoboy:", error);
+      toast.error("Erro ao aprovar motoboy");
+    }
+  };
+
+  const rejectRider = async (riderId: string) => {
+    try {
+      // Buscar user_id do rider
+      const { data: riderData } = await supabase
+        .from("delivery_riders")
+        .select("user_id")
+        .eq("id", riderId)
+        .single();
+
+      if (!riderData) return;
+
+      // Deletar role
+      await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", riderData.user_id);
+
+      // Deletar rider
+      const { error } = await supabase
+        .from("delivery_riders")
+        .delete()
+        .eq("id", riderId);
+
+      if (error) throw error;
+
+      toast.success("Cadastro rejeitado");
+      fetchRiders();
+    } catch (error) {
+      console.error("Erro ao rejeitar motoboy:", error);
+      toast.error("Erro ao rejeitar motoboy");
     }
   };
 
@@ -203,111 +162,97 @@ export default function AdminDeliveryRiders() {
         <AdminSidebar onSignOut={handleSignOut} />
 
         <main className="flex-1 p-6">
-          <div className="mb-6 flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Motoboys</h1>
-              <p className="text-muted-foreground">Gerencie os entregadores</p>
-            </div>
-            
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Motoboy
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Cadastrar Motoboy</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="name">Nome</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Nome completo"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="phone">Telefone</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="(00) 00000-0000"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="email@exemplo.com"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="password">Senha</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Mínimo 6 caracteres"
-                    />
-                  </div>
-                  <Button onClick={createRider} className="w-full">
-                    Cadastrar
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-foreground">Motoboys</h1>
+            <p className="text-muted-foreground">Gerencie os entregadores</p>
           </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Ativo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {riders.length === 0 ? (
+          {/* Pendentes de Aprovação */}
+          {pendingRiders.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold mb-4">Aguardando Aprovação ({pendingRiders.length})</h2>
+              <div className="rounded-md border bg-muted/30">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead>Data Cadastro</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingRiders.map((rider) => (
+                      <TableRow key={rider.id}>
+                        <TableCell className="font-medium flex items-center gap-2">
+                          <Bike className="h-4 w-4 text-amber-500" />
+                          {rider.name}
+                        </TableCell>
+                        <TableCell>{rider.phone}</TableCell>
+                        <TableCell>{new Date(rider.created_at).toLocaleDateString("pt-BR")}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={() => approveRider(rider.id)}>
+                              Aprovar
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => rejectRider(rider.id)}>
+                              Rejeitar
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+
+          {/* Motoboys Aprovados */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Motoboys Ativos</h2>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
-                      Nenhum motoboy cadastrado
-                    </TableCell>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Ativo</TableHead>
                   </TableRow>
-                ) : (
-                  riders.map((rider) => (
-                    <TableRow key={rider.id}>
-                      <TableCell className="font-medium flex items-center gap-2">
-                        <Bike className="h-4 w-4" />
-                        {rider.name}
-                      </TableCell>
-                      <TableCell>{rider.phone}</TableCell>
-                      <TableCell>
-                        <Badge variant={rider.is_active ? "default" : "secondary"}>
-                          {rider.is_active ? "Ativo" : "Inativo"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={rider.is_active}
-                          onCheckedChange={() => toggleRiderStatus(rider.id, rider.is_active)}
-                        />
+                </TableHeader>
+                <TableBody>
+                  {riders.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        Nenhum motoboy aprovado
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    riders.map((rider) => (
+                      <TableRow key={rider.id}>
+                        <TableCell className="font-medium flex items-center gap-2">
+                          <Bike className="h-4 w-4" />
+                          {rider.name}
+                        </TableCell>
+                        <TableCell>{rider.phone}</TableCell>
+                        <TableCell>
+                          <Badge variant={rider.is_active ? "default" : "secondary"}>
+                            {rider.is_active ? "Ativo" : "Inativo"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={rider.is_active}
+                            onCheckedChange={() => toggleRiderStatus(rider.id, rider.is_active)}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         </main>
       </div>
