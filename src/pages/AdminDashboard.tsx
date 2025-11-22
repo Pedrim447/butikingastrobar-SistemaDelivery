@@ -294,9 +294,14 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
         <AdminSidebar onSignOut={handleSignOut} />
 
         <main className="flex-1 p-6">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-foreground">Pedidos</h1>
-            <p className="text-muted-foreground">Gerencie todos os pedidos</p>
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Pedidos</h1>
+              <p className="text-muted-foreground">Gerencie todos os pedidos</p>
+            </div>
+            <Button variant="outline" onClick={handleSignOut}>
+              Sair
+            </Button>
           </div>
 
         <Tabs defaultValue="all" className="w-full">
