@@ -28,10 +28,13 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const navigate = useNavigate();
-  const { signIn, signUp, user, isAdmin, isDeliveryRider } = useAuth();
+  const { signIn, signUp, user, isAdmin, isDeliveryRider, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (user && !loading) {
+    console.log('Auth page - user:', user, 'loading:', authLoading, 'isAdmin:', isAdmin, 'isDeliveryRider:', isDeliveryRider);
+    
+    if (user && !authLoading) {
+      console.log('Redirecting authenticated user...');
       if (isAdmin) {
         navigate('/admin');
       } else if (isDeliveryRider) {
@@ -40,7 +43,7 @@ const Auth = () => {
         navigate('/');
       }
     }
-  }, [user, isAdmin, isDeliveryRider, navigate, loading]);
+  }, [user, isAdmin, isDeliveryRider, navigate, authLoading]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();

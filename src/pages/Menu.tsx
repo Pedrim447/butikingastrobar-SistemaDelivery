@@ -180,7 +180,10 @@ const Menu = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate('/auth')}
+                  onClick={() => {
+                    console.log('Navegando para /auth');
+                    navigate('/auth');
+                  }}
                   className="h-7 text-xs"
                 >
                   <User className="w-3 h-3 mr-1" />
@@ -315,6 +318,7 @@ const Menu = () => {
                           variant="outline"
                           className="w-full justify-start h-12 text-base"
                           onClick={() => {
+                            console.log('Navegando para /auth (mobile)');
                             navigate('/auth');
                             setMobileMenuOpen(false);
                           }}
