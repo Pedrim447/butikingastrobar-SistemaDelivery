@@ -82,6 +82,7 @@ export type Database = {
       }
       delivery_riders: {
         Row: {
+          approved: boolean | null
           created_at: string | null
           id: string
           is_active: boolean | null
@@ -91,6 +92,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          approved?: boolean | null
           created_at?: string | null
           id?: string
           is_active?: boolean | null
@@ -100,6 +102,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          approved?: boolean | null
           created_at?: string | null
           id?: string
           is_active?: boolean | null
