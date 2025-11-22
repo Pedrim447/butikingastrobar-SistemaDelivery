@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
-const MAPBOX_PUBLIC_TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
+const MAPBOX_PUBLIC_TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN || "pk.eyJ1Ijoic2V2ZW5jb2RlIiwiYSI6ImNtaTlwaDZ2czBpaHAyanNibmtzdGszZjYifQ.T1mWNe7zt8PLFR0xj7z9Hg";
 
 interface OrderTrackingMapProps {
   orderId: string;

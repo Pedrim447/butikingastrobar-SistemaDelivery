@@ -1,1 +1,7 @@
 project_id = "prjpwppabelirtiwssus"
+
+[functions.mapbox-geocode]
+verify_jwt = false
+
+[functions.mapbox-directions]
+verify_jwt = false
