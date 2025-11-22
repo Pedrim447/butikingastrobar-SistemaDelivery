@@ -101,10 +101,20 @@ export default function AdminDashboard() {
 
   const fetchDeliveryRiders = async () => {
     try {
+      // Busca motoboys aprovados e ativos que têm o role de delivery_rider
       const { data, error } = await supabase
         .from("delivery_riders")
-        .select("*")
+        .select(`
+          id,
+          name,
+          phone,
+          is_active,
+          user_id,
+          user_roles!inner(role)
+        `)
         .eq("is_active", true)
+        .eq("approved", true)
+        .eq("user_roles.role", "delivery_rider")
         .order("name");
 
       if (error) throw error;
