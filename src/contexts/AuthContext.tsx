@@ -8,6 +8,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isDeliveryRider: boolean;
   loading: boolean;
+  checkingRole: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, name: string, phone: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -21,6 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDeliveryRider, setIsDeliveryRider] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [checkingRole, setCheckingRole] = useState(false);
 
   useEffect(() => {
     // Setup auth state listener
@@ -30,11 +32,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        // Chamar checkUserRole de forma assíncrona
-        checkUserRole(session.user.id);
+        // Marcar que estamos verificando o role
+        setCheckingRole(true);
+        checkUserRole(session.user.id).finally(() => setCheckingRole(false));
       } else {
         setIsAdmin(false);
         setIsDeliveryRider(false);
+        setCheckingRole(false);
       }
     });
 
@@ -124,6 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAdmin,
         isDeliveryRider,
         loading,
+        checkingRole,
         signIn,
         signUp,
         signOut,
