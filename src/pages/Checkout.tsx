@@ -53,6 +53,37 @@ const Checkout = () => {
     }
   }, [guestLoading, user, guestToken]);
 
+  // Load user profile data on mount
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (error) throw error;
+        
+        if (data) {
+          setFormData(prev => ({
+            ...prev,
+            name: data.name,
+            phone: data.phone,
+          }));
+        }
+      } catch (error) {
+        console.error('Erro ao buscar perfil:', error);
+      }
+    };
+
+    if (user) {
+      loadUserProfile();
+    }
+  }, [user]);
+
   // Load guest data on mount
   useEffect(() => {
     if (guestData) {
@@ -248,8 +279,13 @@ const Checkout = () => {
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Seu nome completo"
+                  disabled={true}
+                  className="bg-muted cursor-not-allowed"
                   required
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Nome não pode ser alterado
+                </p>
               </div>
 
               <div>
@@ -259,8 +295,22 @@ const Checkout = () => {
                   value={formData.phone}
                   onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                   placeholder="(00) 00000-0000"
+                  disabled={true}
+                  className="bg-muted cursor-not-allowed"
                   required
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Telefone não pode ser alterado
+                </p>
+              </div>
+
+              <Separator className="my-4" />
+              
+              <div className="space-y-1">
+                <h3 className="font-medium text-sm">Endereço de Entrega</h3>
+                <p className="text-xs text-muted-foreground">
+                  Você pode editar o endereço abaixo
+                </p>
               </div>
 
               <div>
