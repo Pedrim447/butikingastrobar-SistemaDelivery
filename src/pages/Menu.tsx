@@ -4,7 +4,7 @@ import { Product, Category } from "@/types";
 import { HeroSection } from "@/components/HeroSection";
 import { CategorySection } from "@/components/CategorySection";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Menu as MenuIcon, Package, LogOut, Tag, Info, ChevronRight, Bike, Shield } from "lucide-react";
+import { ShoppingCart, Menu as MenuIcon, Package, LogOut, Tag, Info, ChevronRight, Shield } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -232,19 +232,7 @@ const Menu = () => {
                           }}
                         >
                           <Shield className="w-5 h-5 mr-3" />
-                          Área Administrativa
-                        </Button>
-                        
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start h-12 text-base"
-                          onClick={() => {
-                            navigate('/delivery-auth');
-                            setMobileMenuOpen(false);
-                          }}
-                        >
-                          <Bike className="w-5 h-5 mr-3" />
-                          Área do Entregador
+                          Área de Login
                         </Button>
                       </div>
                     </div>
