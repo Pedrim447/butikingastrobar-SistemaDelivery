@@ -12,6 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useGuestMode } from '@/hooks/useGuestMode';
+import { GuestModePrompt } from '@/components/GuestModePrompt';
+import { useAuth } from '@/contexts/AuthContext';
 
 const checkoutSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100),
@@ -27,9 +29,11 @@ const checkoutSchema = z.object({
 const Checkout = () => {
   const { cart, getCartTotal, clearCart } = useCart();
   const navigate = useNavigate();
-  const { guestToken, guestData, updateGuestCustomer } = useGuestMode();
+  const { user } = useAuth();
+  const { guestToken, guestData, updateGuestCustomer, loading: guestLoading } = useGuestMode();
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
+  const [showGuestPrompt, setShowGuestPrompt] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -41,6 +45,13 @@ const Checkout = () => {
     state: '',
     notes: '',
   });
+
+  // Check if user needs to provide guest data
+  useEffect(() => {
+    if (!guestLoading && !user && !guestToken) {
+      setShowGuestPrompt(true);
+    }
+  }, [guestLoading, user, guestToken]);
 
   // Load guest data on mount
   useEffect(() => {
@@ -205,7 +216,14 @@ const Checkout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
+      <GuestModePrompt 
+        open={showGuestPrompt} 
+        onClose={() => setShowGuestPrompt(false)}
+        onSuccess={() => setShowGuestPrompt(false)}
+      />
+      
+      <div className="min-h-screen bg-background">
       <header className="border-b bg-card shadow-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate('/cart')}>
@@ -361,6 +379,7 @@ const Checkout = () => {
         </form>
       </div>
     </div>
+    </>
   );
 };
 
