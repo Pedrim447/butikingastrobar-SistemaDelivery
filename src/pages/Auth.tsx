@@ -31,15 +31,19 @@ const Auth = () => {
   const { signIn, signUp, user, isAdmin, isDeliveryRider, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    console.log('Auth page - user:', user, 'loading:', authLoading, 'isAdmin:', isAdmin, 'isDeliveryRider:', isDeliveryRider);
+    console.log('Auth page - user:', user, 'authLoading:', authLoading, 'isAdmin:', isAdmin, 'isDeliveryRider:', isDeliveryRider);
     
-    if (user && !authLoading) {
+    // Só redireciona se não estiver carregando E tiver um usuário
+    if (!authLoading && user) {
       console.log('Redirecting authenticated user...');
       if (isAdmin) {
+        console.log('Redirecting to /admin');
         navigate('/admin');
       } else if (isDeliveryRider) {
+        console.log('Redirecting to /delivery');
         navigate('/delivery');
       } else {
+        console.log('Redirecting to /');
         navigate('/');
       }
     }

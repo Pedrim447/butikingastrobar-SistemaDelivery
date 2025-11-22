@@ -25,13 +25,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Setup auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        setTimeout(() => {
-          checkUserRole(session.user.id);
-        }, 0);
+        // Chamar checkUserRole de forma assíncrona
+        checkUserRole(session.user.id);
       } else {
         setIsAdmin(false);
         setIsDeliveryRider(false);
@@ -39,32 +39,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Getting initial session:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        checkUserRole(session.user.id).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
+        await checkUserRole(session.user.id);
       }
-    });
+      setLoading(false);
+    };
+
+    initAuth();
 
     return () => subscription.unsubscribe();
   }, []);
 
   const checkUserRole = async (userId: string) => {
     try {
+      console.log('Checking user role for:', userId);
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
         .maybeSingle();
 
+      console.log('Role query result:', { data, error });
+
       if (!error && data) {
+        console.log('Setting isAdmin:', data.role === "admin", 'Setting isDeliveryRider:', data.role === "delivery_rider");
         setIsAdmin(data.role === "admin");
         setIsDeliveryRider(data.role === "delivery_rider");
       } else {
+        console.log('No role found or error, setting to false');
         setIsAdmin(false);
         setIsDeliveryRider(false);
       }
