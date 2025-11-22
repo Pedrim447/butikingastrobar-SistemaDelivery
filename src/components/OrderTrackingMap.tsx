@@ -30,7 +30,11 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   const destinationMarker = useRef<mapboxgl.Marker | null>(null);
   const [riderLocation, setRiderLocation] = useState<Location | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<Coordinates | null>(null);
-  const accessToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN || "";
+  const [accessToken, setAccessToken] = useState<string>(() => {
+    return localStorage.getItem("mapbox_token") || "";
+  });
+  const [showTokenInput, setShowTokenInput] = useState(!accessToken);
+  const [tokenInput, setTokenInput] = useState("");
 
   // Geocode destination address
   useEffect(() => {
@@ -222,6 +226,49 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     // Draw route from rider to destination
     drawRoute(longitude, latitude);
   };
+
+  const handleSaveToken = () => {
+    if (tokenInput.trim()) {
+      localStorage.setItem("mapbox_token", tokenInput.trim());
+      setAccessToken(tokenInput.trim());
+      setShowTokenInput(false);
+    }
+  };
+
+  if (showTokenInput) {
+    return (
+      <div className="border rounded-lg p-6 space-y-4">
+        <h3 className="font-semibold text-lg">Token Mapbox Necessário</h3>
+        <p className="text-sm text-muted-foreground">
+          Para visualizar o mapa, você precisa fornecer um token público do Mapbox.
+          Obtenha seu token em{" "}
+          <a
+            href="https://account.mapbox.com/access-tokens/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            mapbox.com
+          </a>
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={tokenInput}
+            onChange={(e) => setTokenInput(e.target.value)}
+            placeholder="Cole seu token público do Mapbox aqui"
+            className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <button
+            onClick={handleSaveToken}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+          >
+            Salvar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative">
