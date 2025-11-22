@@ -100,6 +100,13 @@ const Auth = () => {
       return;
     }
 
+    // Validação de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(riderEmail)) {
+      toast.error('Email inválido');
+      return;
+    }
+
     setLoading(true);
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -114,7 +121,13 @@ const Auth = () => {
       });
 
       if (authError) {
-        toast.error(authError.message);
+        if (authError.message.includes('User already registered') || 
+            authError.message.includes('already registered') ||
+            authError.message.includes('already been registered')) {
+          toast.error('Este email já está cadastrado. Faça login na aba "Entrar".');
+        } else {
+          toast.error(authError.message || 'Erro ao criar conta');
+        }
         setLoading(false);
         return;
       }
@@ -164,7 +177,7 @@ const Auth = () => {
       }
     } catch (error) {
       console.error('Signup error:', error);
-      toast.error('Erro ao criar conta');
+      toast.error('Erro ao criar conta. Tente novamente.');
       setLoading(false);
     }
   };

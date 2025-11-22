@@ -72,6 +72,7 @@ export default function AdminDeliveryRiders() {
   };
 
   const createRider = async () => {
+    // Validação dos campos
     if (!formData.email || !formData.password || !formData.name || !formData.phone) {
       toast.error('Preencha todos os campos');
       return;
@@ -82,7 +83,22 @@ export default function AdminDeliveryRiders() {
       return;
     }
 
+    // Validação de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error('Email inválido');
+      return;
+    }
+
+    // Validação de telefone (básica)
+    const phoneRegex = /^\(\d{2}\)\s?\d{4,5}-?\d{4}$/;
+    if (!phoneRegex.test(formData.phone)) {
+      toast.error('Telefone inválido. Use o formato (00) 00000-0000');
+      return;
+    }
+
     try {
+      // Criar usuário
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -94,19 +110,40 @@ export default function AdminDeliveryRiders() {
         },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Erro ao criar usuário');
+      if (authError) {
+        // Tratar erro de usuário já registrado
+        if (authError.message.includes('User already registered') || 
+            authError.message.includes('already registered') ||
+            authError.message.includes('already been registered')) {
+          toast.error('Este email já está cadastrado no sistema');
+        } else {
+          toast.error(authError.message || 'Erro ao criar conta');
+        }
+        return;
+      }
 
+      if (!authData.user) {
+        toast.error('Erro ao criar usuário');
+        return;
+      }
+
+      // Criar perfil do entregador
       const { error: riderError } = await supabase
         .from('delivery_riders')
         .insert({
           user_id: authData.user.id,
           name: formData.name,
           phone: formData.phone,
+          is_active: true,
         });
 
-      if (riderError) throw riderError;
+      if (riderError) {
+        console.error('Error creating rider profile:', riderError);
+        toast.error('Erro ao criar perfil de entregador');
+        return;
+      }
 
+      // Adicionar role de delivery_rider
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert({
@@ -114,7 +151,11 @@ export default function AdminDeliveryRiders() {
           role: 'delivery_rider',
         });
 
-      if (roleError) throw roleError;
+      if (roleError) {
+        console.error('Error adding role:', roleError);
+        toast.error('Erro ao configurar permissões');
+        return;
+      }
 
       toast.success('Motoboy cadastrado com sucesso!');
       setDialogOpen(false);
@@ -122,7 +163,7 @@ export default function AdminDeliveryRiders() {
       fetchRiders();
     } catch (error: any) {
       console.error('Erro ao criar motoboy:', error);
-      toast.error(error.message || 'Erro ao cadastrar motoboy');
+      toast.error('Erro ao cadastrar motoboy. Tente novamente.');
     }
   };
 
