@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
+const MAPBOX_PUBLIC_TOKEN = "pk.eyJ1Ijoic2V2ZW5jb2RlIiwiYSI6ImNtaTlwaDZ2czBpaHAyanNibmtzdGszZjYifQ.T1mWNe7zt8PLFR0xj7z9Hg";
+
 interface OrderTrackingMapProps {
   orderId: string;
   deliveryRiderId: string;
@@ -30,20 +32,20 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   const destinationMarker = useRef<mapboxgl.Marker | null>(null);
   const [riderLocation, setRiderLocation] = useState<Location | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<Coordinates | null>(null);
-  const [accessToken, setAccessToken] = useState<string>(() => {
-    return localStorage.getItem("mapbox_token") || "";
-  });
-  const [showTokenInput, setShowTokenInput] = useState(!accessToken);
-  const [tokenInput, setTokenInput] = useState("");
 
   // Geocode destination address
   useEffect(() => {
     const geocodeDestination = async () => {
       try {
         const response = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-            destinationAddress
-          )}.json?access_token=${accessToken}&country=BR`
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mapbox-geocode`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ address: destinationAddress }),
+          }
         );
         const data = await response.json();
         
@@ -59,13 +61,13 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     if (destinationAddress) {
       geocodeDestination();
     }
-  }, [destinationAddress, accessToken]);
+  }, [destinationAddress]);
 
   useEffect(() => {
     if (!mapContainer.current) return;
 
     // Initialize Mapbox
-    mapboxgl.accessToken = accessToken;
+    mapboxgl.accessToken = MAPBOX_PUBLIC_TOKEN;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -118,7 +120,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       channel.unsubscribe();
       map.current?.remove();
     };
-  }, [deliveryRiderId, orderId, destinationCoords, accessToken]);
+  }, [deliveryRiderId, orderId, destinationCoords]);
 
   const fetchRiderLocation = async () => {
     try {
@@ -144,7 +146,19 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
 
     try {
       const response = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/driving/${riderLng},${riderLat};${destinationCoords.lng},${destinationCoords.lat}?geometries=geojson&access_token=${accessToken}`
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mapbox-directions`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            startLng: riderLng,
+            startLat: riderLat,
+            endLng: destinationCoords.lng,
+            endLat: destinationCoords.lat,
+          }),
+        }
       );
       const data = await response.json();
 
@@ -226,49 +240,6 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     // Draw route from rider to destination
     drawRoute(longitude, latitude);
   };
-
-  const handleSaveToken = () => {
-    if (tokenInput.trim()) {
-      localStorage.setItem("mapbox_token", tokenInput.trim());
-      setAccessToken(tokenInput.trim());
-      setShowTokenInput(false);
-    }
-  };
-
-  if (showTokenInput) {
-    return (
-      <div className="border rounded-lg p-6 space-y-4">
-        <h3 className="font-semibold text-lg">Token Mapbox Necessário</h3>
-        <p className="text-sm text-muted-foreground">
-          Para visualizar o mapa, você precisa fornecer um token público do Mapbox.
-          Obtenha seu token em{" "}
-          <a
-            href="https://account.mapbox.com/access-tokens/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline"
-          >
-            mapbox.com
-          </a>
-        </p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            placeholder="Cole seu token público do Mapbox aqui"
-            className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-          <button
-            onClick={handleSaveToken}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-          >
-            Salvar
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="relative">
