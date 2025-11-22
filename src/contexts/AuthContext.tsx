@@ -71,32 +71,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-
-    // Verificar se é um delivery rider e se foi aprovado
-    if (!error && data.user) {
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", data.user.id)
-        .maybeSingle();
-
-      if (roleData?.role === "delivery_rider") {
-        const { data: riderData } = await supabase
-          .from("delivery_riders")
-          .select("approved")
-          .eq("user_id", data.user.id)
-          .maybeSingle();
-
-        if (riderData && !riderData.approved) {
-          await supabase.auth.signOut();
-          return { error: { message: "Seu cadastro ainda não foi aprovado pelo administrador" } };
-        }
-      }
-    }
 
     return { error };
   };
