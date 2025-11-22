@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Pencil, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +34,7 @@ const Checkout = () => {
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
   const [showGuestPrompt, setShowGuestPrompt] = useState(false);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -321,65 +322,106 @@ const Checkout = () => {
 
               <Separator className="my-4" />
               
-              <div className="space-y-1">
-                <h3 className="font-medium text-sm">Endereço de Entrega</h3>
-                <p className="text-xs text-muted-foreground">
-                  Você pode editar o endereço abaixo
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="cep">CEP *</Label>
-                <div className="relative">
-                  <Input
-                    id="cep"
-                    value={formData.cep}
-                    onChange={(e) => handleCepChange(e.target.value)}
-                    placeholder="00000-000"
-                    maxLength={8}
-                    required
-                  />
-                  {loadingCep && (
-                    <Loader2 className="w-4 h-4 animate-spin absolute right-3 top-3 text-muted-foreground" />
-                  )}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium text-sm">Endereço de Entrega</h3>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditingAddress(!isEditingAddress)}
+                    className="h-8 gap-2"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    {isEditingAddress ? 'Fechar' : 'Alterar endereço'}
+                  </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Digite o CEP para autocompletar o endereço
-                </p>
-              </div>
 
-              <div>
-                <Label htmlFor="address">Endereço (Rua/Avenida) *</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="Rua, Avenida..."
-                  required
-                />
-              </div>
+                {!isEditingAddress && formData.cep ? (
+                  <div className="p-3 bg-muted/30 rounded-lg border flex gap-2">
+                    <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <div className="text-sm space-y-1">
+                      <p className="font-medium">
+                        {formData.address}, {formData.number}
+                      </p>
+                      <p className="text-muted-foreground">
+                        {formData.neighborhood}
+                      </p>
+                      {addressData.city && addressData.state && (
+                        <p className="text-muted-foreground">
+                          {addressData.city} - {addressData.state}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        CEP: {formData.cep}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4 p-4 bg-muted/20 rounded-lg border">
+                    <div>
+                      <Label htmlFor="cep">CEP *</Label>
+                      <div className="relative">
+                        <Input
+                          id="cep"
+                          value={formData.cep}
+                          onChange={(e) => handleCepChange(e.target.value)}
+                          placeholder="00000-000"
+                          maxLength={8}
+                          required
+                        />
+                        {loadingCep && (
+                          <Loader2 className="w-4 h-4 animate-spin absolute right-3 top-3 text-muted-foreground" />
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Digite o CEP para autocompletar o endereço
+                      </p>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="number">Número *</Label>
-                  <Input
-                    id="number"
-                    value={formData.number}
-                    onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value }))}
-                    placeholder="123"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="neighborhood">Bairro *</Label>
-                  <Input
-                    id="neighborhood"
-                    value={formData.neighborhood}
-                    onChange={(e) => setFormData(prev => ({ ...prev, neighborhood: e.target.value }))}
-                    placeholder="Bairro"
-                    required
-                  />
-                </div>
+                    <div>
+                      <Label htmlFor="address">Endereço (Rua/Avenida) *</Label>
+                      <Input
+                        id="address"
+                        value={formData.address}
+                        onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                        placeholder="Rua, Avenida..."
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="number">Número *</Label>
+                        <Input
+                          id="number"
+                          value={formData.number}
+                          onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value }))}
+                          placeholder="123"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="neighborhood">Bairro *</Label>
+                        <Input
+                          id="neighborhood"
+                          value={formData.neighborhood}
+                          onChange={(e) => setFormData(prev => ({ ...prev, neighborhood: e.target.value }))}
+                          placeholder="Bairro"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {addressData.city && addressData.state && (
+                      <div className="p-3 bg-background/50 rounded-lg border">
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-medium">Cidade:</span> {addressData.city} - {addressData.state}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -392,21 +434,13 @@ const Checkout = () => {
                 />
               </div>
 
-              {addressData.city && addressData.state && (
-                <div className="p-3 bg-muted/50 rounded-lg border">
-                  <p className="text-sm text-muted-foreground">
-                    <span className="font-medium">Cidade:</span> {addressData.city} - {addressData.state}
-                  </p>
-                </div>
-              )}
-
               <div>
                 <Label htmlFor="notes">Observações</Label>
                 <Textarea
                   id="notes"
                   value={formData.notes}
                   onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Ponto de referência, instruções de entrega..."
+                  placeholder="Instruções adicionais de entrega..."
                   rows={3}
                 />
               </div>
