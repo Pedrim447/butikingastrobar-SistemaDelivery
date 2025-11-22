@@ -162,9 +162,14 @@ export default function AdminDeliveryRiders() {
         <AdminSidebar onSignOut={handleSignOut} />
 
         <main className="flex-1 p-6">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-foreground">Motoboys</h1>
-            <p className="text-muted-foreground">Gerencie os entregadores</p>
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Motoboys</h1>
+              <p className="text-muted-foreground">Gerencie os entregadores</p>
+            </div>
+            <Button variant="outline" onClick={() => navigate('/admin')}>
+              Voltar
+            </Button>
           </div>
 
           {/* Pendentes de Aprovação */}

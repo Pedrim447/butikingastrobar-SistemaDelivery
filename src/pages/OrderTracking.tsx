@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Package, MapPin, Clock, CheckCircle, XCircle, Bike } from "lucide-react";
+import { Package, MapPin, Clock, CheckCircle, XCircle, Bike, ArrowLeft } from "lucide-react";
 import { OrderTrackingMap } from "@/components/OrderTrackingMap";
 
 interface Order {
@@ -103,9 +103,15 @@ export default function OrderTracking() {
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-foreground">Rastreamento de Pedido</h1>
-          <p className="text-muted-foreground">Acompanhe seu pedido em tempo real</p>
+        <div className="flex items-center justify-between">
+          <div className="text-center flex-1">
+            <h1 className="text-3xl font-bold text-foreground">Rastreamento de Pedido</h1>
+            <p className="text-muted-foreground">Acompanhe seu pedido em tempo real</p>
+          </div>
+          <Button variant="outline" onClick={() => navigate('/')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar
+          </Button>
         </div>
 
         <Card>

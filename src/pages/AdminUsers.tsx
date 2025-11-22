@@ -45,6 +45,8 @@ const AdminUsers = () => {
   const navigate = useNavigate();
   const { user, isAdmin, loading: authLoading, signOut } = useAuth();
   const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<UserWithRole[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [newRole, setNewRole] = useState<string>("");
@@ -105,6 +107,7 @@ const AdminUsers = () => {
       });
 
       setUsers(usersWithRoles);
+      setFilteredUsers(usersWithRoles);
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error("Erro ao carregar usuários");
@@ -112,6 +115,18 @@ const AdminUsers = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setFilteredUsers(users);
+    } else {
+      const filtered = users.filter((user) =>
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.rider_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredUsers(filtered);
+    }
+  }, [searchTerm, users]);
 
   const handleOpenDialog = (userItem: UserWithRole) => {
     setSelectedUser(userItem);
@@ -223,7 +238,22 @@ const AdminUsers = () => {
       <AdminSidebar onSignOut={signOut} />
       <main className="flex-1 p-8">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">Gerenciar Usuários</h1>
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-3xl font-bold">Gerenciar Usuários</h1>
+            <Button variant="outline" onClick={() => navigate('/admin')}>
+              Voltar
+            </Button>
+          </div>
+
+          <div className="mb-4">
+            <Input
+              type="text"
+              placeholder="Pesquisar por email ou nome..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-md"
+            />
+          </div>
 
           <div className="bg-card rounded-lg shadow">
             <Table>
@@ -236,7 +266,14 @@ const AdminUsers = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((userItem) => (
+                {filteredUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      Nenhum usuário encontrado
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredUsers.map((userItem) => (
                   <TableRow key={userItem.id}>
                     <TableCell>{userItem.email}</TableCell>
                     <TableCell>
@@ -312,7 +349,8 @@ const AdminUsers = () => {
                       </Dialog>
                     </TableCell>
                   </TableRow>
-                ))}
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
