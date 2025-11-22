@@ -149,10 +149,11 @@ const Checkout = () => {
         );
       }
 
-      // Create order with tracking code and guest_token
+      // Create order with tracking code, guest_token, and user_id
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
+          user_id: user?.id || null,
           guest_token: guestToken || null,
           customer_name: formData.name,
           customer_phone: formData.phone,
