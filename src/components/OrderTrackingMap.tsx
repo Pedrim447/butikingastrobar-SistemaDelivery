@@ -2,12 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
-const getMapboxToken = () => {
-  return localStorage.getItem("mapbox_token") || "";
-};
+const MAPBOX_PUBLIC_TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
 
 interface OrderTrackingMapProps {
   orderId: string;
@@ -36,8 +32,6 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   const destinationMarker = useRef<mapboxgl.Marker | null>(null);
   const [riderLocation, setRiderLocation] = useState<Location | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<Coordinates | null>(null);
-  const [mapboxToken, setMapboxToken] = useState(getMapboxToken());
-  const [tokenInput, setTokenInput] = useState("");
 
   // Geocode destination address
   useEffect(() => {
@@ -70,10 +64,10 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   }, [destinationAddress]);
 
   useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
+    if (!mapContainer.current) return;
 
     // Initialize Mapbox
-    mapboxgl.accessToken = mapboxToken;
+    mapboxgl.accessToken = MAPBOX_PUBLIC_TOKEN;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -126,7 +120,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       channel.unsubscribe();
       map.current?.remove();
     };
-  }, [deliveryRiderId, orderId, destinationCoords, mapboxToken]);
+  }, [deliveryRiderId, orderId, destinationCoords]);
 
   const fetchRiderLocation = async () => {
     try {
@@ -246,45 +240,6 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     // Draw route from rider to destination
     drawRoute(longitude, latitude);
   };
-
-  const handleSaveToken = () => {
-    if (tokenInput.trim()) {
-      localStorage.setItem("mapbox_token", tokenInput.trim());
-      setMapboxToken(tokenInput.trim());
-    }
-  };
-
-  if (!mapboxToken) {
-    return (
-      <div className="bg-card border rounded-lg p-6 space-y-4">
-        <div>
-          <h3 className="text-lg font-semibold mb-2">Token do Mapbox necessário</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Para visualizar o mapa de rastreamento, insira seu token público do Mapbox.
-            Você pode obter um em{" "}
-            <a
-              href="https://account.mapbox.com/access-tokens/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              mapbox.com/account
-            </a>
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Input
-            type="text"
-            placeholder="pk.eyJ1Ijoi..."
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            className="flex-1"
-          />
-          <Button onClick={handleSaveToken}>Salvar</Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="relative">
