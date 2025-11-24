@@ -36,22 +36,56 @@ const Checkout = () => {
   const [showGuestPrompt, setShowGuestPrompt] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    cep: '',
-    address: '',
-    number: '',
-    reference: '',
-    neighborhood: '',
-    notes: '',
+  const [formData, setFormData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('checkout_form');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch {}
+    return {
+      name: '',
+      phone: '',
+      cep: '',
+      address: '',
+      number: '',
+      reference: '',
+      neighborhood: '',
+      notes: '',
+    };
   });
 
   // Store city and state internally (from CEP)
-  const [addressData, setAddressData] = useState({
-    city: '',
-    state: '',
+  const [addressData, setAddressData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('checkout_address');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch {}
+    return {
+      city: '',
+      state: '',
+    };
   });
+
+  // Salvar formData no localStorage sempre que mudar
+  useEffect(() => {
+    try {
+      localStorage.setItem('checkout_form', JSON.stringify(formData));
+    } catch (error) {
+      console.error('Erro ao salvar formulário:', error);
+    }
+  }, [formData]);
+
+  // Salvar addressData no localStorage sempre que mudar
+  useEffect(() => {
+    try {
+      localStorage.setItem('checkout_address', JSON.stringify(addressData));
+    } catch (error) {
+      console.error('Erro ao salvar endereço:', error);
+    }
+  }, [addressData]);
 
   // Check if user needs to provide guest data
   useEffect(() => {
@@ -60,10 +94,21 @@ const Checkout = () => {
     }
   }, [guestLoading, user, guestToken]);
 
-  // Load user profile data on mount
+  // Load user profile data on mount - SOMENTE na primeira carga
   useEffect(() => {
     const loadUserProfile = async () => {
       if (!user) return;
+      
+      // Se já tem dados salvos no localStorage, não sobrescreve
+      const savedForm = localStorage.getItem('checkout_form');
+      if (savedForm) {
+        try {
+          const parsed = JSON.parse(savedForm);
+          if (parsed.name && parsed.phone) {
+            return; // Já tem dados, não carrega do perfil
+          }
+        } catch {}
+      }
       
       try {
         const { data, error } = await supabase
@@ -91,25 +136,36 @@ const Checkout = () => {
     }
   }, [user]);
 
-  // Load guest data on mount
+  // Load guest data on mount - SOMENTE na primeira carga
   useEffect(() => {
-    if (guestData) {
-      setFormData(prev => ({
-        ...prev,
-        name: guestData.name,
-        phone: guestData.phone,
-        cep: guestData.address.cep,
-        address: guestData.address.street,
-        number: guestData.address.number || '',
-        reference: guestData.address.complement || '',
-        neighborhood: guestData.address.neighborhood,
-      }));
-      
-      setAddressData({
-        city: guestData.address.city,
-        state: guestData.address.state,
-      });
+    if (!guestData) return;
+    
+    // Se já tem dados salvos no localStorage, não sobrescreve
+    const savedForm = localStorage.getItem('checkout_form');
+    if (savedForm) {
+      try {
+        const parsed = JSON.parse(savedForm);
+        if (parsed.name && parsed.phone && parsed.cep) {
+          return; // Já tem dados, não carrega do guest
+        }
+      } catch {}
     }
+    
+    setFormData(prev => ({
+      ...prev,
+      name: guestData.name,
+      phone: guestData.phone,
+      cep: guestData.address.cep,
+      address: guestData.address.street,
+      number: guestData.address.number || '',
+      reference: guestData.address.complement || '',
+      neighborhood: guestData.address.neighborhood,
+    }));
+    
+    setAddressData({
+      city: guestData.address.city,
+      state: guestData.address.state,
+    });
   }, [guestData]);
 
   const subtotal = getCartTotal();
@@ -241,6 +297,10 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
+      // Limpar dados salvos do formulário após pedido confirmado
+      localStorage.removeItem('checkout_form');
+      localStorage.removeItem('checkout_address');
+      
       clearCart();
       toast.success('Pedido realizado com sucesso!');
       navigate(`/confirmacao?tracking=${trackingCode}`);

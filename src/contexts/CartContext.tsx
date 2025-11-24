@@ -16,12 +16,21 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('cart');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
 
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cart));
+    try {
+      // Sempre salva no localStorage, independente de cookies
+      localStorage.setItem('cart', JSON.stringify(cart));
+    } catch (error) {
+      console.error('Erro ao salvar carrinho:', error);
+    }
   }, [cart]);
 
   const addToCart = (product: Product, quantity = 1, notes = '') => {
