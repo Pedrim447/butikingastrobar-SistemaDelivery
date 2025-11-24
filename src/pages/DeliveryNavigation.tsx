@@ -125,6 +125,10 @@ export default function DeliveryNavigation() {
 
     const mapboxToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
     
+    console.log("🗺️ Inicializando mapa de navegação");
+    console.log("Token exists:", !!mapboxToken);
+    console.log("Token length:", mapboxToken?.length);
+    
     if (!mapboxToken) {
       console.error("❌ VITE_MAPBOX_PUBLIC_TOKEN não configurado");
       return;
@@ -150,6 +154,7 @@ export default function DeliveryNavigation() {
 
     // Add 3D buildings layer
     map.current.on('load', () => {
+      console.log("✅ Mapa carregado com sucesso");
       setIsMapReady(true);
       
       const layers = map.current!.getStyle().layers;
@@ -190,6 +195,10 @@ export default function DeliveryNavigation() {
         },
         labelLayerId
       );
+    });
+
+    map.current.on('error', (e) => {
+      console.error("❌ Erro no mapa:", e);
     });
 
     return () => {
@@ -409,8 +418,19 @@ export default function DeliveryNavigation() {
       </div>
 
       {/* Map Container */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative" style={{ minHeight: '400px' }}>
         <div ref={mapContainer} className="absolute inset-0" />
+        
+        {!isMapReady && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-sm text-muted-foreground font-medium">
+                🗺️ Carregando mapa de navegação...
+              </p>
+            </div>
+          </div>
+        )}
         
         {/* Info Card */}
         <div className="absolute top-4 left-4 right-4 z-10">
