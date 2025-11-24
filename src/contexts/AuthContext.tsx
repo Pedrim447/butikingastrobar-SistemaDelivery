@@ -25,16 +25,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [checkingRole, setCheckingRole] = useState(false);
 
   useEffect(() => {
-    // Setup auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    let mounted = true;
+
+    // Check for existing session FIRST before setting up listener
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
+        
+        console.log('Initial session loaded:', session?.user?.email);
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          setCheckingRole(true);
+          await checkUserRole(session.user.id);
+          if (mounted) setCheckingRole(false);
+        }
+      } catch (error) {
+        console.error('Error loading initial session:', error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    initAuth();
+
+    // Setup auth state listener AFTER initial session is loaded
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
       console.log('Auth state changed:', event, session?.user?.email);
+      
+      // Avoid processing INITIAL_SESSION event since we handle it above
+      if (event === 'INITIAL_SESSION') return;
+      
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        // Marcar que estamos verificando o role
         setCheckingRole(true);
-        checkUserRole(session.user.id).finally(() => setCheckingRole(false));
+        await checkUserRole(session.user.id);
+        if (mounted) setCheckingRole(false);
       } else {
         setIsAdmin(false);
         setIsDeliveryRider(false);
@@ -42,22 +75,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Check for existing session
-    const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Getting initial session:', session?.user?.email);
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        await checkUserRole(session.user.id);
-      }
-      setLoading(false);
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
     };
-
-    initAuth();
-
-    return () => subscription.unsubscribe();
   }, []);
 
   const checkUserRole = async (userId: string) => {
