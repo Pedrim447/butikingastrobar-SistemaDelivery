@@ -121,87 +121,104 @@ export default function DeliveryNavigation() {
 
   // Initialize 3D map
   useEffect(() => {
-    if (!mapContainer.current) return;
-
-    const mapboxToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
-    
-    console.log("🗺️ Inicializando mapa de navegação");
-    console.log("Token exists:", !!mapboxToken);
-    console.log("Token length:", mapboxToken?.length);
-    
-    if (!mapboxToken) {
-      console.error("❌ VITE_MAPBOX_PUBLIC_TOKEN não configurado");
+    if (!mapContainer.current) {
+      console.log("⚠️ mapContainer não está disponível ainda");
       return;
     }
 
+    const mapboxToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
+    
+    console.log("🗺️ [Entregador] Inicializando mapa de navegação 3D");
+    console.log("Token exists:", !!mapboxToken);
+    console.log("Token length:", mapboxToken?.length);
+    console.log("Container exists:", !!mapContainer.current);
+    
+    if (!mapboxToken) {
+      console.error("❌ VITE_MAPBOX_PUBLIC_TOKEN não configurado");
+      toast.error("Token do mapa não configurado");
+      return;
+    }
+
+    console.log("🗺️ Configurando Mapbox token...");
     mapboxgl.accessToken = mapboxToken;
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/navigation-day-v1",
-      center: [-44.3028, -2.5307],
-      zoom: 15,
-      pitch: 60, // 3D perspective
-      bearing: 0,
-    });
+    try {
+      console.log("🗺️ Criando instância do mapa...");
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: "mapbox://styles/mapbox/navigation-day-v1",
+        center: [-44.3028, -2.5307],
+        zoom: 15,
+        pitch: 60,
+        bearing: 0,
+      });
 
-    map.current.addControl(
-      new mapboxgl.NavigationControl({
-        visualizePitch: true,
-      }),
-      "top-right"
-    );
-
-    // Add 3D buildings layer
-    map.current.on('load', () => {
-      console.log("✅ Mapa carregado com sucesso");
-      setIsMapReady(true);
-      
-      const layers = map.current!.getStyle().layers;
-      const labelLayerId = layers?.find(
-        (layer) => layer.type === 'symbol' && layer.layout?.['text-field']
-      )?.id;
-
-      map.current!.addLayer(
-        {
-          id: '3d-buildings',
-          source: 'composite',
-          'source-layer': 'building',
-          filter: ['==', 'extrude', 'true'],
-          type: 'fill-extrusion',
-          minzoom: 15,
-          paint: {
-            'fill-extrusion-color': '#aaa',
-            'fill-extrusion-height': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              15,
-              0,
-              15.05,
-              ['get', 'height']
-            ],
-            'fill-extrusion-base': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              15,
-              0,
-              15.05,
-              ['get', 'min_height']
-            ],
-            'fill-extrusion-opacity': 0.6
-          }
-        },
-        labelLayerId
+      console.log("🗺️ Mapa criado, adicionando controles...");
+      map.current.addControl(
+        new mapboxgl.NavigationControl({
+          visualizePitch: true,
+        }),
+        "top-right"
       );
-    });
 
-    map.current.on('error', (e) => {
-      console.error("❌ Erro no mapa:", e);
-    });
+      // Add 3D buildings layer
+      map.current.on('load', () => {
+        console.log("✅ [Entregador] Mapa carregado com sucesso!");
+        setIsMapReady(true);
+        
+        const layers = map.current!.getStyle().layers;
+        const labelLayerId = layers?.find(
+          (layer) => layer.type === 'symbol' && layer.layout?.['text-field']
+        )?.id;
+
+        console.log("🏢 Adicionando layer 3D de prédios...");
+        map.current!.addLayer(
+          {
+            id: '3d-buildings',
+            source: 'composite',
+            'source-layer': 'building',
+            filter: ['==', 'extrude', 'true'],
+            type: 'fill-extrusion',
+            minzoom: 15,
+            paint: {
+              'fill-extrusion-color': '#aaa',
+              'fill-extrusion-height': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                15,
+                0,
+                15.05,
+                ['get', 'height']
+              ],
+              'fill-extrusion-base': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                15,
+                0,
+                15.05,
+                ['get', 'min_height']
+              ],
+              'fill-extrusion-opacity': 0.6
+            }
+          },
+          labelLayerId
+        );
+        console.log("✅ Layer 3D de prédios adicionado!");
+      });
+
+      map.current.on('error', (e) => {
+        console.error("❌ [Entregador] Erro no mapa:", e);
+        toast.error("Erro ao carregar mapa");
+      });
+    } catch (error) {
+      console.error("❌ Erro ao criar mapa:", error);
+      toast.error("Erro ao inicializar mapa");
+    }
 
     return () => {
+      console.log("🗺️ Removendo mapa...");
       map.current?.remove();
     };
   }, []);
