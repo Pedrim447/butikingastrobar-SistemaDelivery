@@ -237,13 +237,26 @@ export default function DeliveryNavigation() {
 
     return () => {
       console.log("🗺️ [Entregador] Removendo mapa...");
-      map.current?.remove();
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+      setIsMapReady(false);
     };
   }, []);
 
   // Add destination marker
   useEffect(() => {
-    if (!isMapReady || !map.current || !destinationCoords) return;
+    if (!isMapReady || !map.current || !destinationCoords) {
+      console.log("⚠️ [Entregador] Aguardando para adicionar marcador de destino:", {
+        isMapReady,
+        hasMap: !!map.current,
+        hasDestination: !!destinationCoords
+      });
+      return;
+    }
+
+    console.log("📍 [Entregador] Adicionando marcador de destino");
 
     if (destinationMarker.current) {
       destinationMarker.current.remove();
@@ -263,6 +276,15 @@ export default function DeliveryNavigation() {
       .setLngLat(destinationCoords)
       .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`<strong>Destino</strong><br>${order?.customer_address}`))
       .addTo(map.current);
+    
+    console.log("✅ [Entregador] Marcador de destino adicionado");
+
+    return () => {
+      if (destinationMarker.current) {
+        destinationMarker.current.remove();
+        destinationMarker.current = null;
+      }
+    };
   }, [isMapReady, destinationCoords, order]);
 
   // Update rider marker and draw route with compass-like following
@@ -344,7 +366,9 @@ export default function DeliveryNavigation() {
     // Update rider marker
     if (riderMarker.current) {
       riderMarker.current.setLngLat([position.longitude, position.latitude]);
+      console.log("📍 [Entregador] Marcador do entregador atualizado");
     } else {
+      console.log("📍 [Entregador] Criando marcador do entregador");
       const riderEl = document.createElement("div");
       riderEl.innerHTML = `
         <svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -363,6 +387,8 @@ export default function DeliveryNavigation() {
       riderMarker.current = new mapboxgl.Marker(riderEl)
         .setLngLat([position.longitude, position.latitude])
         .addTo(map.current);
+      
+      console.log("✅ [Entregador] Marcador do entregador criado");
     }
 
     // Draw route
@@ -445,6 +471,13 @@ export default function DeliveryNavigation() {
     };
 
     drawRoute();
+    
+    return () => {
+      if (riderMarker.current) {
+        riderMarker.current.remove();
+        riderMarker.current = null;
+      }
+    };
   }, [position, destinationCoords, isMapReady, riderId, orderId]);
 
   const completeDelivery = async () => {
