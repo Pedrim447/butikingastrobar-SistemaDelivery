@@ -33,6 +33,7 @@ interface Order {
   notes: string;
   delivery_rider_id: string | null;
   cancellation_reason: string | null;
+  tracking_code: string | null;
   order_items: Array<{
     product_id: string;
     product_name: string;
@@ -189,12 +190,13 @@ export default function AdminDashboard() {
   };
 
   const printLabel = (order: Order) => {
+    const orderNumber = order.tracking_code || order.id.substring(0, 8).toUpperCase();
     const labelContent = `
 =================================
         ETIQUETA DE ENTREGA
 =================================
 
-Pedido: ${order.id.substring(0, 8)}
+Pedido: #${orderNumber}
 Data: ${new Date(order.created_at).toLocaleString("pt-BR")}
 
 ---------------------------------
@@ -230,7 +232,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `etiqueta-pedido-${order.id.substring(0, 8)}.txt`;
+    link.download = `etiqueta-pedido-${orderNumber}.txt`;
     link.click();
     URL.revokeObjectURL(url);
 
@@ -343,6 +345,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[100px]">Nº Pedido</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Telefone</TableHead>
                     <TableHead>Itens</TableHead>
@@ -355,6 +358,9 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                 <TableBody>
                   {filterOrders("all").map((order) => (
                     <TableRow key={order.id}>
+                      <TableCell className="font-mono font-bold text-primary">
+                        #{order.tracking_code || order.id.substring(0, 8).toUpperCase()}
+                      </TableCell>
                       <TableCell className="font-medium">{order.customer_name}</TableCell>
                       <TableCell>{order.customer_phone}</TableCell>
                       <TableCell>
@@ -466,6 +472,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[100px]">Nº Pedido</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Telefone</TableHead>
                       <TableHead>Itens</TableHead>
@@ -478,6 +485,9 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                   <TableBody>
                     {filterOrders(status).map((order) => (
                       <TableRow key={order.id}>
+                        <TableCell className="font-mono font-bold text-primary">
+                          #{order.tracking_code || order.id.substring(0, 8).toUpperCase()}
+                        </TableCell>
                         <TableCell className="font-medium">{order.customer_name}</TableCell>
                         <TableCell>{order.customer_phone}</TableCell>
                         <TableCell>
