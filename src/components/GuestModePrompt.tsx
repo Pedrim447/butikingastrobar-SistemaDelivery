@@ -20,18 +20,85 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
   const [number, setNumber] = useState('');
   const [complement, setComplement] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
   const [cep, setCep] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingCep, setLoadingCep] = useState(false);
 
   const { createGuestCustomer } = useGuestMode();
+
+  const fetchAddressByCep = async (cepValue: string) => {
+    const cleanCep = cepValue.replace(/\D/g, '');
+    
+    if (cleanCep.length !== 8) return;
+
+    // Validar se o CEP é de São Luís (começa com 65)
+    if (!cleanCep.startsWith('65')) {
+      toast.error('Desculpe, só aceitamos entregas em São Luís - MA');
+      setStreet('');
+      setNeighborhood('');
+      return;
+    }
+    
+    setLoadingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+      
+      if (data.erro) {
+        toast.error('CEP não encontrado');
+        return;
+      }
+
+      // Verificar se o CEP é de São Luís
+      if (data.localidade !== 'São Luís') {
+        toast.error('Desculpe, só aceitamos entregas em São Luís - MA');
+        setStreet('');
+        setNeighborhood('');
+        return;
+      }
+      
+      setStreet(data.logradouro || '');
+      setNeighborhood(data.bairro || '');
+      
+      toast.success('Endereço encontrado!');
+    } catch (error) {
+      toast.error('Erro ao buscar CEP');
+    } finally {
+      setLoadingCep(false);
+    }
+  };
+
+  const handleCepChange = (value: string) => {
+    // Remove tudo que não é número
+    const onlyNumbers = value.replace(/\D/g, '');
+    
+    // Formata CEP: 00000-000
+    let formatted = onlyNumbers;
+    if (onlyNumbers.length > 5) {
+      formatted = `${onlyNumbers.slice(0, 5)}-${onlyNumbers.slice(5, 8)}`;
+    }
+    
+    setCep(formatted);
+    
+    // Busca automaticamente quando tiver 8 dígitos
+    if (onlyNumbers.length === 8) {
+      fetchAddressByCep(onlyNumbers);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name || !phone || !street || !number || !neighborhood || !city || !state || !cep) {
+    const cleanCep = cep.replace(/\D/g, '');
+
+    if (!name || !phone || !street || !number || !neighborhood || !cleanCep) {
       toast.error('Por favor, preencha todos os campos obrigatórios');
+      return;
+    }
+
+    // Validar CEP de São Luís
+    if (!cleanCep.startsWith('65')) {
+      toast.error('Desculpe, só aceitamos entregas em São Luís - MA');
       return;
     }
 
@@ -42,9 +109,9 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
       number,
       complement: complement || undefined,
       neighborhood,
-      city,
-      state,
-      cep,
+      city: 'São Luís',
+      state: 'MA',
+      cep: cleanCep,
     };
 
     const { token, error } = await createGuestCustomer(name, phone, address);
@@ -109,21 +176,27 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="cep">CEP *</Label>
+              <Label htmlFor="cep">CEP * (Apenas São Luís - MA)</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="cep"
                   type="text"
-                  placeholder="00000-000"
+                  placeholder="65000-000"
                   value={cep}
-                  onChange={(e) => setCep(e.target.value)}
-                  disabled={loading}
+                  onChange={(e) => handleCepChange(e.target.value)}
+                  disabled={loading || loadingCep}
                   className="pl-10"
                   maxLength={9}
                   required
                 />
+                {loadingCep && (
+                  <Loader2 className="w-4 h-4 animate-spin absolute right-3 top-3 text-muted-foreground" />
+                )}
               </div>
+              <p className="text-xs text-muted-foreground">
+                Digite o CEP e o endereço será preenchido automaticamente
+              </p>
             </div>
 
             <div className="space-y-2 md:col-span-2">
@@ -168,7 +241,7 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="neighborhood">Bairro *</Label>
               <Input
                 id="neighborhood"
@@ -176,34 +249,7 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
                 placeholder="Nome do bairro"
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
-                disabled={loading}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="city">Cidade *</Label>
-              <Input
-                id="city"
-                type="text"
-                placeholder="Nome da cidade"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                disabled={loading}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="state">Estado *</Label>
-              <Input
-                id="state"
-                type="text"
-                placeholder="UF"
-                value={state}
-                onChange={(e) => setState(e.target.value.toUpperCase())}
-                disabled={loading}
-                maxLength={2}
+                disabled={loading || loadingCep}
                 required
               />
             </div>
