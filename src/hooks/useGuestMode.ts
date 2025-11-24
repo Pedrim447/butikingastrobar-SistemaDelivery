@@ -97,7 +97,23 @@ export const useGuestMode = () => {
       const token = data.guest_token;
       localStorage.setItem(GUEST_TOKEN_KEY, token);
       setGuestToken(token);
-      await loadGuestData(token);
+      
+      // Define os dados diretamente sem recarregar
+      setGuestData({
+        id: data.id,
+        guest_token: data.guest_token,
+        name: data.name,
+        phone: data.phone,
+        address: {
+          street: data.address_street,
+          number: data.address_number,
+          complement: data.address_complement || undefined,
+          neighborhood: data.address_neighborhood,
+          city: data.address_city,
+          state: data.address_state,
+          cep: data.address_cep,
+        },
+      });
 
       return { token };
     } catch (error) {
@@ -131,7 +147,14 @@ export const useGuestMode = () => {
 
       if (error) throw error;
 
-      await loadGuestData(guestToken);
+      // Atualiza os dados diretamente sem recarregar para evitar rerenders
+      setGuestData(prev => prev ? {
+        ...prev,
+        name,
+        phone,
+        address,
+      } : null);
+
       return {};
     } catch (error) {
       console.error('Error updating guest customer:', error);
