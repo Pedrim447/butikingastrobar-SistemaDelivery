@@ -76,8 +76,16 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    // Use a public token for map display only (geocoding uses edge functions)
-    mapboxgl.accessToken = "pk.eyJ1IjoibG92YWJsZS1kZXYiLCJhIjoiY20zeHhqc2N2MDNkajJqc2Q1ZzNsaDdnOSJ9.VZ8s8wF7JoRTLQpBdB7Wvg";
+    // Use the configured Mapbox token
+    const mapboxToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
+    
+    if (!mapboxToken) {
+      console.error("❌ VITE_MAPBOX_PUBLIC_TOKEN não configurado");
+      return;
+    }
+
+    console.log("🗺️ Inicializando mapa com token configurado");
+    mapboxgl.accessToken = mapboxToken;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -397,6 +405,9 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-sm text-muted-foreground font-medium">
               🏍️ Aguardando localização do entregador em tempo real...
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Pode levar alguns segundos para o mapa carregar
             </p>
           </div>
         </div>
