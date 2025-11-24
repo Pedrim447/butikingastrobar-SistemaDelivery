@@ -32,21 +32,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   const destinationMarker = useRef<mapboxgl.Marker | null>(null);
   const [riderLocation, setRiderLocation] = useState<Location | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<Coordinates | null>(null);
-
-  // Check if token is available
-  if (!MAPBOX_PUBLIC_TOKEN) {
-    return (
-      <div className="bg-destructive/10 border border-destructive rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-destructive mb-2">
-          Token do Mapbox não configurado
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          O token do Mapbox não está disponível. Após adicionar o token nos secrets,
-          atualize a página para que o mapa seja carregado.
-        </p>
-      </div>
-    );
-  }
+  const [isMapReady, setIsMapReady] = useState(false);
 
   // Geocode destination address
   useEffect(() => {
@@ -78,8 +64,9 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     }
   }, [destinationAddress]);
 
+  // Initialize map
   useEffect(() => {
-    if (!mapContainer.current) return;
+    if (!mapContainer.current || !MAPBOX_PUBLIC_TOKEN) return;
 
     // Initialize Mapbox
     mapboxgl.accessToken = MAPBOX_PUBLIC_TOKEN;
@@ -87,31 +74,54 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v12",
-      center: [-46.6333, -23.5505], // São Paulo default
+      center: [-44.3028, -2.5307], // São Luís default
       zoom: 13,
     });
 
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
 
-    // Add destination marker when coords are available
-    if (destinationCoords && map.current) {
-      const destEl = document.createElement("div");
-      destEl.className = "destination-marker";
-      destEl.style.backgroundImage = "url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDRDMTIuMjY4IDQgNiAxMC4yNjggNiAxOEM2IDI3Ljk5MyAxOS41IDE0MCAyMCAzNkMyMC41IDM2IDM0IDI3Ljk5MyAzNCAxOEMzNCAxMC4yNjggMjcuNzMyIDQgMjAgNFoiIGZpbGw9IiNFRjQ0NDQiLz4KPGNpcmNsZSBjeD0iMjAiIGN5PSIxOCIgcj0iNiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+)";
-      destEl.style.width = "40px";
-      destEl.style.height = "40px";
-      destEl.style.backgroundSize = "100%";
+    map.current.on('load', () => {
+      setIsMapReady(true);
+    });
 
-      destinationMarker.current = new mapboxgl.Marker(destEl)
-        .setLngLat([destinationCoords.lng, destinationCoords.lat])
-        .setPopup(new mapboxgl.Popup().setHTML("<strong>Destino</strong><br>" + destinationAddress))
-        .addTo(map.current);
+    return () => {
+      map.current?.remove();
+    };
+  }, []);
+
+  // Add destination marker when coordinates are available
+  useEffect(() => {
+    if (!isMapReady || !map.current || !destinationCoords) return;
+
+    // Remove old destination marker if exists
+    if (destinationMarker.current) {
+      destinationMarker.current.remove();
     }
 
-    // Fetch initial location
+    // Create destination marker with house icon
+    const destEl = document.createElement("div");
+    destEl.innerHTML = `
+      <svg width="40" height="50" viewBox="0 0 40 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 0C12.268 0 6 6.268 6 14C6 23.993 19.5 50 20 50C20.5 50 34 23.993 34 14C34 6.268 27.732 0 20 0Z" fill="#EF4444"/>
+        <path d="M20 8L13 13V22H17V17H23V22H27V13L20 8Z" fill="white"/>
+      </svg>
+    `;
+    destEl.style.width = "40px";
+    destEl.style.height = "50px";
+    destEl.style.cursor = "pointer";
+
+    destinationMarker.current = new mapboxgl.Marker(destEl)
+      .setLngLat([destinationCoords.lng, destinationCoords.lat])
+      .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`<strong>Destino</strong><br>${destinationAddress}`))
+      .addTo(map.current);
+  }, [isMapReady, destinationCoords, destinationAddress]);
+
+  // Fetch rider location and subscribe to updates
+  useEffect(() => {
+    if (!isMapReady) return;
+
     fetchRiderLocation();
 
-    // Subscribe to real-time updates
     const channel = supabase
       .channel("rider-location-changes")
       .on(
@@ -133,9 +143,8 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
 
     return () => {
       channel.unsubscribe();
-      map.current?.remove();
     };
-  }, [deliveryRiderId, orderId, destinationCoords]);
+  }, [isMapReady, deliveryRiderId, orderId]);
 
   const fetchRiderLocation = async () => {
     try {
@@ -180,7 +189,10 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       if (data.routes && data.routes.length > 0) {
         const route = data.routes[0].geometry;
 
-        // Remove existing route layer and source if they exist
+        // Remove existing route layers and source if they exist
+        if (map.current.getLayer("route-outline")) {
+          map.current.removeLayer("route-outline");
+        }
         if (map.current.getLayer("route")) {
           map.current.removeLayer("route");
         }
@@ -208,10 +220,26 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
           },
           paint: {
             "line-color": "#8B5CF6",
-            "line-width": 4,
-            "line-opacity": 0.8,
+            "line-width": 5,
+            "line-opacity": 0.9,
           },
         });
+
+        // Add a shadow/outline for the route
+        map.current.addLayer({
+          id: "route-outline",
+          type: "line",
+          source: "route",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": "#FFFFFF",
+            "line-width": 7,
+            "line-opacity": 0.4,
+          },
+        }, "route");
 
         // Fit map to show both markers and route
         const bounds = new mapboxgl.LngLatBounds();
@@ -238,32 +266,70 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       riderMarker.current.remove();
     }
 
-    // Create custom marker element
+    // Create motorcycle marker element
     const el = document.createElement("div");
-    el.className = "rider-marker";
-    el.style.backgroundImage = "url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMTgiIGZpbGw9IiM4QjVDRjYiLz4KPHBhdGggZD0iTTIwIDhWMTJNMjAgMjhWMzJNOCAyMEgxMk0yOCAyMEgzMk0yNC40ODUzIDI0LjQ4NTNMMjcuMzEzNyAyNy4zMTM3TTE1LjUxNDcgMTUuNTE0N0wxMi42ODYzIDEyLjY4NjNNMjQuNDg1MyAxNS41MTQ3TDI3LjMxMzcgMTIuNjg2M00xNS41MTQ3IDI0LjQ4NTNMMTIuNjg2MyAyNy4zMTM3IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K)";
-    el.style.width = "40px";
-    el.style.height = "40px";
-    el.style.backgroundSize = "100%";
+    el.innerHTML = `
+      <svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="25" cy="25" r="24" fill="#8B5CF6" stroke="white" stroke-width="2"/>
+        <g transform="translate(10, 13)">
+          <path d="M20 11L17 11L15.5 7L11 7L11 9L14 9L15 11L12 11L10 15L14 15L16 18L18 18L20 11Z" fill="white"/>
+          <circle cx="11" cy="19" r="3" fill="white"/>
+          <circle cx="19" cy="19" r="3" fill="white"/>
+          <path d="M13 11L16 11" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+      </svg>
+    `;
+    el.style.width = "50px";
+    el.style.height = "50px";
+    el.style.cursor = "pointer";
+    el.style.animation = "pulse 2s infinite";
 
     // Add new marker
     riderMarker.current = new mapboxgl.Marker(el)
       .setLngLat([longitude, latitude])
-      .setPopup(new mapboxgl.Popup().setHTML("<strong>Entregador</strong><br>Localização atual"))
+      .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML("<strong>🏍️ Entregador</strong><br>Localização em tempo real"))
       .addTo(map.current);
 
     // Draw route from rider to destination
     drawRoute(longitude, latitude);
   };
 
+  if (!MAPBOX_PUBLIC_TOKEN) {
+    return (
+      <div className="bg-destructive/10 border border-destructive rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-destructive mb-2">
+          Token do Mapbox não configurado
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          O token do Mapbox não está disponível. Configure o token nos secrets e atualize a página.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
-      <div ref={mapContainer} className="h-[400px] rounded-lg" />
+      <style>{`
+        @keyframes pulse {
+          0%, 100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.1);
+            opacity: 0.8;
+          }
+        }
+      `}</style>
+      <div ref={mapContainer} className="h-[500px] rounded-lg shadow-lg" />
       {!riderLocation && (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted/50 rounded-lg">
-          <p className="text-sm text-muted-foreground">
-            Aguardando localização do entregador...
-          </p>
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-sm text-muted-foreground font-medium">
+              Aguardando localização do entregador...
+            </p>
+          </div>
         </div>
       )}
     </div>
