@@ -229,18 +229,35 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     }
   };
 
-  const drawRoute = async (riderLng: number, riderLat: number) => {
-    if (!map.current || !destinationCoords) {
-      console.log("⚠️ Não pode desenhar rota - mapa ou destino não disponível");
-      return;
+  const calculateRemainingRoute = (fullRouteCoords: number[][], currentPosition: [number, number]) => {
+    if (!fullRouteCoords || fullRouteCoords.length === 0) return fullRouteCoords;
+
+    // Find the closest point on the route to current position
+    let minDistance = Infinity;
+    let closestIndex = 0;
+
+    for (let i = 0; i < fullRouteCoords.length; i++) {
+      const [lng, lat] = fullRouteCoords[i];
+      const distance = Math.sqrt(
+        Math.pow(lng - currentPosition[0], 2) + Math.pow(lat - currentPosition[1], 2)
+      );
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndex = i;
+      }
     }
 
-    try {
-      console.log("🗺️ Desenhando rota de", [riderLng, riderLat], "para", [destinationCoords.lng, destinationCoords.lat]);
+    // Return route from closest point to destination
+    return [[currentPosition[0], currentPosition[1]], ...fullRouteCoords.slice(closestIndex + 1)];
+  };
 
-      // Only fetch route if we don't have it yet
-      if (!fullRoute) {
-        console.log("📍 Buscando nova rota do Mapbox");
+  const drawRoute = async (riderLng: number, riderLat: number, forceNewRoute = false) => {
+    if (!map.current || !destinationCoords) return;
+
+    try {
+      // Only fetch new route if we don't have one or if forced
+      if (!fullRoute || forceNewRoute) {
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mapbox-directions`,
           {
@@ -259,91 +276,98 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
         const data = await response.json();
 
         if (data.routes && data.routes.length > 0) {
-          console.log("✅ Rota recebida do Mapbox");
           setFullRoute(data.routes[0].geometry);
-          
-          // Draw the route immediately
-          const routeCoords = data.routes[0].geometry.coordinates;
-          
-          // Remove existing route layers if they exist
-          if (map.current.getLayer("route-outline")) {
-            map.current.removeLayer("route-outline");
-          }
-          if (map.current.getLayer("route")) {
-            map.current.removeLayer("route");
-          }
-          if (map.current.getSource("route")) {
-            map.current.removeSource("route");
-          }
-
-          // Add route to map
-          map.current.addSource("route", {
-            type: "geojson",
-            data: {
-              type: "Feature",
-              properties: {},
-              geometry: {
-                type: "LineString",
-                coordinates: routeCoords,
-              },
-            },
-          });
-
-          // Add outline layer
-          map.current.addLayer({
-            id: "route-outline",
-            type: "line",
-            source: "route",
-            layout: {
-              "line-join": "round",
-              "line-cap": "round",
-            },
-            paint: {
-              "line-color": "#FFFFFF",
-              "line-width": 7,
-              "line-opacity": 0.4,
-            },
-          });
-
-          // Add main route layer
-          map.current.addLayer({
-            id: "route",
-            type: "line",
-            source: "route",
-            layout: {
-              "line-join": "round",
-              "line-cap": "round",
-            },
-            paint: {
-              "line-color": "#8B5CF6",
-              "line-width": 5,
-              "line-opacity": 0.9,
-            },
-          });
-
-          // Fit bounds to show entire route
-          const bounds = new mapboxgl.LngLatBounds();
-          bounds.extend([riderLng, riderLat]);
-          bounds.extend([destinationCoords.lng, destinationCoords.lat]);
-          
-          map.current.fitBounds(bounds, {
-            padding: 80,
-            maxZoom: 15,
-          });
-          
-          console.log("✅ Rota desenhada no mapa");
         }
+        return;
+      }
+
+      // Calculate remaining route based on current position
+      const remainingCoords = calculateRemainingRoute(
+        fullRoute.coordinates,
+        [riderLng, riderLat]
+      );
+
+      // Remove existing route layers and source if they exist
+      if (map.current.getLayer("route-outline")) {
+        map.current.removeLayer("route-outline");
+      }
+      if (map.current.getLayer("route")) {
+        map.current.removeLayer("route");
+      }
+      if (map.current.getSource("route")) {
+        map.current.removeSource("route");
+      }
+
+      // Add remaining route to map
+      map.current.addSource("route", {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "LineString",
+            coordinates: remainingCoords,
+          },
+        },
+      });
+
+      // Add outline layer
+      map.current.addLayer({
+        id: "route-outline",
+        type: "line",
+        source: "route",
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
+        },
+        paint: {
+          "line-color": "#FFFFFF",
+          "line-width": 7,
+          "line-opacity": 0.4,
+        },
+      });
+
+      // Add main route layer
+      map.current.addLayer({
+        id: "route",
+        type: "line",
+        source: "route",
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
+        },
+        paint: {
+          "line-color": "#8B5CF6",
+          "line-width": 5,
+          "line-opacity": 0.9,
+        },
+      });
+
+      // Only fit bounds on first load
+      if (forceNewRoute) {
+        const bounds = new mapboxgl.LngLatBounds();
+        bounds.extend([riderLng, riderLat]);
+        bounds.extend([destinationCoords.lng, destinationCoords.lat]);
+        
+        map.current.fitBounds(bounds, {
+          padding: 80,
+          maxZoom: 15,
+        });
       }
     } catch (error) {
-      console.error("❌ Erro ao desenhar rota:", error);
+      console.error("Erro ao desenhar rota:", error);
     }
   };
 
-  const updateRiderMarker = (latitude: number, longitude: number) => {
-    if (!map.current) {
-      console.log("⚠️ Mapa não disponível para atualizar marcador");
-      return;
+  // Update route when fullRoute changes
+  useEffect(() => {
+    if (fullRoute && riderLocation && isMapReady) {
+      drawRoute(riderLocation.longitude, riderLocation.latitude, true);
     }
+  }, [fullRoute]);
+
+  const updateRiderMarker = (latitude: number, longitude: number) => {
+    if (!map.current) return;
 
     const now = Date.now();
     const timeSinceLastUpdate = now - lastUpdateTime.current;
@@ -353,7 +377,6 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       return;
     }
 
-    console.log("📍 Atualizando marcador do entregador:", { latitude, longitude });
     lastUpdateTime.current = now;
     setRiderLocation({ latitude, longitude });
 
@@ -387,12 +410,8 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML("<strong>🏍️ Entregador</strong><br>Localização em tempo real"))
       .addTo(map.current);
 
-    console.log("✅ Marcador do entregador adicionado ao mapa");
-
-    // Draw route if we have destination
-    if (destinationCoords && !fullRoute) {
-      drawRoute(longitude, latitude);
-    }
+    // Update route - will use existing route and calculate remaining portion
+    drawRoute(longitude, latitude, !fullRoute);
   };
 
   return (
