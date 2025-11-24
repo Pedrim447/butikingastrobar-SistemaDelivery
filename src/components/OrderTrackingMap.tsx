@@ -40,10 +40,37 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   const [destinationCoords, setDestinationCoords] = useState<Coordinates | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [fullRoute, setFullRoute] = useState<RouteGeometry | null>(null);
+  const [fullAddress, setFullAddress] = useState<string>("");
   const lastUpdateTime = useRef<number>(Date.now());
+
+  // Buscar detalhes do pedido para construir endereço completo
+  useEffect(() => {
+    const fetchOrderDetails = async () => {
+      try {
+        const { data: orderData, error } = await supabase
+          .from('orders')
+          .select('customer_address, customer_neighborhood, customer_city, customer_state, customer_cep')
+          .eq('id', orderId)
+          .single();
+
+        if (error) throw error;
+        if (!orderData) return;
+
+        // Construir endereço completo com CEP para geocoding preciso
+        const completeAddress = `${orderData.customer_address}, ${orderData.customer_neighborhood}, ${orderData.customer_city} - ${orderData.customer_state}, CEP ${orderData.customer_cep}, Brasil`;
+        setFullAddress(completeAddress);
+      } catch (error) {
+        console.error('Erro ao buscar detalhes do pedido:', error);
+      }
+    };
+
+    fetchOrderDetails();
+  }, [orderId]);
 
   // Geocode destination address
   useEffect(() => {
+    if (!fullAddress) return;
+
     const geocodeDestination = async () => {
       try {
         const response = await fetch(
@@ -53,7 +80,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ address: destinationAddress }),
+            body: JSON.stringify({ address: fullAddress }),
           }
         );
         const data = await response.json();
@@ -67,10 +94,8 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       }
     };
 
-    if (destinationAddress) {
-      geocodeDestination();
-    }
-  }, [destinationAddress]);
+    geocodeDestination();
+  }, [fullAddress]);
 
   // Initialize map
   useEffect(() => {
@@ -128,9 +153,9 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
 
     destinationMarker.current = new mapboxgl.Marker(destEl)
       .setLngLat([destinationCoords.lng, destinationCoords.lat])
-      .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`<strong>Destino</strong><br>${destinationAddress}`))
+      .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`<strong>Destino</strong><br>${fullAddress}`))
       .addTo(map.current);
-  }, [isMapReady, destinationCoords, destinationAddress]);
+  }, [isMapReady, destinationCoords, fullAddress]);
 
   // Fetch rider location and subscribe to real-time updates
   useEffect(() => {
