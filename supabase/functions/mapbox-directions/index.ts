@@ -15,8 +15,8 @@ serve(async (req) => {
   try {
     console.log('MAPBOX_TOKEN exists:', !!MAPBOX_TOKEN);
     
-    const { startLng, startLat, endLng, endLat, profile = 'driving' } = await req.json();
-    console.log('Directions request:', { startLng, startLat, endLng, endLat, profile });
+    const { startLng, startLat, endLng, endLat } = await req.json();
+    console.log('Directions request:', { startLng, startLat, endLng, endLat });
 
     if (!startLng || !startLat || !endLng || !endLat) {
       return new Response(
@@ -25,9 +25,8 @@ serve(async (req) => {
       );
     }
 
-    // Use traffic-aware routing to avoid blocked roads and congestion
-    const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${startLng},${startLat};${endLng},${endLat}?geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
-    console.log('Mapbox directions URL created with profile:', profile);
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startLng},${startLat};${endLng},${endLat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+    console.log('Mapbox directions URL created');
     
     const response = await fetch(url);
     console.log('Mapbox directions response status:', response.status);

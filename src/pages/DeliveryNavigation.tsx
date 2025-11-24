@@ -41,8 +41,6 @@ export default function DeliveryNavigation() {
   const [fullAddress, setFullAddress] = useState<string>("");
   const isInitialized = useRef(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const currentRoute = useRef<any>(null);
-  const lastRouteCheck = useRef<number>(0);
 
   // Função para calcular o ângulo (bearing) entre dois pontos
   const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -215,10 +213,10 @@ export default function DeliveryNavigation() {
     try {
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: "mapbox://styles/mapbox/streets-v12", // Estilo limpo sem cores de trânsito
+        style: "mapbox://styles/mapbox/streets-v12",
         center: [-44.3028, -2.5307],
         zoom: 17,
-        pitch: 0, // Visão 2D para melhor visualização das vias
+        pitch: 60,
         bearing: 0,
       });
 
@@ -234,37 +232,46 @@ export default function DeliveryNavigation() {
         setIsMapReady(true);
         
         try {
-          // Destacar limites das vias
-          map.current!.setPaintProperty('road-street', 'line-width', [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            14, 2,
-            18, 6
-          ]);
-          
-          // Melhorar visualização das bordas das ruas
-          if (!map.current!.getLayer('road-borders')) {
-            map.current!.addLayer({
-              id: 'road-borders',
-              type: 'line',
+          const layers = map.current!.getStyle().layers;
+          const labelLayerId = layers?.find(
+            (layer) => layer.type === 'symbol' && layer.layout?.['text-field']
+          )?.id;
+
+          map.current!.addLayer(
+            {
+              id: '3d-buildings',
               source: 'composite',
-              'source-layer': 'road',
+              'source-layer': 'building',
+              filter: ['==', 'extrude', 'true'],
+              type: 'fill-extrusion',
+              minzoom: 15,
               paint: {
-                'line-color': '#666',
-                'line-width': [
+                'fill-extrusion-color': '#aaa',
+                'fill-extrusion-height': [
                   'interpolate',
                   ['linear'],
                   ['zoom'],
-                  14, 1,
-                  18, 3
+                  15,
+                  0,
+                  15.05,
+                  ['get', 'height']
                 ],
-                'line-opacity': 0.5
+                'fill-extrusion-base': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  15,
+                  0,
+                  15.05,
+                  ['get', 'min_height']
+                ],
+                'fill-extrusion-opacity': 0.6
               }
-            });
-          }
+            },
+            labelLayerId
+          );
         } catch (err) {
-          console.error("❌ [Entregador] Erro ao configurar camadas:", err);
+          console.error("❌ [Entregador] Erro ao adicionar layer 3D:", err);
         }
       });
 
@@ -374,33 +381,6 @@ export default function DeliveryNavigation() {
 
     updateLocation();
 
-    // Check if rider deviated from route and recalculate if needed
-    const now = Date.now();
-    if (currentRoute.current?.geometry?.coordinates && now - lastRouteCheck.current > 10000) {
-      lastRouteCheck.current = now;
-      
-      const routeCoordinates = currentRoute.current.geometry.coordinates;
-      const riderPoint = [position.longitude, position.latitude];
-      
-      // Calculate distance to closest point on route
-      let minDistance = Infinity;
-      for (const coord of routeCoordinates) {
-        const distance = Math.sqrt(
-          Math.pow(coord[0] - riderPoint[0], 2) + 
-          Math.pow(coord[1] - riderPoint[1], 2)
-        );
-        minDistance = Math.min(minDistance, distance);
-      }
-      
-      // If rider is more than ~100m from route (0.001 degrees ≈ 111m), recalculate
-      if (minDistance > 0.001) {
-        console.log("🔄 [Entregador] Desviou da rota, recalculando...");
-        toast.info("Recalculando rota...");
-        // Force route recalculation by clearing current route
-        currentRoute.current = null;
-      }
-    }
-
     // Update rider marker
     if (riderMarker.current) {
       riderMarker.current.setLngLat([position.longitude, position.latitude]);
@@ -440,7 +420,6 @@ export default function DeliveryNavigation() {
               startLat: position.latitude,
               endLng: destinationCoords[0],
               endLat: destinationCoords[1],
-              profile: 'driving-traffic', // Use traffic-aware routing
             }),
           }
         );
@@ -448,9 +427,6 @@ export default function DeliveryNavigation() {
 
         if (data.routes && data.routes.length > 0) {
           const route = data.routes[0].geometry;
-          
-          // Store current route for deviation detection
-          currentRoute.current = route;
 
           if (map.current!.getSource("route")) {
             (map.current!.getSource("route") as mapboxgl.GeoJSONSource).setData({
