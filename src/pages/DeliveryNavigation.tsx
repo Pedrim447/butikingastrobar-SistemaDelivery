@@ -37,6 +37,7 @@ export default function DeliveryNavigation() {
   const { position } = useGeolocation(true);
   const [cancellationReason, setCancellationReason] = useState("");
   const [fullAddress, setFullAddress] = useState<string>("");
+  const isInitialized = useRef(false);
 
   // Função para calcular o ângulo (bearing) entre dois pontos
   const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -57,6 +58,8 @@ export default function DeliveryNavigation() {
 
   // Fetch order details
   useEffect(() => {
+    console.log("🔄 [Entregador] Fetch order effect - orderId:", orderId);
+    
     const fetchOrder = async () => {
       try {
         const { data: userData } = await supabase.auth.getUser();
@@ -94,14 +97,23 @@ export default function DeliveryNavigation() {
 
         setOrder(orderData);
         
-        // Construir endereço completo com CEP para geocoding preciso
         const completeAddress = `${orderData.customer_address}, ${orderData.customer_neighborhood}, ${orderData.customer_city} - ${orderData.customer_state}, CEP ${orderData.customer_cep}, Brasil`;
         setFullAddress(completeAddress);
+        
+        console.log("✅ [Entregador] Pedido carregado:", orderData.id);
       } catch (error) {
-        console.error("Erro ao buscar pedido:", error);
+        console.error("❌ [Entregador] Erro ao buscar pedido:", error);
         toast.error("Erro ao carregar pedido");
       }
     };
+
+    // Reset states quando orderId mudar
+    setOrder(null);
+    setRiderId(null);
+    setDestinationCoords(null);
+    setFullAddress("");
+    setIsMapReady(false);
+    isInitialized.current = false;
 
     fetchOrder();
   }, [orderId, navigate]);
@@ -109,6 +121,8 @@ export default function DeliveryNavigation() {
   // Geocode destination
   useEffect(() => {
     if (!fullAddress) return;
+
+    console.log("🗺️ [Entregador] Geocoding endereço:", fullAddress);
 
     const geocodeDestination = async () => {
       try {
@@ -127,39 +141,34 @@ export default function DeliveryNavigation() {
         if (data.features && data.features.length > 0) {
           const [lng, lat] = data.features[0].center;
           setDestinationCoords([lng, lat]);
+          console.log("✅ [Entregador] Coordenadas do destino:", { lng, lat });
         }
       } catch (error) {
-        console.error("Erro ao geocodificar endereço:", error);
+        console.error("❌ [Entregador] Erro ao geocodificar endereço:", error);
       }
     };
 
     geocodeDestination();
   }, [fullAddress]);
 
-  // Initialize 3D map
+  // Initialize map - agora depende de orderId para recriar quando mudar
   useEffect(() => {
-    if (!mapContainer.current) {
-      console.log("⚠️ [Entregador] mapContainer não está disponível ainda");
+    if (!mapContainer.current || isInitialized.current) {
       return;
     }
 
     const mapboxToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
     
-    console.log("🗺️ [Entregador] Inicializando mapa de navegação 3D");
-    console.log("🗺️ [Entregador] Token exists:", !!mapboxToken);
-    console.log("🗺️ [Entregador] Token length:", mapboxToken?.length);
-    console.log("🗺️ [Entregador] Container exists:", !!mapContainer.current);
+    console.log("🗺️ [Entregador] Inicializando mapa para ordem:", orderId);
     
     if (!mapboxToken) {
-      console.error("❌ [Entregador] VITE_MAPBOX_PUBLIC_TOKEN não configurado");
+      console.error("❌ [Entregador] Token do Mapbox não configurado");
       return;
     }
 
-    console.log("🗺️ [Entregador] Configurando Mapbox token...");
     mapboxgl.accessToken = mapboxToken;
 
     try {
-      console.log("🗺️ [Entregador] Criando instância do mapa...");
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: "mapbox://styles/mapbox/streets-v12",
@@ -169,7 +178,6 @@ export default function DeliveryNavigation() {
         bearing: 0,
       });
 
-      console.log("🗺️ [Entregador] Mapa criado, adicionando controles...");
       map.current.addControl(
         new mapboxgl.NavigationControl({
           visualizePitch: true,
@@ -177,9 +185,8 @@ export default function DeliveryNavigation() {
         "top-right"
       );
 
-      // Add 3D buildings layer
       map.current.on('load', () => {
-        console.log("✅ [Entregador] Mapa carregado com sucesso!");
+        console.log("✅ [Entregador] Mapa carregado");
         setIsMapReady(true);
         
         try {
@@ -188,7 +195,6 @@ export default function DeliveryNavigation() {
             (layer) => layer.type === 'symbol' && layer.layout?.['text-field']
           )?.id;
 
-          console.log("🏢 [Entregador] Adicionando layer 3D de prédios...");
           map.current!.addLayer(
             {
               id: '3d-buildings',
@@ -222,7 +228,6 @@ export default function DeliveryNavigation() {
             },
             labelLayerId
           );
-          console.log("✅ [Entregador] Layer 3D de prédios adicionado!");
         } catch (err) {
           console.error("❌ [Entregador] Erro ao adicionar layer 3D:", err);
         }
@@ -231,28 +236,36 @@ export default function DeliveryNavigation() {
       map.current.on('error', (e) => {
         console.error("❌ [Entregador] Erro no mapa:", e);
       });
+
+      isInitialized.current = true;
+      console.log("✅ [Entregador] Mapa inicializado");
+
     } catch (error) {
       console.error("❌ [Entregador] Erro ao criar mapa:", error);
     }
 
     return () => {
-      console.log("🗺️ [Entregador] Removendo mapa...");
+      console.log("🗺️ [Entregador] Cleanup do mapa");
+      if (riderMarker.current) {
+        riderMarker.current.remove();
+        riderMarker.current = null;
+      }
+      if (destinationMarker.current) {
+        destinationMarker.current.remove();
+        destinationMarker.current = null;
+      }
       if (map.current) {
         map.current.remove();
         map.current = null;
       }
       setIsMapReady(false);
+      isInitialized.current = false;
     };
-  }, []);
+  }, [orderId]); // Agora recria quando orderId mudar
 
   // Add destination marker
   useEffect(() => {
     if (!isMapReady || !map.current || !destinationCoords) {
-      console.log("⚠️ [Entregador] Aguardando para adicionar marcador de destino:", {
-        isMapReady,
-        hasMap: !!map.current,
-        hasDestination: !!destinationCoords
-      });
       return;
     }
 
@@ -278,53 +291,28 @@ export default function DeliveryNavigation() {
       .addTo(map.current);
     
     console.log("✅ [Entregador] Marcador de destino adicionado");
-
-    return () => {
-      if (destinationMarker.current) {
-        destinationMarker.current.remove();
-        destinationMarker.current = null;
-      }
-    };
   }, [isMapReady, destinationCoords, order]);
 
-  // Update rider marker and draw route with compass-like following
+  // Update rider marker and draw route
   useEffect(() => {
     if (!isMapReady || !map.current || !position || !destinationCoords || !riderId || !orderId) {
-      console.log("⚠️ [Entregador] Aguardando condições:", {
-        isMapReady,
-        hasMap: !!map.current,
-        hasPosition: !!position,
-        hasDestination: !!destinationCoords,
-        riderId,
-        orderId
-      });
       return;
     }
 
-    console.log("📍 [Entregador] Atualizando posição:", {
-      lat: position.latitude,
-      lng: position.longitude
-    });
+    console.log("📍 [Entregador] Atualizando posição do entregador");
 
-    // Update rider location in database (UPDATE em vez de UPSERT para evitar erro 409)
+    // Update location in database
     const updateLocation = async () => {
       try {
-        // Primeiro tenta fazer update
-        const { data: existingData, error: checkError } = await supabase
+        const { data: existingData } = await supabase
           .from("delivery_rider_locations")
           .select("id")
           .eq("delivery_rider_id", riderId)
           .eq("order_id", orderId)
           .maybeSingle();
 
-        if (checkError) {
-          console.error("❌ [Entregador] Erro ao verificar localização:", checkError);
-          return;
-        }
-
         if (existingData) {
-          // Registro existe, fazer UPDATE
-          const { error: updateError } = await supabase
+          await supabase
             .from("delivery_rider_locations")
             .update({
               latitude: position.latitude,
@@ -333,15 +321,8 @@ export default function DeliveryNavigation() {
             })
             .eq("delivery_rider_id", riderId)
             .eq("order_id", orderId);
-
-          if (updateError) {
-            console.error("❌ [Entregador] Erro ao atualizar localização:", updateError);
-          } else {
-            console.log("✅ [Entregador] Localização atualizada com sucesso");
-          }
         } else {
-          // Registro não existe, fazer INSERT
-          const { error: insertError } = await supabase
+          await supabase
             .from("delivery_rider_locations")
             .insert({
               delivery_rider_id: riderId,
@@ -349,12 +330,6 @@ export default function DeliveryNavigation() {
               latitude: position.latitude,
               longitude: position.longitude,
             });
-
-          if (insertError) {
-            console.error("❌ [Entregador] Erro ao inserir localização:", insertError);
-          } else {
-            console.log("✅ [Entregador] Localização inserida com sucesso");
-          }
         }
       } catch (error) {
         console.error("❌ [Entregador] Erro ao atualizar localização:", error);
@@ -366,9 +341,7 @@ export default function DeliveryNavigation() {
     // Update rider marker
     if (riderMarker.current) {
       riderMarker.current.setLngLat([position.longitude, position.latitude]);
-      console.log("📍 [Entregador] Marcador do entregador atualizado");
     } else {
-      console.log("📍 [Entregador] Criando marcador do entregador");
       const riderEl = document.createElement("div");
       riderEl.innerHTML = `
         <svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -387,8 +360,6 @@ export default function DeliveryNavigation() {
       riderMarker.current = new mapboxgl.Marker(riderEl)
         .setLngLat([position.longitude, position.latitude])
         .addTo(map.current);
-      
-      console.log("✅ [Entregador] Marcador do entregador criado");
     }
 
     // Draw route
@@ -446,8 +417,7 @@ export default function DeliveryNavigation() {
             });
           }
 
-          // Sistema de bússola: segue o entregador automaticamente
-          // Calcula o ângulo (bearing) em direção ao destino
+          // Sistema de bússola
           const bearing = calculateBearing(
             position.latitude,
             position.longitude,
@@ -455,30 +425,22 @@ export default function DeliveryNavigation() {
             destinationCoords[0]
           );
 
-          // Update camera para seguir o entregador como uma bússola
           map.current!.easeTo({
             center: [position.longitude, position.latitude],
             zoom: 18,
             pitch: 60,
-            bearing: bearing, // Rotaciona o mapa na direção do destino
+            bearing: bearing,
             duration: 1000,
-            essential: true, // Garante que a animação sempre aconteça
+            essential: true,
           });
         }
       } catch (error) {
-        console.error("Erro ao desenhar rota:", error);
+        console.error("❌ [Entregador] Erro ao desenhar rota:", error);
       }
     };
 
     drawRoute();
-    
-    return () => {
-      if (riderMarker.current) {
-        riderMarker.current.remove();
-        riderMarker.current = null;
-      }
-    };
-  }, [position, destinationCoords, isMapReady, riderId, orderId]);
+  }, [position, destinationCoords, isMapReady, riderId, orderId, calculateBearing]);
 
   const completeDelivery = async () => {
     try {
