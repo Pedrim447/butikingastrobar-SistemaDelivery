@@ -167,23 +167,19 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   // Fetch rider location and subscribe to real-time updates
   useEffect(() => {
     if (!isMapReady) {
-      console.log("⚠️ Mapa ainda não está pronto");
+      console.log("⚠️ [Cliente] Mapa ainda não está pronto");
       return;
     }
 
     console.log("🗺️ [Cliente] Mapa pronto, iniciando rastreamento do entregador");
-    console.log("🗺️ Delivery Rider ID:", deliveryRiderId);
+    console.log("🗺️ [Cliente] Delivery Rider ID:", deliveryRiderId);
+    console.log("🗺️ [Cliente] Order ID:", orderId);
     
     // Buscar localização inicial
     fetchRiderLocation();
 
-    // Configurar polling para atualizar localização a cada 5 segundos
-    const intervalId = setInterval(() => {
-      console.log("🔄 Atualizando localização do entregador (polling)");
-      fetchRiderLocation();
-    }, 5000);
-
-    // Subscribe to real-time location updates for this delivery rider
+    // Subscribe to real-time location updates via WebSocket
+    console.log("📡 [Cliente] Configurando WebSocket subscription...");
     const channel = supabase
       .channel(`rider-location-${deliveryRiderId}`)
       .on(
@@ -195,49 +191,67 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
           filter: `delivery_rider_id=eq.${deliveryRiderId}`,
         },
         (payload) => {
-          console.log("🏍️ [Cliente] Real-time location update:", payload);
+          console.log("🏍️ [Cliente] Real-time location update via WebSocket:", payload);
           if (payload.new && "latitude" in payload.new && "longitude" in payload.new) {
-            console.log("📍 Atualizando posição do entregador via realtime");
+            console.log("📍 [Cliente] Atualizando posição do entregador:", {
+              lat: payload.new.latitude,
+              lng: payload.new.longitude,
+              order_id: payload.new.order_id
+            });
             updateRiderMarker(payload.new.latitude, payload.new.longitude);
           }
         }
       )
       .subscribe((status) => {
-        console.log("📡 [Cliente] Realtime subscription status:", status);
+        console.log("📡 [Cliente] Realtime WebSocket status:", status);
+        if (status === 'SUBSCRIBED') {
+          console.log("✅ [Cliente] WebSocket conectado com sucesso!");
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error("❌ [Cliente] Erro no canal WebSocket");
+        } else if (status === 'TIMED_OUT') {
+          console.error("❌ [Cliente] WebSocket timeout");
+        }
       });
 
     return () => {
-      console.log("🔌 Unsubscribing from rider location updates");
-      clearInterval(intervalId);
-      channel.unsubscribe();
+      console.log("🔌 [Cliente] Unsubscribing from WebSocket");
+      supabase.removeChannel(channel);
     };
-  }, [isMapReady, deliveryRiderId]);
+  }, [isMapReady, deliveryRiderId, orderId]);
 
   const fetchRiderLocation = async () => {
     try {
-      console.log("🔍 Buscando localização do entregador:", deliveryRiderId, "para pedido:", orderId);
+      console.log("🔍 [Cliente] Buscando localização inicial do entregador");
+      console.log("🔍 [Cliente] Delivery Rider ID:", deliveryRiderId);
+      console.log("🔍 [Cliente] Order ID:", orderId);
       
       const { data, error } = await supabase
         .from("delivery_rider_locations")
-        .select("latitude, longitude")
+        .select("latitude, longitude, updated_at, order_id")
         .eq("delivery_rider_id", deliveryRiderId)
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (error) {
-        console.error("❌ Erro ao buscar localização:", error);
-        throw error;
+        console.error("❌ [Cliente] Erro ao buscar localização:", error);
+        return;
       }
 
       if (data) {
-        console.log("✅ Localização encontrada:", data);
+        console.log("✅ [Cliente] Localização inicial encontrada:", {
+          lat: data.latitude,
+          lng: data.longitude,
+          updated_at: data.updated_at,
+          order_id: data.order_id
+        });
         updateRiderMarker(data.latitude, data.longitude);
       } else {
-        console.log("⚠️ Nenhuma localização encontrada para este entregador");
+        console.log("⚠️ [Cliente] Nenhuma localização encontrada para este entregador");
+        console.log("⚠️ [Cliente] Aguardando primeira atualização via WebSocket...");
       }
     } catch (error) {
-      console.error("❌ Error fetching rider location:", error);
+      console.error("❌ [Cliente] Error fetching rider location:", error);
     }
   };
 
