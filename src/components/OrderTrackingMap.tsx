@@ -128,11 +128,12 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   useEffect(() => {
     if (!isMapReady) return;
 
+    console.log("🗺️ Mapa pronto, iniciando rastreamento");
     fetchRiderLocation();
 
-    // Subscribe to real-time location updates for this specific order
+    // Subscribe to real-time location updates for this delivery rider
     const channel = supabase
-      .channel(`rider-location-${deliveryRiderId}-${orderId}`)
+      .channel(`rider-location-${deliveryRiderId}`)
       .on(
         "postgres_changes",
         {
@@ -144,10 +145,8 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
         (payload) => {
           console.log("🏍️ Real-time location update:", payload);
           if (payload.new && "latitude" in payload.new && "longitude" in payload.new) {
-            // Only update if this location is for the current order
-            if (payload.new.order_id === orderId) {
-              updateRiderMarker(payload.new.latitude, payload.new.longitude);
-            }
+            console.log("📍 Atualizando posição do motoboy");
+            updateRiderMarker(payload.new.latitude, payload.new.longitude);
           }
         }
       )
@@ -159,24 +158,33 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       console.log("🔌 Unsubscribing from rider location updates");
       channel.unsubscribe();
     };
-  }, [isMapReady, deliveryRiderId, orderId]);
+  }, [isMapReady, deliveryRiderId]);
 
   const fetchRiderLocation = async () => {
     try {
+      console.log("🔍 Buscando localização do entregador:", deliveryRiderId, "para pedido:", orderId);
+      
       const { data, error } = await supabase
         .from("delivery_rider_locations")
         .select("latitude, longitude")
         .eq("delivery_rider_id", deliveryRiderId)
-        .eq("order_id", orderId)
+        .order("updated_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Erro ao buscar localização:", error);
+        throw error;
+      }
 
       if (data) {
+        console.log("✅ Localização encontrada:", data);
         updateRiderMarker(data.latitude, data.longitude);
+      } else {
+        console.log("⚠️ Nenhuma localização encontrada para este entregador");
       }
     } catch (error) {
-      console.error("Error fetching rider location:", error);
+      console.error("❌ Error fetching rider location:", error);
     }
   };
 
