@@ -17,7 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 const checkoutSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100),
   phone: z.string().min(10, 'Telefone inválido').max(15),
-  cep: z.string().length(8, 'CEP deve ter 8 dígitos').regex(/^65\d{6}$/, 'CEP deve ser de São Luís - MA (começar com 65)'),
+  cep: z.string().length(8, 'CEP deve ter 8 dígitos').regex(/^\d+$/, 'CEP deve conter apenas números'),
   address: z.string().min(5, 'Endereço obrigatório').max(200),
   number: z.string().min(1, 'Número obrigatório').max(10),
   reference: z.string().max(200).optional(),
@@ -53,11 +53,19 @@ const Checkout = () => {
     };
   });
 
-  // Store city and state internally (always São Luís - MA)
-  const addressData = {
-    city: 'São Luís',
-    state: 'MA',
-  };
+  // Store city and state internally (from CEP)
+  const [addressData, setAddressData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('checkout_address');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch {}
+    return {
+      city: '',
+      state: '',
+    };
+  });
 
   // Salvar formData no localStorage sempre que mudar
   useEffect(() => {
@@ -67,6 +75,15 @@ const Checkout = () => {
       console.error('Erro ao salvar formulário:', error);
     }
   }, [formData]);
+
+  // Salvar addressData no localStorage sempre que mudar
+  useEffect(() => {
+    try {
+      localStorage.setItem('checkout_address', JSON.stringify(addressData));
+    } catch (error) {
+      console.error('Erro ao salvar endereço:', error);
+    }
+  }, [addressData]);
 
   // Load user profile data on mount - SOMENTE na primeira carga
   useEffect(() => {
@@ -135,6 +152,11 @@ const Checkout = () => {
       reference: guestData.address.complement || '',
       neighborhood: guestData.address.neighborhood,
     }));
+    
+    setAddressData({
+      city: guestData.address.city,
+      state: guestData.address.state,
+    });
   }, [guestData]);
 
   const subtotal = getCartTotal();
@@ -143,12 +165,6 @@ const Checkout = () => {
 
   const fetchAddressByCep = async (cep: string) => {
     if (cep.length !== 8) return;
-
-    // Validar se o CEP é de São Luís (começa com 65)
-    if (!cep.startsWith('65')) {
-      toast.error('Desculpe, só aceitamos entregas em São Luís - MA');
-      return;
-    }
     
     setLoadingCep(true);
     try {
@@ -159,18 +175,17 @@ const Checkout = () => {
         toast.error('CEP não encontrado');
         return;
       }
-
-      // Verificar se o CEP é de São Luís
-      if (data.localidade !== 'São Luís') {
-        toast.error('Desculpe, só aceitamos entregas em São Luís - MA');
-        return;
-      }
       
       setFormData(prev => ({
         ...prev,
         address: data.logradouro || prev.address,
         neighborhood: data.bairro || prev.neighborhood,
       }));
+      
+      setAddressData({
+        city: data.localidade || '',
+        state: data.uf || '',
+      });
       
       toast.success('Endereço encontrado!');
     } catch (error) {
@@ -195,12 +210,6 @@ const Checkout = () => {
     try {
       // Validate form
       checkoutSchema.parse(formData);
-
-      // Validar se o CEP é de São Luís
-      if (!formData.cep.startsWith('65')) {
-        toast.error('Desculpe, só aceitamos entregas em São Luís - MA');
-        return;
-      }
       
       if (cart.length === 0) {
         toast.error('Carrinho vazio');
@@ -245,8 +254,8 @@ const Checkout = () => {
           customer_cep: formData.cep,
           customer_address: `${formData.address}, ${formData.number}${formData.reference ? ' - ' + formData.reference : ''}`,
           customer_neighborhood: formData.neighborhood,
-          customer_city: 'São Luís',
-          customer_state: 'MA',
+          customer_city: addressData.city,
+          customer_state: addressData.state,
           delivery_fee: deliveryFee,
           subtotal: subtotal,
           total: total,
@@ -281,6 +290,7 @@ const Checkout = () => {
 
       // Limpar dados salvos do formulário após pedido confirmado
       localStorage.removeItem('checkout_form');
+      localStorage.removeItem('checkout_address');
       
       clearCart();
       toast.success('Pedido realizado com sucesso!');
@@ -355,23 +365,25 @@ const Checkout = () => {
                     <p className="font-medium">
                       {formData.address}, {formData.number}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formData.neighborhood} • CEP {formData.cep}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      São Luís - MA
-                    </p>
+                     <p className="text-xs text-muted-foreground">
+                       {formData.neighborhood} • CEP {formData.cep}
+                     </p>
+                     {addressData.city && addressData.state && (
+                       <p className="text-xs text-muted-foreground">
+                         {addressData.city} - {addressData.state}
+                       </p>
+                     )}
                   </div>
                 ) : (
                   <div className="space-y-3 p-3 bg-muted/20 rounded-md border">
                      <div>
-                       <Label htmlFor="cep" className="text-xs">CEP * (Apenas São Luís - MA)</Label>
+                       <Label htmlFor="cep" className="text-xs">CEP *</Label>
                        <div className="relative">
                          <Input
                            id="cep"
                            value={formData.cep}
                            onChange={(e) => handleCepChange(e.target.value)}
-                           placeholder="65000-000"
+                           placeholder="00000000"
                            maxLength={8}
                            className="h-9 text-sm"
                            required
@@ -422,9 +434,11 @@ const Checkout = () => {
                       </div>
                      </div>
 
-                     <p className="text-xs text-muted-foreground font-medium">
-                       São Luís - MA
-                     </p>
+                     {addressData.city && addressData.state && (
+                       <p className="text-xs text-muted-foreground font-medium">
+                         {addressData.city} - {addressData.state}
+                       </p>
+                     )}
                    </div>
                  )}
                </div>
