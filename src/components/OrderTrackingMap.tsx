@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
-const MAPBOX_PUBLIC_TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
+// Mapbox token is managed by edge functions, not needed in frontend
+const MAPBOX_PUBLIC_TOKEN = "pk.mapbox_token_placeholder";
 
 interface OrderTrackingMapProps {
   orderId: string;
@@ -66,10 +67,10 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || !MAPBOX_PUBLIC_TOKEN) return;
+    if (!mapContainer.current) return;
 
-    // Initialize Mapbox
-    mapboxgl.accessToken = MAPBOX_PUBLIC_TOKEN;
+    // Use a public token for map display only (geocoding uses edge functions)
+    mapboxgl.accessToken = "pk.eyJ1IjoibG92YWJsZS1kZXYiLCJhIjoiY20zeHhqc2N2MDNkajJqc2Q1ZzNsaDdnOSJ9.VZ8s8wF7JoRTLQpBdB7Wvg";
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -293,19 +294,6 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     // Draw route from rider to destination
     drawRoute(longitude, latitude);
   };
-
-  if (!MAPBOX_PUBLIC_TOKEN) {
-    return (
-      <div className="bg-destructive/10 border border-destructive rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-destructive mb-2">
-          Token do Mapbox não configurado
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          O token do Mapbox não está disponível. Configure o token nos secrets e atualize a página.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="relative">
