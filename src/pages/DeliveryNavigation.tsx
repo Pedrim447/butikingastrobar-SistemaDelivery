@@ -38,6 +38,23 @@ export default function DeliveryNavigation() {
   const [cancellationReason, setCancellationReason] = useState("");
   const [fullAddress, setFullAddress] = useState<string>("");
 
+  // Função para calcular o ângulo (bearing) entre dois pontos
+  const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const toRadians = (degrees: number) => degrees * (Math.PI / 180);
+    const toDegrees = (radians: number) => radians * (180 / Math.PI);
+
+    const dLon = toRadians(lon2 - lon1);
+    const lat1Rad = toRadians(lat1);
+    const lat2Rad = toRadians(lat2);
+
+    const y = Math.sin(dLon) * Math.cos(lat2Rad);
+    const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+              Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+
+    const bearing = toDegrees(Math.atan2(y, x));
+    return (bearing + 360) % 360;
+  };
+
   // Fetch order details
   useEffect(() => {
     const fetchOrder = async () => {
@@ -135,7 +152,6 @@ export default function DeliveryNavigation() {
     
     if (!mapboxToken) {
       console.error("❌ [Entregador] VITE_MAPBOX_PUBLIC_TOKEN não configurado");
-      toast.error("Token do mapa não configurado");
       return;
     }
 
@@ -214,11 +230,9 @@ export default function DeliveryNavigation() {
 
       map.current.on('error', (e) => {
         console.error("❌ [Entregador] Erro no mapa:", e);
-        toast.error("Erro ao carregar mapa");
       });
     } catch (error) {
       console.error("❌ [Entregador] Erro ao criar mapa:", error);
-      toast.error("Erro ao inicializar mapa");
     }
 
     return () => {
@@ -432,23 +446,6 @@ export default function DeliveryNavigation() {
 
     drawRoute();
   }, [position, destinationCoords, isMapReady, riderId, orderId]);
-
-  // Função para calcular o ângulo (bearing) entre dois pontos
-  const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const toRadians = (degrees: number) => degrees * (Math.PI / 180);
-    const toDegrees = (radians: number) => radians * (180 / Math.PI);
-
-    const dLon = toRadians(lon2 - lon1);
-    const lat1Rad = toRadians(lat1);
-    const lat2Rad = toRadians(lat2);
-
-    const y = Math.sin(dLon) * Math.cos(lat2Rad);
-    const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) -
-              Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
-
-    const bearing = toDegrees(Math.atan2(y, x));
-    return (bearing + 360) % 360; // Normaliza para 0-360
-  };
 
   const completeDelivery = async () => {
     try {
