@@ -107,13 +107,19 @@ export default function DeliveryNavigation() {
       }
     };
 
-    // Reset states quando orderId mudar
+    // Reset ALL states when orderId changes - CRITICAL for map re-initialization
+    console.log("🔄 [Entregador] Resetando estados para nova entrega");
     setOrder(null);
     setRiderId(null);
     setDestinationCoords(null);
     setFullAddress("");
     setIsMapReady(false);
-    isInitialized.current = false;
+    
+    // Force map cleanup by resetting the initialized flag
+    if (isInitialized.current) {
+      console.log("🗺️ [Entregador] Forçando limpeza do mapa anterior");
+      isInitialized.current = false;
+    }
 
     fetchOrder();
   }, [orderId, navigate]);
@@ -153,7 +159,15 @@ export default function DeliveryNavigation() {
 
   // Initialize map - agora depende de orderId para recriar quando mudar
   useEffect(() => {
-    if (!mapContainer.current || isInitialized.current) {
+    console.log("🗺️ [Entregador] Map effect triggered - orderId:", orderId, "initialized:", isInitialized.current, "hasContainer:", !!mapContainer.current);
+    
+    if (!mapContainer.current) {
+      console.log("⚠️ [Entregador] Map container não está pronto ainda");
+      return;
+    }
+    
+    if (isInitialized.current) {
+      console.log("⚠️ [Entregador] Mapa já está inicializado, pulando");
       return;
     }
 
@@ -245,7 +259,7 @@ export default function DeliveryNavigation() {
     }
 
     return () => {
-      console.log("🗺️ [Entregador] Cleanup do mapa");
+      console.log("🗺️ [Entregador] Cleanup do mapa para ordem:", orderId);
       if (riderMarker.current) {
         riderMarker.current.remove();
         riderMarker.current = null;
@@ -260,6 +274,7 @@ export default function DeliveryNavigation() {
       }
       setIsMapReady(false);
       isInitialized.current = false;
+      console.log("✅ [Entregador] Cleanup do mapa completo");
     };
   }, [orderId]); // Agora recria quando orderId mudar
 
