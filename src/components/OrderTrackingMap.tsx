@@ -22,6 +22,11 @@ interface Coordinates {
   lat: number;
 }
 
+interface RouteGeometry {
+  type: string;
+  coordinates: number[][];
+}
+
 export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   orderId,
   deliveryRiderId,
@@ -34,6 +39,8 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   const [riderLocation, setRiderLocation] = useState<Location | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<Coordinates | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
+  const [fullRoute, setFullRoute] = useState<RouteGeometry | null>(null);
+  const lastUpdateTime = useRef<number>(Date.now());
 
   // Geocode destination address
   useEffect(() => {
@@ -117,14 +124,15 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       .addTo(map.current);
   }, [isMapReady, destinationCoords, destinationAddress]);
 
-  // Fetch rider location and subscribe to updates
+  // Fetch rider location and subscribe to real-time updates
   useEffect(() => {
     if (!isMapReady) return;
 
     fetchRiderLocation();
 
+    // Subscribe to real-time location updates for this specific order
     const channel = supabase
-      .channel("rider-location-changes")
+      .channel(`rider-location-${deliveryRiderId}-${orderId}`)
       .on(
         "postgres_changes",
         {
@@ -134,15 +142,21 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
           filter: `delivery_rider_id=eq.${deliveryRiderId}`,
         },
         (payload) => {
-          console.log("Location update:", payload);
+          console.log("🏍️ Real-time location update:", payload);
           if (payload.new && "latitude" in payload.new && "longitude" in payload.new) {
-            updateRiderMarker(payload.new.latitude, payload.new.longitude);
+            // Only update if this location is for the current order
+            if (payload.new.order_id === orderId) {
+              updateRiderMarker(payload.new.latitude, payload.new.longitude);
+            }
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("📡 Realtime subscription status:", status);
+      });
 
     return () => {
+      console.log("🔌 Unsubscribing from rider location updates");
       channel.unsubscribe();
     };
   }, [isMapReady, deliveryRiderId, orderId]);
@@ -166,83 +180,122 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     }
   };
 
-  const drawRoute = async (riderLng: number, riderLat: number) => {
+  const calculateRemainingRoute = (fullRouteCoords: number[][], currentPosition: [number, number]) => {
+    if (!fullRouteCoords || fullRouteCoords.length === 0) return fullRouteCoords;
+
+    // Find the closest point on the route to current position
+    let minDistance = Infinity;
+    let closestIndex = 0;
+
+    for (let i = 0; i < fullRouteCoords.length; i++) {
+      const [lng, lat] = fullRouteCoords[i];
+      const distance = Math.sqrt(
+        Math.pow(lng - currentPosition[0], 2) + Math.pow(lat - currentPosition[1], 2)
+      );
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndex = i;
+      }
+    }
+
+    // Return route from closest point to destination
+    return [[currentPosition[0], currentPosition[1]], ...fullRouteCoords.slice(closestIndex + 1)];
+  };
+
+  const drawRoute = async (riderLng: number, riderLat: number, forceNewRoute = false) => {
     if (!map.current || !destinationCoords) return;
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mapbox-directions`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            startLng: riderLng,
-            startLat: riderLat,
-            endLng: destinationCoords.lng,
-            endLat: destinationCoords.lat,
-          }),
+      // Only fetch new route if we don't have one or if forced
+      if (!fullRoute || forceNewRoute) {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mapbox-directions`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              startLng: riderLng,
+              startLat: riderLat,
+              endLng: destinationCoords.lng,
+              endLat: destinationCoords.lat,
+            }),
+          }
+        );
+        const data = await response.json();
+
+        if (data.routes && data.routes.length > 0) {
+          setFullRoute(data.routes[0].geometry);
         }
+        return;
+      }
+
+      // Calculate remaining route based on current position
+      const remainingCoords = calculateRemainingRoute(
+        fullRoute.coordinates,
+        [riderLng, riderLat]
       );
-      const data = await response.json();
 
-      if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0].geometry;
+      // Remove existing route layers and source if they exist
+      if (map.current.getLayer("route-outline")) {
+        map.current.removeLayer("route-outline");
+      }
+      if (map.current.getLayer("route")) {
+        map.current.removeLayer("route");
+      }
+      if (map.current.getSource("route")) {
+        map.current.removeSource("route");
+      }
 
-        // Remove existing route layers and source if they exist
-        if (map.current.getLayer("route-outline")) {
-          map.current.removeLayer("route-outline");
-        }
-        if (map.current.getLayer("route")) {
-          map.current.removeLayer("route");
-        }
-        if (map.current.getSource("route")) {
-          map.current.removeSource("route");
-        }
-
-        // Add route to map
-        map.current.addSource("route", {
-          type: "geojson",
-          data: {
-            type: "Feature",
-            properties: {},
-            geometry: route,
+      // Add remaining route to map
+      map.current.addSource("route", {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "LineString",
+            coordinates: remainingCoords,
           },
-        });
+        },
+      });
 
-        map.current.addLayer({
-          id: "route",
-          type: "line",
-          source: "route",
-          layout: {
-            "line-join": "round",
-            "line-cap": "round",
-          },
-          paint: {
-            "line-color": "#8B5CF6",
-            "line-width": 5,
-            "line-opacity": 0.9,
-          },
-        });
+      // Add outline layer
+      map.current.addLayer({
+        id: "route-outline",
+        type: "line",
+        source: "route",
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
+        },
+        paint: {
+          "line-color": "#FFFFFF",
+          "line-width": 7,
+          "line-opacity": 0.4,
+        },
+      });
 
-        // Add a shadow/outline for the route
-        map.current.addLayer({
-          id: "route-outline",
-          type: "line",
-          source: "route",
-          layout: {
-            "line-join": "round",
-            "line-cap": "round",
-          },
-          paint: {
-            "line-color": "#FFFFFF",
-            "line-width": 7,
-            "line-opacity": 0.4,
-          },
-        }, "route");
+      // Add main route layer
+      map.current.addLayer({
+        id: "route",
+        type: "line",
+        source: "route",
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
+        },
+        paint: {
+          "line-color": "#8B5CF6",
+          "line-width": 5,
+          "line-opacity": 0.9,
+        },
+      });
 
-        // Fit map to show both markers and route
+      // Only fit bounds on first load
+      if (forceNewRoute) {
         const bounds = new mapboxgl.LngLatBounds();
         bounds.extend([riderLng, riderLat]);
         bounds.extend([destinationCoords.lng, destinationCoords.lat]);
@@ -257,9 +310,25 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     }
   };
 
+  // Update route when fullRoute changes
+  useEffect(() => {
+    if (fullRoute && riderLocation && isMapReady) {
+      drawRoute(riderLocation.longitude, riderLocation.latitude, true);
+    }
+  }, [fullRoute]);
+
   const updateRiderMarker = (latitude: number, longitude: number) => {
     if (!map.current) return;
 
+    const now = Date.now();
+    const timeSinceLastUpdate = now - lastUpdateTime.current;
+
+    // Throttle updates to avoid too frequent rendering (max every 500ms)
+    if (timeSinceLastUpdate < 500 && riderLocation) {
+      return;
+    }
+
+    lastUpdateTime.current = now;
     setRiderLocation({ latitude, longitude });
 
     // Remove old marker
@@ -267,11 +336,12 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       riderMarker.current.remove();
     }
 
-    // Create motorcycle marker element
+    // Create motorcycle marker element with animation
     const el = document.createElement("div");
+    el.className = "rider-marker";
     el.innerHTML = `
       <svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="25" cy="25" r="24" fill="#8B5CF6" stroke="white" stroke-width="2"/>
+        <circle cx="25" cy="25" r="24" fill="#8B5CF6" stroke="white" stroke-width="2" class="animate-pulse"/>
         <g transform="translate(10, 13)">
           <path d="M20 11L17 11L15.5 7L11 7L11 9L14 9L15 11L12 11L10 15L14 15L16 18L18 18L20 11Z" fill="white"/>
           <circle cx="11" cy="19" r="3" fill="white"/>
@@ -283,16 +353,16 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     el.style.width = "50px";
     el.style.height = "50px";
     el.style.cursor = "pointer";
-    el.style.animation = "pulse 2s infinite";
+    el.style.transition = "all 0.5s ease-out";
 
-    // Add new marker
+    // Add new marker with smooth animation
     riderMarker.current = new mapboxgl.Marker(el)
       .setLngLat([longitude, latitude])
       .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML("<strong>🏍️ Entregador</strong><br>Localização em tempo real"))
       .addTo(map.current);
 
-    // Draw route from rider to destination
-    drawRoute(longitude, latitude);
+    // Update route - will use existing route and calculate remaining portion
+    drawRoute(longitude, latitude, !fullRoute);
   };
 
   return (
@@ -308,6 +378,9 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
             opacity: 0.8;
           }
         }
+        .rider-marker {
+          animation: pulse 2s infinite;
+        }
       `}</style>
       <div ref={mapContainer} className="h-[500px] rounded-lg shadow-lg" />
       {!riderLocation && (
@@ -315,8 +388,16 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-sm text-muted-foreground font-medium">
-              Aguardando localização do entregador...
+              🏍️ Aguardando localização do entregador em tempo real...
             </p>
+          </div>
+        </div>
+      )}
+      {riderLocation && (
+        <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-border">
+          <div className="flex items-center gap-2 text-sm">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="font-medium">Rastreamento ativo</span>
           </div>
         </div>
       )}
