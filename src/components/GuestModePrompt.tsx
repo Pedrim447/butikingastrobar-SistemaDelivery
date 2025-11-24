@@ -20,6 +20,8 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
   const [number, setNumber] = useState('');
   const [complement, setComplement] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
   const [cep, setCep] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
@@ -30,14 +32,6 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
     const cleanCep = cepValue.replace(/\D/g, '');
     
     if (cleanCep.length !== 8) return;
-
-    // Validar se o CEP é de São Luís (começa com 65)
-    if (!cleanCep.startsWith('65')) {
-      toast.error('Desculpe, só aceitamos entregas em São Luís - MA');
-      setStreet('');
-      setNeighborhood('');
-      return;
-    }
     
     setLoadingCep(true);
     try {
@@ -48,17 +42,11 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
         toast.error('CEP não encontrado');
         return;
       }
-
-      // Verificar se o CEP é de São Luís
-      if (data.localidade !== 'São Luís') {
-        toast.error('Desculpe, só aceitamos entregas em São Luís - MA');
-        setStreet('');
-        setNeighborhood('');
-        return;
-      }
       
       setStreet(data.logradouro || '');
       setNeighborhood(data.bairro || '');
+      setCity(data.localidade || '');
+      setState(data.uf || '');
       
       toast.success('Endereço encontrado!');
     } catch (error) {
@@ -91,14 +79,8 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
 
     const cleanCep = cep.replace(/\D/g, '');
 
-    if (!name || !phone || !street || !number || !neighborhood || !cleanCep) {
+    if (!name || !phone || !street || !number || !neighborhood || !city || !state || !cleanCep) {
       toast.error('Por favor, preencha todos os campos obrigatórios');
-      return;
-    }
-
-    // Validar CEP de São Luís
-    if (!cleanCep.startsWith('65')) {
-      toast.error('Desculpe, só aceitamos entregas em São Luís - MA');
       return;
     }
 
@@ -109,8 +91,8 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
       number,
       complement: complement || undefined,
       neighborhood,
-      city: 'São Luís',
-      state: 'MA',
+      city,
+      state,
       cep: cleanCep,
     };
 
@@ -176,7 +158,7 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="cep">CEP * (Apenas São Luís - MA)</Label>
+              <Label htmlFor="cep">CEP *</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -250,6 +232,33 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
                 disabled={loading || loadingCep}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="city">Cidade *</Label>
+              <Input
+                id="city"
+                type="text"
+                placeholder="Nome da cidade"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                disabled={loading || loadingCep}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="state">Estado *</Label>
+              <Input
+                id="state"
+                type="text"
+                placeholder="UF"
+                value={state}
+                onChange={(e) => setState(e.target.value.toUpperCase())}
+                disabled={loading || loadingCep}
+                maxLength={2}
                 required
               />
             </div>
