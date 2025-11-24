@@ -33,6 +33,21 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   const [riderLocation, setRiderLocation] = useState<Location | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<Coordinates | null>(null);
 
+  // Check if token is available
+  if (!MAPBOX_PUBLIC_TOKEN) {
+    return (
+      <div className="bg-destructive/10 border border-destructive rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-destructive mb-2">
+          Token do Mapbox não configurado
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          O token do Mapbox não está disponível. Após adicionar o token nos secrets,
+          atualize a página para que o mapa seja carregado.
+        </p>
+      </div>
+    );
+  }
+
   // Geocode destination address
   useEffect(() => {
     const geocodeDestination = async () => {
