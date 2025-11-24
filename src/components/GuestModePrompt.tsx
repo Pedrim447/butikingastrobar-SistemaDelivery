@@ -35,22 +35,40 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
     
     setLoadingCep(true);
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        console.error('Erro na resposta do ViaCEP:', response.status);
+        toast.error('Erro ao buscar CEP. Preencha o endereço manualmente.');
+        return;
+      }
+
       const data = await response.json();
       
       if (data.erro) {
-        toast.error('CEP não encontrado');
+        toast.error('CEP não encontrado. Verifique o número ou preencha manualmente.');
         return;
       }
       
-      setStreet(data.logradouro || '');
-      setNeighborhood(data.bairro || '');
-      setCity(data.localidade || '');
-      setState(data.uf || '');
-      
-      toast.success('Endereço encontrado!');
+      // Preenche apenas se tiver dados
+      if (data.logradouro || data.bairro || data.localidade || data.uf) {
+        setStreet(data.logradouro || '');
+        setNeighborhood(data.bairro || '');
+        setCity(data.localidade || '');
+        setState(data.uf || '');
+        
+        toast.success('Endereço encontrado!');
+      } else {
+        toast.info('CEP encontrado, mas sem dados de endereço. Preencha manualmente.');
+      }
     } catch (error) {
-      toast.error('Erro ao buscar CEP');
+      console.error('Erro ao buscar CEP:', error);
+      toast.error('Erro ao buscar CEP. Verifique sua conexão ou preencha manualmente.');
     } finally {
       setLoadingCep(false);
     }
@@ -60,27 +78,36 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
     // Remove tudo que não é número
     const onlyNumbers = value.replace(/\D/g, '');
     
+    // Limita a 8 dígitos
+    const limited = onlyNumbers.slice(0, 8);
+    
     // Formata CEP: 00000-000
-    let formatted = onlyNumbers;
-    if (onlyNumbers.length > 5) {
-      formatted = `${onlyNumbers.slice(0, 5)}-${onlyNumbers.slice(5, 8)}`;
+    let formatted = limited;
+    if (limited.length > 5) {
+      formatted = `${limited.slice(0, 5)}-${limited.slice(5)}`;
     }
     
     setCep(formatted);
     
-    // Busca automaticamente quando tiver 8 dígitos
-    if (onlyNumbers.length === 8) {
-      fetchAddressByCep(onlyNumbers);
+    // Busca automaticamente quando tiver exatamente 8 dígitos
+    if (limited.length === 8) {
+      fetchAddressByCep(limited);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Remove hífen e espaços do CEP
     const cleanCep = cep.replace(/\D/g, '');
 
     if (!name || !phone || !street || !number || !neighborhood || !city || !state || !cleanCep) {
       toast.error('Por favor, preencha todos os campos obrigatórios');
+      return;
+    }
+
+    if (cleanCep.length !== 8) {
+      toast.error('CEP deve ter 8 dígitos');
       return;
     }
 
@@ -164,7 +191,7 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
                 <Input
                   id="cep"
                   type="text"
-                  placeholder="65000-000"
+                  placeholder="00000-000"
                   value={cep}
                   onChange={(e) => handleCepChange(e.target.value)}
                   disabled={loading || loadingCep}
@@ -177,7 +204,7 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Digite o CEP e o endereço será preenchido automaticamente
+                Digite o CEP (com ou sem hífen). Ex: 65000-000 ou 65000000
               </p>
             </div>
 
