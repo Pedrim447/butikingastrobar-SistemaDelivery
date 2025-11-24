@@ -6,6 +6,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/contexts/AuthContext';
+import { useGuestMode } from '@/hooks/useGuestMode';
+import { GuestModePrompt } from '@/components/GuestModePrompt';
+import { useState, useEffect } from 'react';
 
 const Cart = () => {
   const {
@@ -17,10 +21,30 @@ const Cart = () => {
     getCartItemsCount,
   } = useCart();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { guestToken, loading: guestLoading } = useGuestMode();
+  const [showGuestPrompt, setShowGuestPrompt] = useState(false);
 
   const subtotal = getCartTotal();
-  const deliveryFee = 5.0; // Fixed delivery fee for now
+  const deliveryFee = 5.0;
   const total = subtotal + deliveryFee;
+
+  const handleCheckout = () => {
+    // Verifica se tem usuário autenticado OU dados de convidado
+    if (!user && !guestToken) {
+      // Se não tiver nenhum dos dois, mostra o prompt para coletar dados
+      setShowGuestPrompt(true);
+      return;
+    }
+    // Se tiver dados, pode ir para checkout
+    navigate('/checkout');
+  };
+
+  const handleGuestPromptSuccess = () => {
+    setShowGuestPrompt(false);
+    // Após coletar dados, vai para checkout
+    navigate('/checkout');
+  };
 
   if (cart.length === 0) {
     return (
@@ -37,7 +61,14 @@ const Cart = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
+      <GuestModePrompt 
+        open={showGuestPrompt} 
+        onClose={() => setShowGuestPrompt(false)}
+        onSuccess={handleGuestPromptSuccess}
+      />
+      
+      <div className="min-h-screen bg-background">
       <header className="border-b bg-card shadow-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
@@ -138,7 +169,7 @@ const Cart = () => {
             <Button
               size="lg"
               className="w-full mt-4"
-              onClick={() => navigate('/checkout')}
+              onClick={handleCheckout}
             >
               Finalizar Pedido
             </Button>
@@ -146,6 +177,7 @@ const Cart = () => {
         </Card>
       </div>
     </div>
+    </>
   );
 };
 
