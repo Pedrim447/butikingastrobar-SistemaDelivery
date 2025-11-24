@@ -8,8 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Package, Phone, MapPin, CheckCircle, XCircle, ArrowLeft } from "lucide-react";
-import { useGeolocation } from "@/hooks/useGeolocation";
+import { Package, Phone, MapPin, CheckCircle, XCircle, ArrowLeft, Navigation } from "lucide-react";
 
 interface Order {
   id: string;
@@ -40,7 +39,6 @@ export default function DeliveryDashboard() {
   const [cancellationReason, setCancellationReason] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [riderId, setRiderId] = useState<string | null>(null);
-  const { position } = useGeolocation(true);
 
   useEffect(() => {
     // Aguarda o carregamento da autenticação
@@ -79,7 +77,7 @@ export default function DeliveryDashboard() {
         .from("orders")
         .select("*, order_items(*)")
         .eq("delivery_rider_id", riderData.id)
-        .in("status", ["out_for_delivery"])
+        .in("status", ["preparing", "out_for_delivery"])
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -93,51 +91,20 @@ export default function DeliveryDashboard() {
     }
   };
 
-  // Update rider location in real-time
-  useEffect(() => {
-    if (!position || !riderId || orders.length === 0) return;
-
-    const updateLocation = async () => {
-      try {
-        // Update location for each active order
-        for (const order of orders) {
-          await supabase.from("delivery_rider_locations").upsert(
-            {
-              delivery_rider_id: riderId,
-              order_id: order.id,
-              latitude: position.latitude,
-              longitude: position.longitude,
-            },
-            {
-              onConflict: 'delivery_rider_id,order_id'
-            }
-          );
-        }
-      } catch (error) {
-        console.error("Erro ao atualizar localização:", error);
-      }
-    };
-
-    updateLocation();
-    const interval = setInterval(updateLocation, 10000); // Update every 10 seconds
-
-    return () => clearInterval(interval);
-  }, [position, riderId, orders]);
-
-  const completeDelivery = async (orderId: string) => {
+  const startDelivery = async (orderId: string) => {
     try {
       const { error } = await supabase
         .from("orders")
-        .update({ status: "delivered" })
+        .update({ status: "out_for_delivery" })
         .eq("id", orderId);
 
       if (error) throw error;
 
-      toast.success("Entrega concluída!");
-      fetchMyOrders();
+      toast.success("Rota iniciada!");
+      navigate(`/entregas/navegacao/${orderId}`);
     } catch (error) {
-      console.error("Erro ao concluir entrega:", error);
-      toast.error("Erro ao concluir entrega");
+      console.error("Erro ao iniciar rota:", error);
+      toast.error("Erro ao iniciar rota");
     }
   };
 
@@ -223,7 +190,12 @@ export default function DeliveryDashboard() {
                         {new Date(order.created_at).toLocaleString("pt-BR")}
                       </p>
                     </div>
-                    <Badge variant="default" className="text-xs">Saiu para Entrega</Badge>
+                    <Badge 
+                      variant={order.status === "out_for_delivery" ? "default" : "secondary"} 
+                      className="text-xs"
+                    >
+                      {order.status === "out_for_delivery" ? "Em Rota" : "Pronto para Entrega"}
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3 px-4 pb-4">
@@ -271,50 +243,25 @@ export default function DeliveryDashboard() {
                   )}
 
                   <div className="flex gap-2 pt-3">
-                    <Button 
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => completeDelivery(order.id)}
-                    >
-                      <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                      Concluir Entrega
-                    </Button>
-                    
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button 
-                          size="sm"
-                          variant="destructive" 
-                          className="flex-1"
-                          onClick={() => setSelectedOrderId(order.id)}
-                        >
-                          <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                          Cancelar
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Cancelar Entrega</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <Textarea
-                            placeholder="Motivo do cancelamento (ex: endereço não encontrado, cliente não atendeu, etc.)"
-                            value={cancellationReason}
-                            onChange={(e) => setCancellationReason(e.target.value)}
-                            rows={4}
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              variant="destructive"
-                              onClick={cancelDelivery}
-                              className="flex-1"
-                            >
-                              Confirmar Cancelamento
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                    {order.status === "preparing" ? (
+                      <Button 
+                        size="sm"
+                        className="w-full"
+                        onClick={() => startDelivery(order.id)}
+                      >
+                        <Navigation className="h-3.5 w-3.5 mr-1.5" />
+                        Iniciar Rota
+                      </Button>
+                    ) : (
+                      <Button 
+                        size="sm"
+                        className="w-full"
+                        onClick={() => navigate(`/entregas/navegacao/${order.id}`)}
+                      >
+                        <Navigation className="h-3.5 w-3.5 mr-1.5" />
+                        Continuar Navegação
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
