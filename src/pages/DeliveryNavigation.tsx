@@ -146,9 +146,9 @@ export default function DeliveryNavigation() {
       console.log("🗺️ Criando instância do mapa...");
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: "mapbox://styles/mapbox/navigation-day-v1",
+        style: "mapbox://styles/mapbox/streets-v12", // Estilo sem marcações de trânsito
         center: [-44.3028, -2.5307],
-        zoom: 15,
+        zoom: 17,
         pitch: 60,
         bearing: 0,
       });
@@ -247,19 +247,26 @@ export default function DeliveryNavigation() {
       .addTo(map.current);
   }, [isMapReady, destinationCoords, order]);
 
-  // Update rider marker and draw route
+  // Update rider marker and draw route with compass-like following
   useEffect(() => {
     if (!isMapReady || !map.current || !position || !destinationCoords || !riderId || !orderId) return;
 
     // Update rider location in database
     const updateLocation = async () => {
       try {
-        await supabase.from("delivery_rider_locations").upsert({
-          delivery_rider_id: riderId,
-          order_id: orderId,
-          latitude: position.latitude,
-          longitude: position.longitude,
-        });
+        const { error } = await supabase
+          .from("delivery_rider_locations")
+          .update({
+            latitude: position.latitude,
+            longitude: position.longitude,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("delivery_rider_id", riderId)
+          .eq("order_id", orderId);
+
+        if (error) {
+          console.error("Erro ao atualizar localização:", error);
+        }
       } catch (error) {
         console.error("Erro ao atualizar localização:", error);
       }
@@ -346,13 +353,23 @@ export default function DeliveryNavigation() {
             });
           }
 
-          // Update camera to follow rider with 3D perspective
+          // Sistema de bússola: segue o entregador automaticamente
+          // Calcula o ângulo (bearing) em direção ao destino
+          const bearing = calculateBearing(
+            position.latitude,
+            position.longitude,
+            destinationCoords[1],
+            destinationCoords[0]
+          );
+
+          // Update camera para seguir o entregador como uma bússola
           map.current!.easeTo({
             center: [position.longitude, position.latitude],
-            zoom: 17,
+            zoom: 18,
             pitch: 60,
-            bearing: 0,
+            bearing: bearing, // Rotaciona o mapa na direção do destino
             duration: 1000,
+            essential: true, // Garante que a animação sempre aconteça
           });
         }
       } catch (error) {
@@ -362,6 +379,23 @@ export default function DeliveryNavigation() {
 
     drawRoute();
   }, [position, destinationCoords, isMapReady, riderId, orderId]);
+
+  // Função para calcular o ângulo (bearing) entre dois pontos
+  const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const toRadians = (degrees: number) => degrees * (Math.PI / 180);
+    const toDegrees = (radians: number) => radians * (180 / Math.PI);
+
+    const dLon = toRadians(lon2 - lon1);
+    const lat1Rad = toRadians(lat1);
+    const lat2Rad = toRadians(lat2);
+
+    const y = Math.sin(dLon) * Math.cos(lat2Rad);
+    const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+              Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+
+    const bearing = toDegrees(Math.atan2(y, x));
+    return (bearing + 360) % 360; // Normaliza para 0-360
+  };
 
   const completeDelivery = async () => {
     try {
