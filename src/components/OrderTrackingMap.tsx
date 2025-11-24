@@ -101,7 +101,6 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    // Use the configured Mapbox token
     const mapboxToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
     
     console.log("🗺️ [Cliente] Inicializando mapa de rastreamento");
@@ -118,7 +117,7 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v12",
-      center: [-44.3028, -2.5307], // São Luís default
+      center: [-44.3028, -2.5307],
       zoom: 13,
     });
 
@@ -167,10 +166,22 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
 
   // Fetch rider location and subscribe to real-time updates
   useEffect(() => {
-    if (!isMapReady) return;
+    if (!isMapReady) {
+      console.log("⚠️ Mapa ainda não está pronto");
+      return;
+    }
 
-    console.log("🗺️ Mapa pronto, iniciando rastreamento");
+    console.log("🗺️ [Cliente] Mapa pronto, iniciando rastreamento do entregador");
+    console.log("🗺️ Delivery Rider ID:", deliveryRiderId);
+    
+    // Buscar localização inicial
     fetchRiderLocation();
+
+    // Configurar polling para atualizar localização a cada 5 segundos
+    const intervalId = setInterval(() => {
+      console.log("🔄 Atualizando localização do entregador (polling)");
+      fetchRiderLocation();
+    }, 5000);
 
     // Subscribe to real-time location updates for this delivery rider
     const channel = supabase
@@ -184,19 +195,20 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
           filter: `delivery_rider_id=eq.${deliveryRiderId}`,
         },
         (payload) => {
-          console.log("🏍️ Real-time location update:", payload);
+          console.log("🏍️ [Cliente] Real-time location update:", payload);
           if (payload.new && "latitude" in payload.new && "longitude" in payload.new) {
-            console.log("📍 Atualizando posição do motoboy");
+            console.log("📍 Atualizando posição do entregador via realtime");
             updateRiderMarker(payload.new.latitude, payload.new.longitude);
           }
         }
       )
       .subscribe((status) => {
-        console.log("📡 Realtime subscription status:", status);
+        console.log("📡 [Cliente] Realtime subscription status:", status);
       });
 
     return () => {
       console.log("🔌 Unsubscribing from rider location updates");
+      clearInterval(intervalId);
       channel.unsubscribe();
     };
   }, [isMapReady, deliveryRiderId]);
@@ -367,17 +379,22 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   }, [fullRoute]);
 
   const updateRiderMarker = (latitude: number, longitude: number) => {
-    if (!map.current) return;
+    if (!map.current) {
+      console.log("⚠️ Mapa não disponível para atualizar marcador");
+      return;
+    }
 
     const now = Date.now();
     const timeSinceLastUpdate = now - lastUpdateTime.current;
 
     // Throttle updates to avoid too frequent rendering (max every 500ms)
     if (timeSinceLastUpdate < 500 && riderLocation) {
+      console.log("⏭️ Pulando atualização (throttle)");
       return;
     }
 
     lastUpdateTime.current = now;
+    console.log("📍 [Cliente] Atualizando marcador do entregador:", { latitude, longitude });
     setRiderLocation({ latitude, longitude });
 
     // Remove old marker
@@ -410,8 +427,26 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML("<strong>🏍️ Entregador</strong><br>Localização em tempo real"))
       .addTo(map.current);
 
-    // Update route - will use existing route and calculate remaining portion
-    drawRoute(longitude, latitude, !fullRoute);
+    console.log("✅ Marcador do entregador adicionado ao mapa");
+
+    // Update route - força nova rota se não existir
+    const shouldForceNewRoute = !fullRoute;
+    console.log("🛣️ Desenhando rota. Force new:", shouldForceNewRoute);
+    drawRoute(longitude, latitude, shouldForceNewRoute);
+
+    // Ajustar view do mapa para mostrar entregador e destino
+    if (destinationCoords) {
+      const bounds = new mapboxgl.LngLatBounds();
+      bounds.extend([longitude, latitude]);
+      bounds.extend([destinationCoords.lng, destinationCoords.lat]);
+      
+      map.current.fitBounds(bounds, {
+        padding: { top: 100, bottom: 100, left: 50, right: 50 },
+        maxZoom: 15,
+        duration: 1000,
+      });
+      console.log("🗺️ Mapa ajustado para mostrar entregador e destino");
+    }
   };
 
   return (
