@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ArrowLeft, Navigation, CheckCircle, XCircle, Phone } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useAuth } from "@/contexts/AuthContext";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -26,6 +27,7 @@ interface Order {
 export default function DeliveryNavigation() {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const { user, loading: authLoading, checkingRole } = useAuth();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const riderMarker = useRef<mapboxgl.Marker | null>(null);
@@ -38,6 +40,7 @@ export default function DeliveryNavigation() {
   const [cancellationReason, setCancellationReason] = useState("");
   const [fullAddress, setFullAddress] = useState<string>("");
   const isInitialized = useRef(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
   // Função para calcular o ângulo (bearing) entre dois pontos
   const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -56,23 +59,38 @@ export default function DeliveryNavigation() {
     return (bearing + 360) % 360;
   };
 
-  // Fetch order details
+  // Wait for auth to be ready before doing anything
   useEffect(() => {
+    if (!authLoading && !checkingRole) {
+      setIsAuthReady(true);
+    }
+  }, [authLoading, checkingRole]);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (isAuthReady && !user) {
+      console.log("❌ [Entregador] Usuário não autenticado, redirecionando");
+      navigate("/auth");
+    }
+  }, [isAuthReady, user, navigate]);
+
+  // Fetch order details - only when auth is ready
+  useEffect(() => {
+    if (!isAuthReady || !user || !orderId) return;
+
     console.log("🔄 [Entregador] Fetch order effect - orderId:", orderId);
     
+    let mounted = true;
+
     const fetchOrder = async () => {
       try {
-        const { data: userData } = await supabase.auth.getUser();
-        if (!userData.user) {
-          navigate("/auth");
-          return;
-        }
-
         const { data: riderData } = await supabase
           .from("delivery_riders")
           .select("id")
-          .eq("user_id", userData.user.id)
+          .eq("user_id", user.id)
           .single();
+
+        if (!mounted) return;
 
         if (!riderData) {
           toast.error("Você não é um entregador cadastrado");
@@ -88,6 +106,8 @@ export default function DeliveryNavigation() {
           .eq("id", orderId)
           .eq("delivery_rider_id", riderData.id)
           .single();
+
+        if (!mounted) return;
 
         if (error || !orderData) {
           toast.error("Pedido não encontrado");
@@ -107,7 +127,7 @@ export default function DeliveryNavigation() {
       }
     };
 
-    // Reset ALL states when orderId changes - CRITICAL for map re-initialization
+    // Reset ALL states when orderId changes
     console.log("🔄 [Entregador] Resetando estados para nova entrega");
     setOrder(null);
     setRiderId(null);
@@ -115,14 +135,17 @@ export default function DeliveryNavigation() {
     setFullAddress("");
     setIsMapReady(false);
     
-    // Force map cleanup by resetting the initialized flag
     if (isInitialized.current) {
       console.log("🗺️ [Entregador] Forçando limpeza do mapa anterior");
       isInitialized.current = false;
     }
 
     fetchOrder();
-  }, [orderId, navigate]);
+
+    return () => {
+      mounted = false;
+    };
+  }, [orderId, navigate, isAuthReady, user]);
 
   // Geocode destination
   useEffect(() => {
@@ -157,8 +180,13 @@ export default function DeliveryNavigation() {
     geocodeDestination();
   }, [fullAddress]);
 
-  // Initialize map - agora depende de orderId para recriar quando mudar
+  // Initialize map - only when auth is ready, order is loaded, and orderId is present
   useEffect(() => {
+    if (!isAuthReady || !order || !orderId) {
+      console.log("⏳ [Entregador] Aguardando condições para mapa - authReady:", isAuthReady, "hasOrder:", !!order, "orderId:", orderId);
+      return;
+    }
+
     console.log("🗺️ [Entregador] Map effect triggered - orderId:", orderId, "initialized:", isInitialized.current, "hasContainer:", !!mapContainer.current);
     
     if (!mapContainer.current) {
@@ -276,7 +304,7 @@ export default function DeliveryNavigation() {
       isInitialized.current = false;
       console.log("✅ [Entregador] Cleanup do mapa completo");
     };
-  }, [orderId]); // Agora recria quando orderId mudar
+  }, [orderId, isAuthReady, order]); // Depends on orderId, auth, and order
 
   // Add destination marker
   useEffect(() => {
@@ -499,10 +527,14 @@ export default function DeliveryNavigation() {
     }
   };
 
-  if (!order) {
+  // Show loading while auth or order is loading
+  if (authLoading || checkingRole || !isAuthReady || !order) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Carregando...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="text-lg">Carregando navegação...</div>
+        </div>
       </div>
     );
   }
