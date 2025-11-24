@@ -122,38 +122,38 @@ export default function DeliveryNavigation() {
   // Initialize 3D map
   useEffect(() => {
     if (!mapContainer.current) {
-      console.log("⚠️ mapContainer não está disponível ainda");
+      console.log("⚠️ [Entregador] mapContainer não está disponível ainda");
       return;
     }
 
     const mapboxToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
     
     console.log("🗺️ [Entregador] Inicializando mapa de navegação 3D");
-    console.log("Token exists:", !!mapboxToken);
-    console.log("Token length:", mapboxToken?.length);
-    console.log("Container exists:", !!mapContainer.current);
+    console.log("🗺️ [Entregador] Token exists:", !!mapboxToken);
+    console.log("🗺️ [Entregador] Token length:", mapboxToken?.length);
+    console.log("🗺️ [Entregador] Container exists:", !!mapContainer.current);
     
     if (!mapboxToken) {
-      console.error("❌ VITE_MAPBOX_PUBLIC_TOKEN não configurado");
+      console.error("❌ [Entregador] VITE_MAPBOX_PUBLIC_TOKEN não configurado");
       toast.error("Token do mapa não configurado");
       return;
     }
 
-    console.log("🗺️ Configurando Mapbox token...");
+    console.log("🗺️ [Entregador] Configurando Mapbox token...");
     mapboxgl.accessToken = mapboxToken;
 
     try {
-      console.log("🗺️ Criando instância do mapa...");
+      console.log("🗺️ [Entregador] Criando instância do mapa...");
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: "mapbox://styles/mapbox/streets-v12", // Estilo sem marcações de trânsito
+        style: "mapbox://styles/mapbox/streets-v12",
         center: [-44.3028, -2.5307],
         zoom: 17,
         pitch: 60,
         bearing: 0,
       });
 
-      console.log("🗺️ Mapa criado, adicionando controles...");
+      console.log("🗺️ [Entregador] Mapa criado, adicionando controles...");
       map.current.addControl(
         new mapboxgl.NavigationControl({
           visualizePitch: true,
@@ -166,46 +166,50 @@ export default function DeliveryNavigation() {
         console.log("✅ [Entregador] Mapa carregado com sucesso!");
         setIsMapReady(true);
         
-        const layers = map.current!.getStyle().layers;
-        const labelLayerId = layers?.find(
-          (layer) => layer.type === 'symbol' && layer.layout?.['text-field']
-        )?.id;
+        try {
+          const layers = map.current!.getStyle().layers;
+          const labelLayerId = layers?.find(
+            (layer) => layer.type === 'symbol' && layer.layout?.['text-field']
+          )?.id;
 
-        console.log("🏢 Adicionando layer 3D de prédios...");
-        map.current!.addLayer(
-          {
-            id: '3d-buildings',
-            source: 'composite',
-            'source-layer': 'building',
-            filter: ['==', 'extrude', 'true'],
-            type: 'fill-extrusion',
-            minzoom: 15,
-            paint: {
-              'fill-extrusion-color': '#aaa',
-              'fill-extrusion-height': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                15,
-                0,
-                15.05,
-                ['get', 'height']
-              ],
-              'fill-extrusion-base': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                15,
-                0,
-                15.05,
-                ['get', 'min_height']
-              ],
-              'fill-extrusion-opacity': 0.6
-            }
-          },
-          labelLayerId
-        );
-        console.log("✅ Layer 3D de prédios adicionado!");
+          console.log("🏢 [Entregador] Adicionando layer 3D de prédios...");
+          map.current!.addLayer(
+            {
+              id: '3d-buildings',
+              source: 'composite',
+              'source-layer': 'building',
+              filter: ['==', 'extrude', 'true'],
+              type: 'fill-extrusion',
+              minzoom: 15,
+              paint: {
+                'fill-extrusion-color': '#aaa',
+                'fill-extrusion-height': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  15,
+                  0,
+                  15.05,
+                  ['get', 'height']
+                ],
+                'fill-extrusion-base': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  15,
+                  0,
+                  15.05,
+                  ['get', 'min_height']
+                ],
+                'fill-extrusion-opacity': 0.6
+              }
+            },
+            labelLayerId
+          );
+          console.log("✅ [Entregador] Layer 3D de prédios adicionado!");
+        } catch (err) {
+          console.error("❌ [Entregador] Erro ao adicionar layer 3D:", err);
+        }
       });
 
       map.current.on('error', (e) => {
@@ -213,12 +217,12 @@ export default function DeliveryNavigation() {
         toast.error("Erro ao carregar mapa");
       });
     } catch (error) {
-      console.error("❌ Erro ao criar mapa:", error);
+      console.error("❌ [Entregador] Erro ao criar mapa:", error);
       toast.error("Erro ao inicializar mapa");
     }
 
     return () => {
-      console.log("🗺️ Removendo mapa...");
+      console.log("🗺️ [Entregador] Removendo mapa...");
       map.current?.remove();
     };
   }, []);
@@ -249,26 +253,75 @@ export default function DeliveryNavigation() {
 
   // Update rider marker and draw route with compass-like following
   useEffect(() => {
-    if (!isMapReady || !map.current || !position || !destinationCoords || !riderId || !orderId) return;
+    if (!isMapReady || !map.current || !position || !destinationCoords || !riderId || !orderId) {
+      console.log("⚠️ [Entregador] Aguardando condições:", {
+        isMapReady,
+        hasMap: !!map.current,
+        hasPosition: !!position,
+        hasDestination: !!destinationCoords,
+        riderId,
+        orderId
+      });
+      return;
+    }
 
-    // Update rider location in database
+    console.log("📍 [Entregador] Atualizando posição:", {
+      lat: position.latitude,
+      lng: position.longitude
+    });
+
+    // Update rider location in database (UPDATE em vez de UPSERT para evitar erro 409)
     const updateLocation = async () => {
       try {
-        const { error } = await supabase
+        // Primeiro tenta fazer update
+        const { data: existingData, error: checkError } = await supabase
           .from("delivery_rider_locations")
-          .update({
-            latitude: position.latitude,
-            longitude: position.longitude,
-            updated_at: new Date().toISOString(),
-          })
+          .select("id")
           .eq("delivery_rider_id", riderId)
-          .eq("order_id", orderId);
+          .eq("order_id", orderId)
+          .maybeSingle();
 
-        if (error) {
-          console.error("Erro ao atualizar localização:", error);
+        if (checkError) {
+          console.error("❌ [Entregador] Erro ao verificar localização:", checkError);
+          return;
+        }
+
+        if (existingData) {
+          // Registro existe, fazer UPDATE
+          const { error: updateError } = await supabase
+            .from("delivery_rider_locations")
+            .update({
+              latitude: position.latitude,
+              longitude: position.longitude,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("delivery_rider_id", riderId)
+            .eq("order_id", orderId);
+
+          if (updateError) {
+            console.error("❌ [Entregador] Erro ao atualizar localização:", updateError);
+          } else {
+            console.log("✅ [Entregador] Localização atualizada com sucesso");
+          }
+        } else {
+          // Registro não existe, fazer INSERT
+          const { error: insertError } = await supabase
+            .from("delivery_rider_locations")
+            .insert({
+              delivery_rider_id: riderId,
+              order_id: orderId,
+              latitude: position.latitude,
+              longitude: position.longitude,
+            });
+
+          if (insertError) {
+            console.error("❌ [Entregador] Erro ao inserir localização:", insertError);
+          } else {
+            console.log("✅ [Entregador] Localização inserida com sucesso");
+          }
         }
       } catch (error) {
-        console.error("Erro ao atualizar localização:", error);
+        console.error("❌ [Entregador] Erro ao atualizar localização:", error);
       }
     };
 
