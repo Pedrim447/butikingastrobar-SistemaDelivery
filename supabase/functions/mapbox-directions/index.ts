@@ -13,7 +13,10 @@ serve(async (req) => {
   }
 
   try {
+    console.log('MAPBOX_TOKEN exists:', !!MAPBOX_TOKEN);
+    
     const { startLng, startLat, endLng, endLat } = await req.json();
+    console.log('Directions request:', { startLng, startLat, endLng, endLat });
 
     if (!startLng || !startLat || !endLng || !endLat) {
       return new Response(
@@ -22,17 +25,21 @@ serve(async (req) => {
       );
     }
 
-    const response = await fetch(
-      `https://api.mapbox.com/directions/v5/mapbox/driving/${startLng},${startLat};${endLng},${endLat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`
-    );
-
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startLng},${startLat};${endLng},${endLat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+    console.log('Mapbox directions URL created');
+    
+    const response = await fetch(url);
+    console.log('Mapbox directions response status:', response.status);
+    
     const data = await response.json();
+    console.log('Mapbox directions response:', JSON.stringify(data).substring(0, 200));
 
     return new Response(
       JSON.stringify(data),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
+    console.error('Directions error:', error);
     return new Response(
       JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
