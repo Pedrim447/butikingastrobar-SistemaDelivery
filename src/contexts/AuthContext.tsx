@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,6 +23,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isDeliveryRider, setIsDeliveryRider] = useState(false);
   const [loading, setLoading] = useState(true);
   const [checkingRole, setCheckingRole] = useState(false);
+  const isCheckingRoleRef = useRef(false);
+  const lastCheckedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -82,21 +84,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const checkUserRole = async (userId: string) => {
+    // Evitar chamadas múltiplas simultâneas
+    if (isCheckingRoleRef.current) {
+      console.log('Role check already in progress, skipping');
+      return;
+    }
+
+    // Se já checamos para este usuário, não precisamos checar novamente
+    if (lastCheckedUserIdRef.current === userId) {
+      console.log('Role already checked for this user');
+      return;
+    }
+
+    isCheckingRoleRef.current = true;
+    
     try {
       console.log('Checking user role for:', userId);
       
-      // Add timeout to prevent infinite hang
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Role check timeout')), 5000)
-      );
-      
-      const queryPromise = supabase
+      const { data, error } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
         .maybeSingle();
-
-      const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
 
       console.log('Role query result:', { data, error });
 
@@ -104,15 +113,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Setting isAdmin:', data.role === "admin", 'Setting isDeliveryRider:', data.role === "delivery_rider");
         setIsAdmin(data.role === "admin");
         setIsDeliveryRider(data.role === "delivery_rider");
+        lastCheckedUserIdRef.current = userId;
       } else {
         console.log('No role found or error, setting to false');
         setIsAdmin(false);
         setIsDeliveryRider(false);
+        lastCheckedUserIdRef.current = userId;
       }
     } catch (error) {
       console.error("Error checking user role:", error);
       setIsAdmin(false);
       setIsDeliveryRider(false);
+    } finally {
+      isCheckingRoleRef.current = false;
     }
   };
 
@@ -147,6 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
     setIsAdmin(false);
     setIsDeliveryRider(false);
+    lastCheckedUserIdRef.current = null;
   };
 
   return (
