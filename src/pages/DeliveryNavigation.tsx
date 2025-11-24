@@ -376,7 +376,7 @@ export default function DeliveryNavigation() {
 
     // Check if rider deviated from route and recalculate if needed
     const now = Date.now();
-    if (currentRoute.current && now - lastRouteCheck.current > 10000) { // Check every 10 seconds
+    if (currentRoute.current?.geometry?.coordinates && now - lastRouteCheck.current > 10000) {
       lastRouteCheck.current = now;
       
       const routeCoordinates = currentRoute.current.geometry.coordinates;
