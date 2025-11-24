@@ -84,11 +84,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkUserRole = async (userId: string) => {
     try {
       console.log('Checking user role for:', userId);
-      const { data, error } = await supabase
+      
+      // Add timeout to prevent infinite hang
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Role check timeout')), 5000)
+      );
+      
+      const queryPromise = supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
         .maybeSingle();
+
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
 
       console.log('Role query result:', { data, error });
 
