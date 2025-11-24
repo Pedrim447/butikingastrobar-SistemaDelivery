@@ -104,6 +104,9 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     // Use the configured Mapbox token
     const mapboxToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
     
+    console.log("🗺️ [Cliente] Inicializando mapa de rastreamento");
+    console.log("Token exists:", !!mapboxToken);
+    
     if (!mapboxToken) {
       console.error("❌ VITE_MAPBOX_PUBLIC_TOKEN não configurado");
       return;
@@ -122,7 +125,12 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
 
     map.current.on('load', () => {
+      console.log("✅ [Cliente] Mapa carregado com sucesso");
       setIsMapReady(true);
+    });
+
+    map.current.on('error', (e) => {
+      console.error("❌ [Cliente] Erro no mapa:", e);
     });
 
     return () => {
