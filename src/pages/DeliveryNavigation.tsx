@@ -36,6 +36,7 @@ export default function DeliveryNavigation() {
   const [isMapReady, setIsMapReady] = useState(false);
   const { position } = useGeolocation(true);
   const [cancellationReason, setCancellationReason] = useState("");
+  const [fullAddress, setFullAddress] = useState<string>("");
 
   // Fetch order details
   useEffect(() => {
@@ -75,6 +76,10 @@ export default function DeliveryNavigation() {
         }
 
         setOrder(orderData);
+        
+        // Construir endereço completo com CEP para geocoding preciso
+        const completeAddress = `${orderData.customer_address}, ${orderData.customer_neighborhood}, ${orderData.customer_city} - ${orderData.customer_state}, CEP ${orderData.customer_cep}, Brasil`;
+        setFullAddress(completeAddress);
       } catch (error) {
         console.error("Erro ao buscar pedido:", error);
         toast.error("Erro ao carregar pedido");
@@ -86,11 +91,10 @@ export default function DeliveryNavigation() {
 
   // Geocode destination
   useEffect(() => {
-    if (!order) return;
+    if (!fullAddress) return;
 
     const geocodeDestination = async () => {
       try {
-        const address = `${order.customer_address}, ${order.customer_neighborhood}, ${order.customer_city} - ${order.customer_state}`;
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mapbox-geocode`,
           {
@@ -98,7 +102,7 @@ export default function DeliveryNavigation() {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ address }),
+            body: JSON.stringify({ address: fullAddress }),
           }
         );
         const data = await response.json();
@@ -113,7 +117,7 @@ export default function DeliveryNavigation() {
     };
 
     geocodeDestination();
-  }, [order]);
+  }, [fullAddress]);
 
   // Initialize 3D map
   useEffect(() => {
