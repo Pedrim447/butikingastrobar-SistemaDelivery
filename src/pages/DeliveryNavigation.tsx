@@ -215,7 +215,7 @@ export default function DeliveryNavigation() {
     try {
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: "mapbox://styles/mapbox/navigation-day-v1", // Estilo otimizado para navegação
+        style: "mapbox://styles/mapbox/streets-v12", // Estilo limpo sem cores de trânsito
         center: [-44.3028, -2.5307],
         zoom: 17,
         pitch: 0, // Visão 2D para melhor visualização das vias
