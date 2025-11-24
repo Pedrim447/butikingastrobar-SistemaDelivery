@@ -85,7 +85,7 @@ export default function OrderTracking() {
       case "pending":
         return { label: "Pendente", icon: Clock, color: "bg-yellow-500" };
       case "preparing":
-        return { label: "Em Preparo", icon: Package, color: "bg-blue-500" };
+        return { label: "Aguardando Entregador", icon: Clock, color: "bg-blue-500" };
       case "out_for_delivery":
         return { label: "Saiu para Entrega", icon: Bike, color: "bg-purple-500" };
       case "delivered":
@@ -212,6 +212,21 @@ export default function OrderTracking() {
                     deliveryRiderId={order.delivery_rider_id}
                     destinationAddress={`${order.customer_address}, ${order.customer_neighborhood}, ${order.customer_city} - ${order.customer_state}`}
                   />
+                </CardContent>
+              </Card>
+            )}
+
+            {order.status === "preparing" && (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <Clock className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                    <p className="text-lg font-medium mb-1">Aguardando Entregador</p>
+                    <p className="text-sm text-muted-foreground">
+                      Seu pedido está pronto e aguardando o entregador iniciar a rota. 
+                      A localização em tempo real aparecerá aqui assim que a entrega começar.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             )}

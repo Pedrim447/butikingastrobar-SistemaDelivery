@@ -18,6 +18,7 @@ import AdminStats from "./pages/AdminStats";
 import AdminDeliveryRiders from "./pages/AdminDeliveryRiders";
 import AdminUsers from "./pages/AdminUsers";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
+import DeliveryNavigation from "./pages/DeliveryNavigation";
 import OrderTracking from "./pages/OrderTracking";
 import MyOrders from "./pages/MyOrders";
 import NotFound from "./pages/NotFound";
@@ -47,7 +48,8 @@ const App = () => (
               <Route path="/admin/stats" element={<AdminStats />} />
               <Route path="/admin/delivery-riders" element={<AdminDeliveryRiders />} />
               <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/delivery" element={<DeliveryDashboard />} />
+              <Route path="/entregas" element={<DeliveryDashboard />} />
+              <Route path="/entregas/navegacao/:orderId" element={<DeliveryNavigation />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </CartProvider>
