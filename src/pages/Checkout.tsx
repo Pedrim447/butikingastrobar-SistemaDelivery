@@ -17,7 +17,10 @@ import { useAuth } from '@/contexts/AuthContext';
 const checkoutSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100),
   phone: z.string().min(10, 'Telefone inválido').max(15),
-  cep: z.string().length(8, 'CEP deve ter 8 dígitos').regex(/^\d+$/, 'CEP deve conter apenas números'),
+  cep: z.string()
+    .min(8, 'CEP deve ter 8 dígitos')
+    .max(9, 'CEP inválido')
+    .regex(/^\d{5}-?\d{3}$|^\d{8}$/, 'CEP deve conter apenas números (com ou sem hífen)'),
   address: z.string().min(5, 'Endereço obrigatório').max(200),
   number: z.string().min(1, 'Número obrigatório').max(10),
   reference: z.string().max(200).optional(),
@@ -168,37 +171,67 @@ const Checkout = () => {
     
     setLoadingCep(true);
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        console.error('Erro na resposta do ViaCEP:', response.status);
+        toast.error('Erro ao buscar CEP. Preencha o endereço manualmente.');
+        return;
+      }
+
       const data = await response.json();
       
       if (data.erro) {
-        toast.error('CEP não encontrado');
+        toast.error('CEP não encontrado. Verifique o número ou preencha manualmente.');
         return;
       }
       
-      setFormData(prev => ({
-        ...prev,
-        address: data.logradouro || prev.address,
-        neighborhood: data.bairro || prev.neighborhood,
-      }));
-      
-      setAddressData({
-        city: data.localidade || '',
-        state: data.uf || '',
-      });
-      
-      toast.success('Endereço encontrado!');
+      // Preenche apenas se tiver dados
+      if (data.logradouro || data.bairro || data.localidade || data.uf) {
+        setFormData(prev => ({
+          ...prev,
+          address: data.logradouro || prev.address,
+          neighborhood: data.bairro || prev.neighborhood,
+        }));
+        
+        setAddressData({
+          city: data.localidade || '',
+          state: data.uf || '',
+        });
+        
+        toast.success('Endereço encontrado!');
+      } else {
+        toast.info('CEP encontrado, mas sem dados de endereço. Preencha manualmente.');
+      }
     } catch (error) {
-      toast.error('Erro ao buscar CEP');
+      console.error('Erro ao buscar CEP:', error);
+      toast.error('Erro ao buscar CEP. Verifique sua conexão ou preencha manualmente.');
     } finally {
       setLoadingCep(false);
     }
   };
 
   const handleCepChange = (value: string) => {
+    // Remove tudo que não é número
     const onlyNumbers = value.replace(/\D/g, '');
+    
+    // Limita a 8 dígitos
+    const limited = onlyNumbers.slice(0, 8);
+    
+    // Formata CEP: 00000-000
+    let formatted = limited;
+    if (limited.length > 5) {
+      formatted = `${limited.slice(0, 5)}-${limited.slice(5)}`;
+    }
+    
     setFormData(prev => ({ ...prev, cep: onlyNumbers }));
     
+    // Busca automaticamente quando tiver exatamente 8 dígitos
     if (onlyNumbers.length === 8) {
       fetchAddressByCep(onlyNumbers);
     }
@@ -244,14 +277,14 @@ const Checkout = () => {
       }
 
       // Create order with tracking code, guest_token, and user_id
-      const { data: order, error: orderError } = await supabase
+      const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
           user_id: user?.id || null,
           guest_token: guestToken || null,
           customer_name: formData.name,
           customer_phone: formData.phone,
-          customer_cep: formData.cep,
+          customer_cep: formData.cep.replace(/\D/g, ''), // Remove hífen antes de salvar
           customer_address: `${formData.address}, ${formData.number}${formData.reference ? ' - ' + formData.reference : ''}`,
           customer_neighborhood: formData.neighborhood,
           customer_city: addressData.city,
@@ -273,7 +306,7 @@ const Checkout = () => {
 
       // Create order items
       const orderItems = cart.map(item => ({
-        order_id: order.id,
+        order_id: orderData.id,
         product_id: item.product.id,
         product_name: item.product.name,
         product_price: item.product.price,
@@ -366,7 +399,7 @@ const Checkout = () => {
                       {formData.address}, {formData.number}
                     </p>
                      <p className="text-xs text-muted-foreground">
-                       {formData.neighborhood} • CEP {formData.cep}
+                       {formData.neighborhood} • CEP {formData.cep.replace(/(\d{5})(\d{3})/, '$1-$2')}
                      </p>
                      {addressData.city && addressData.state && (
                        <p className="text-xs text-muted-foreground">
@@ -383,8 +416,8 @@ const Checkout = () => {
                            id="cep"
                            value={formData.cep}
                            onChange={(e) => handleCepChange(e.target.value)}
-                           placeholder="00000000"
-                           maxLength={8}
+                           placeholder="00000-000"
+                           maxLength={9}
                            className="h-9 text-sm"
                            required
                          />
@@ -393,7 +426,7 @@ const Checkout = () => {
                          )}
                        </div>
                        <p className="text-xs text-muted-foreground mt-1">
-                         Digite o CEP e o endereço será preenchido automaticamente
+                         Digite o CEP (com ou sem hífen). Ex: 65000-000 ou 65000000
                        </p>
                      </div>
 
