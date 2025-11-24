@@ -230,49 +230,6 @@ export default function DeliveryNavigation() {
       map.current.on('load', () => {
         console.log("✅ [Entregador] Mapa carregado");
         setIsMapReady(true);
-        
-        try {
-          const layers = map.current!.getStyle().layers;
-          const labelLayerId = layers?.find(
-            (layer) => layer.type === 'symbol' && layer.layout?.['text-field']
-          )?.id;
-
-          map.current!.addLayer(
-            {
-              id: '3d-buildings',
-              source: 'composite',
-              'source-layer': 'building',
-              filter: ['==', 'extrude', 'true'],
-              type: 'fill-extrusion',
-              minzoom: 15,
-              paint: {
-                'fill-extrusion-color': '#aaa',
-                'fill-extrusion-height': [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  15,
-                  0,
-                  15.05,
-                  ['get', 'height']
-                ],
-                'fill-extrusion-base': [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  15,
-                  0,
-                  15.05,
-                  ['get', 'min_height']
-                ],
-                'fill-extrusion-opacity': 0.6
-              }
-            },
-            labelLayerId
-          );
-        } catch (err) {
-          console.error("❌ [Entregador] Erro ao adicionar layer 3D:", err);
-        }
       });
 
       map.current.on('error', (e) => {
