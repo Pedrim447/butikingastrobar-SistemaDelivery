@@ -7,6 +7,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordConfirmDialog } from "@/components/PasswordConfirmDialog";
 import {
   Table,
   TableBody,
@@ -45,6 +46,8 @@ interface UserWithRole {
 const AdminUsers = () => {
   const navigate = useNavigate();
   const { user, isAdmin, loading: authLoading, signOut } = useAuth();
+  const [passwordConfirmed, setPasswordConfirmed] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserWithRole[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -60,14 +63,16 @@ const AdminUsers = () => {
       navigate("/auth");
     } else if (!authLoading && !isAdmin) {
       navigate("/");
+    } else if (!authLoading && isAdmin && !passwordConfirmed) {
+      setShowPasswordDialog(true);
     }
-  }, [user, isAdmin, authLoading, navigate]);
+  }, [user, isAdmin, authLoading, navigate, passwordConfirmed]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin && passwordConfirmed) {
       fetchUsers();
     }
-  }, [isAdmin]);
+  }, [isAdmin, passwordConfirmed]);
 
   const fetchUsers = async () => {
     try {
@@ -205,6 +210,28 @@ const AdminUsers = () => {
           <p>Carregando...</p>
         </div>
       </div>
+    );
+  }
+
+  const handlePasswordConfirm = () => {
+    setPasswordConfirmed(true);
+    setShowPasswordDialog(false);
+  };
+
+  const handlePasswordCancel = () => {
+    navigate("/admin");
+  };
+
+  // Não renderizar conteúdo até que a senha seja confirmada
+  if (!passwordConfirmed) {
+    return (
+      <PasswordConfirmDialog
+        open={showPasswordDialog}
+        onConfirm={handlePasswordConfirm}
+        onCancel={handlePasswordCancel}
+        title="Acesso Restrito - Gerenciar Usuários"
+        description="Por segurança, confirme sua senha para acessar o gerenciamento de usuários"
+      />
     );
   }
 
