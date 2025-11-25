@@ -40,8 +40,8 @@ const Auth = () => {
         console.log('Redirecting to /admin');
         navigate('/admin');
       } else if (isDeliveryRider) {
-        console.log('Redirecting to /entregas');
-        navigate('/entregas');
+        console.log('Redirecting to /delivery-dashboard');
+        navigate('/delivery-dashboard');
       } else {
         console.log('Redirecting to /');
         navigate('/');
