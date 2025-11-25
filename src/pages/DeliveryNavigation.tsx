@@ -338,26 +338,67 @@ export default function DeliveryNavigation() {
 
     updateLocation();
 
-    // Update rider marker
+    // Update rider marker with smooth animation
     if (riderMarker.current) {
-      riderMarker.current.setLngLat([position.longitude, position.latitude]);
+      // Smooth transition to new position
+      const currentLngLat = riderMarker.current.getLngLat();
+      const newLngLat: [number, number] = [position.longitude, position.latitude];
+      
+      // Calculate bearing for rotation
+      const bearing = calculateBearing(
+        currentLngLat.lat,
+        currentLngLat.lng,
+        newLngLat[1],
+        newLngLat[0]
+      );
+      
+      // Update marker with smooth animation
+      riderMarker.current.setLngLat(newLngLat);
+      
+      // Rotate the motorcycle icon
+      const markerEl = riderMarker.current.getElement();
+      if (markerEl) {
+        markerEl.style.transform = `rotate(${bearing}deg)`;
+        markerEl.style.transition = 'transform 0.5s ease-out';
+      }
     } else {
       const riderEl = document.createElement("div");
       riderEl.innerHTML = `
-        <svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="25" cy="25" r="24" fill="#8B5CF6" stroke="white" stroke-width="2" class="animate-pulse"/>
-          <g transform="translate(10, 13)">
-            <path d="M20 11L17 11L15.5 7L11 7L11 9L14 9L15 11L12 11L10 15L14 15L16 18L18 18L20 11Z" fill="white"/>
-            <circle cx="11" cy="19" r="3" fill="white"/>
-            <circle cx="19" cy="19" r="3" fill="white"/>
-            <path d="M13 11L16 11" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Shadow/glow effect -->
+          <circle cx="30" cy="30" r="28" fill="#8B5CF6" opacity="0.2"/>
+          <circle cx="30" cy="30" r="24" fill="#8B5CF6" opacity="0.4"/>
+          
+          <!-- Main motorcycle icon (white) -->
+          <g transform="translate(15, 18)">
+            <!-- Motorcycle body -->
+            <path d="M25 8L22 8L20 3L14 3L14 5.5L18 5.5L19.5 8L15 8L12 14L17 14L19.5 18L22 18L25 8Z" fill="white" stroke="white" stroke-width="0.5"/>
+            
+            <!-- Back wheel -->
+            <circle cx="13" cy="20" r="4" fill="white" stroke="#8B5CF6" stroke-width="1"/>
+            <circle cx="13" cy="20" r="2" fill="#8B5CF6"/>
+            
+            <!-- Front wheel -->
+            <circle cx="23" cy="20" r="4" fill="white" stroke="#8B5CF6" stroke-width="1"/>
+            <circle cx="23" cy="20" r="2" fill="#8B5CF6"/>
+            
+            <!-- Handlebar -->
+            <path d="M19 8L22 8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            
+            <!-- Rider (simplified) -->
+            <circle cx="16" cy="6" r="2.5" fill="white"/>
           </g>
         </svg>
       `;
-      riderEl.style.width = "50px";
-      riderEl.style.height = "50px";
+      riderEl.style.width = "60px";
+      riderEl.style.height = "60px";
+      riderEl.style.transformOrigin = "center center";
+      riderEl.style.transition = "transform 0.5s ease-out";
 
-      riderMarker.current = new mapboxgl.Marker(riderEl)
+      riderMarker.current = new mapboxgl.Marker({ 
+        element: riderEl,
+        anchor: 'center'
+      })
         .setLngLat([position.longitude, position.latitude])
         .addTo(map.current);
     }
