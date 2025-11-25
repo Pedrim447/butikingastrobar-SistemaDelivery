@@ -185,7 +185,7 @@ const Menu = () => {
         <div className="container mx-auto px-4 py-3">
           {/* Status Bar */}
           <div className="flex items-center justify-end mb-2 pb-2 border-b border-border/50">
-            {user && userProfile && (
+            {user && userProfile ? (
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <p className="text-sm font-semibold">{userProfile.name}</p>
@@ -195,6 +195,25 @@ const Menu = () => {
                 </div>
                 <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
                   <User className="w-5 h-5 text-primary" />
+                </div>
+              </div>
+            ) : guestData?.name ? (
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-sm font-semibold">{guestData.name}</p>
+                  <p className="text-xs text-muted-foreground">Modo Convidado</p>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+                  <User className="w-5 h-5 text-muted-foreground" />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Visitante</p>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+                  <User className="w-5 h-5 text-muted-foreground" />
                 </div>
               </div>
             )}
