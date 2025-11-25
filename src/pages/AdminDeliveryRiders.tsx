@@ -198,18 +198,25 @@ export default function AdminDeliveryRiders() {
 
       if (error) {
         console.error("Erro ao criar motoboy:", error);
+        toast.error("Erro ao conectar com o servidor");
+        return;
+      }
+
+      // Verificar resposta da função
+      if (data?.error) {
+        console.error("Erro retornado:", data.error);
         
-        // Tratar erros específicos
-        if (error.message.includes("already") || error.message.includes("duplicate")) {
-          toast.error("Este email já está cadastrado no sistema");
+        // Tratar código de erro específico
+        if (data.code === 'EMAIL_EXISTS') {
+          toast.error("Este email já está cadastrado. Use outro email.");
         } else {
-          toast.error(error.message || "Erro ao criar motoboy");
+          toast.error(data.error || "Erro ao criar motoboy");
         }
         return;
       }
 
-      if (!data.success) {
-        toast.error(data.error || "Erro ao criar motoboy");
+      if (!data?.success) {
+        toast.error("Erro ao criar motoboy");
         return;
       }
 
