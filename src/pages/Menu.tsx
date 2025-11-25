@@ -13,7 +13,6 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { Badge } from "@/components/ui/badge";
 
 const Menu = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -22,6 +21,7 @@ const Menu = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const { getCartItemsCount, getCartTotal } = useCart();
   const { guestToken, guestData, clearGuestData } = useGuestMode();
   const { user, signOut } = useAuth();
@@ -32,6 +32,7 @@ const Menu = () => {
     fetchData();
     if (user) {
       fetchUserProfile();
+      fetchUserRole();
     }
   }, [user]);
 
@@ -62,6 +63,34 @@ const Menu = () => {
       }
     } catch (error) {
       console.error("Error fetching user profile:", error);
+    }
+  };
+
+  const fetchUserRole = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching user role:", error);
+        return;
+      }
+      
+      if (data) {
+        const roleLabels: Record<string, string> = {
+          'admin': 'Administrador',
+          'delivery_rider': 'Entregador',
+          'user': 'Cliente'
+        };
+        setUserRole(roleLabels[data.role] || 'Cliente');
+      }
+    } catch (error) {
+      console.error("Error fetching user role:", error);
     }
   };
 
@@ -155,63 +184,20 @@ const Menu = () => {
       <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b shadow-sm">
         <div className="container mx-auto px-4 py-3">
           {/* Status Bar */}
-          <div className="flex items-center justify-between mb-2 pb-2 border-b border-border/50">
-            <div className="flex items-center gap-2">
-              {user && userProfile ? (
-                <>
-                  <User className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-medium">{userProfile.name}</span>
-                  <Badge variant="outline" className="text-xs">Logado</Badge>
-                </>
-              ) : guestData?.name ? (
-                <>
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">{guestData.name}</span>
-                  <Badge variant="secondary" className="text-xs">Modo Convidado</Badge>
-                </>
-              ) : (
-                <>
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Visitante</span>
-                </>
-              )}
-            </div>
-            <div>
-              {user ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="h-7 text-xs"
-                >
-                  <LogOut className="w-3 h-3 mr-1" />
-                  Sair
-                </Button>
-              ) : guestData?.name ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogoutGuest}
-                  className="h-7 text-xs"
-                >
-                  <LogOut className="w-3 h-3 mr-1" />
-                  Sair
-                </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    console.log('Navegando para /auth');
-                    navigate('/auth');
-                  }}
-                  className="h-7 text-xs"
-                >
-                  <User className="w-3 h-3 mr-1" />
-                  Entrar
-                </Button>
-              )}
-            </div>
+          <div className="flex items-center justify-end mb-2 pb-2 border-b border-border/50">
+            {user && userProfile && (
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-sm font-semibold">{userProfile.name}</p>
+                  {userRole && (
+                    <p className="text-xs text-muted-foreground">{userRole}</p>
+                  )}
+                </div>
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="w-5 h-5 text-primary" />
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="flex items-center justify-between">
