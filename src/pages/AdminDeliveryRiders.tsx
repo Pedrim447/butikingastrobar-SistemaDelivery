@@ -178,67 +178,38 @@ export default function AdminDeliveryRiders() {
     try {
       setCreating(true);
 
-      // Verificar se o email já está em uso
-      const { data: existingUsers } = await supabase
-        .from("profiles")
-        .select("id")
-        .limit(1);
+      // Obter token de autenticação
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast.error("Sessão expirada");
+        return;
+      }
 
-      // Tentar criar usuário no auth usando service role
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: values.email,
-        password: values.password,
-        options: {
-          data: {
-            name: values.name,
-            phone: values.phone,
-          },
-          emailRedirectTo: `${window.location.origin}/entregas`,
+      // Chamar edge function para criar motoboy
+      const { data, error } = await supabase.functions.invoke('create-delivery-rider', {
+        body: {
+          name: values.name,
+          phone: values.phone,
+          email: values.email,
+          password: values.password,
         },
       });
 
-      // Tratar erro de email já registrado
-      if (authError) {
-        if (authError.message.includes("already registered") || authError.message.includes("User already registered")) {
+      if (error) {
+        console.error("Erro ao criar motoboy:", error);
+        
+        // Tratar erros específicos
+        if (error.message.includes("already") || error.message.includes("duplicate")) {
           toast.error("Este email já está cadastrado no sistema");
-          return;
+        } else {
+          toast.error(error.message || "Erro ao criar motoboy");
         }
-        throw authError;
-      }
-
-      if (!authData.user) {
-        toast.error("Erro ao criar usuário");
         return;
       }
 
-      // 2. Criar registro na tabela delivery_riders
-      const { error: riderError } = await supabase
-        .from("delivery_riders")
-        .insert({
-          user_id: authData.user.id,
-          name: values.name,
-          phone: values.phone,
-          approved: true,
-          is_active: true,
-        });
-
-      if (riderError) {
-        console.error("Erro ao criar rider:", riderError);
-        toast.error("Erro ao criar registro do motoboy");
-        return;
-      }
-
-      // 3. Adicionar role de delivery_rider
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({
-          user_id: authData.user.id,
-          role: "delivery_rider",
-        });
-
-      if (roleError) {
-        console.error("Erro ao criar role:", roleError);
-        toast.error("Erro ao atribuir permissões");
+      if (!data.success) {
+        toast.error(data.error || "Erro ao criar motoboy");
         return;
       }
 
