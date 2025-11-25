@@ -67,6 +67,21 @@ serve(async (req) => {
 
     if (createError) {
       console.error('Error creating user:', createError);
+      
+      // Tratar erro de email duplicado
+      const errorMessage = createError.message || '';
+      if (errorMessage.includes('already been registered') || 
+          errorMessage.includes('User already exists') ||
+          errorMessage.includes('duplicate')) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Este email já está cadastrado no sistema',
+            code: 'EMAIL_EXISTS' 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 409 }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ error: createError.message }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
