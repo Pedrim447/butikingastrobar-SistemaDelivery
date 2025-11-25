@@ -37,7 +37,6 @@ export default function AdminDeliveryRiders() {
   const { user, isAdmin, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [riders, setRiders] = useState<DeliveryRider[]>([]);
-  const [pendingRiders, setPendingRiders] = useState<DeliveryRider[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -84,32 +83,19 @@ export default function AdminDeliveryRiders() {
 
       if (userIds.length === 0) {
         setRiders([]);
-        setPendingRiders([]);
         return;
       }
 
-      // Buscar perfis aprovados
-      const { data: approvedData, error: approvedError } = await supabase
+      // Buscar perfis dos motoboys
+      const { data: ridersData, error: ridersError } = await supabase
         .from("profiles")
         .select("*")
         .in("id", userIds)
-        .eq("delivery_approved", true)
         .order("created_at", { ascending: false });
 
-      if (approvedError) throw approvedError;
+      if (ridersError) throw ridersError;
 
-      // Buscar perfis pendentes
-      const { data: pendingData, error: pendingError } = await supabase
-        .from("profiles")
-        .select("*")
-        .in("id", userIds)
-        .eq("delivery_approved", false)
-        .order("created_at", { ascending: false });
-
-      if (pendingError) throw pendingError;
-
-      setRiders(approvedData || []);
-      setPendingRiders(pendingData || []);
+      setRiders(ridersData || []);
     } catch (error) {
       console.error("Erro ao buscar motoboys:", error);
       toast.error("Erro ao carregar lista de motoboys");
@@ -118,24 +104,11 @@ export default function AdminDeliveryRiders() {
     }
   };
 
-  const approveRider = async (riderId: string) => {
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ delivery_approved: true, delivery_active: true })
-        .eq("id", riderId);
-
-      if (error) throw error;
-
-      toast.success("Motoboy aprovado com sucesso!");
-      fetchRiders();
-    } catch (error) {
-      console.error("Erro ao aprovar motoboy:", error);
-      toast.error("Erro ao aprovar motoboy");
+  const deleteRider = async (riderId: string) => {
+    if (!confirm("Tem certeza que deseja remover este motoboy?")) {
+      return;
     }
-  };
 
-  const rejectRider = async (riderId: string) => {
     try {
       // Remover role de delivery_rider
       const { error: roleError } = await supabase
@@ -157,11 +130,11 @@ export default function AdminDeliveryRiders() {
 
       if (profileError) throw profileError;
 
-      toast.success("Motoboy rejeitado");
+      toast.success("Motoboy removido com sucesso");
       fetchRiders();
     } catch (error) {
-      console.error("Erro ao rejeitar motoboy:", error);
-      toast.error("Erro ao rejeitar motoboy");
+      console.error("Erro ao remover motoboy:", error);
+      toast.error("Erro ao remover motoboy");
     }
   };
 
@@ -360,48 +333,8 @@ export default function AdminDeliveryRiders() {
             </div>
           </div>
 
-          {pendingRiders.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold mb-4">Aguardando Aprovação ({pendingRiders.length})</h2>
-              <div className="rounded-md border bg-muted/30">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Telefone</TableHead>
-                      <TableHead>Data Cadastro</TableHead>
-                      <TableHead>Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingRiders.map((rider) => (
-                      <TableRow key={rider.id}>
-                        <TableCell className="font-medium flex items-center gap-2">
-                          <Bike className="h-4 w-4 text-amber-500" />
-                          {rider.name}
-                        </TableCell>
-                        <TableCell>{rider.phone}</TableCell>
-                        <TableCell>{new Date(rider.created_at).toLocaleDateString("pt-BR")}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button size="sm" onClick={() => approveRider(rider.id)}>
-                              Aprovar
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => rejectRider(rider.id)}>
-                              Rejeitar
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          )}
-
           <div>
-            <h2 className="text-xl font-semibold mb-4">Motoboys Ativos</h2>
+            <h2 className="text-xl font-semibold mb-4">Lista de Motoboys</h2>
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -410,13 +343,14 @@ export default function AdminDeliveryRiders() {
                     <TableHead>Telefone</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Ativo</TableHead>
+                    <TableHead>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {riders.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground">
-                        Nenhum motoboy aprovado
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        Nenhum motoboy cadastrado
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -437,6 +371,15 @@ export default function AdminDeliveryRiders() {
                             checked={rider.delivery_active}
                             onCheckedChange={() => toggleRiderStatus(rider.id, rider.delivery_active)}
                           />
+                        </TableCell>
+                        <TableCell>
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                            onClick={() => deleteRider(rider.id)}
+                          >
+                            Remover
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
