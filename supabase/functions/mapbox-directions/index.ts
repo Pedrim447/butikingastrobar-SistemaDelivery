@@ -25,7 +25,7 @@ serve(async (req) => {
       );
     }
 
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startLng},${startLat};${endLng},${endLat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startLng},${startLat};${endLng},${endLat}?geometries=geojson&overview=full&steps=true&continue_straight=true&access_token=${MAPBOX_TOKEN}`;
     console.log('Mapbox directions URL created');
     
     const response = await fetch(url);
