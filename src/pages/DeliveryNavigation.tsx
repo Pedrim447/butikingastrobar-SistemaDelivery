@@ -430,6 +430,7 @@ export default function DeliveryNavigation() {
 
         if (data.routes && data.routes.length > 0) {
           const route = data.routes[0].geometry;
+          const routeCoords = route.coordinates;
 
           if (map.current!.getSource("route")) {
             (map.current!.getSource("route") as mapboxgl.GeoJSONSource).setData({
@@ -444,6 +445,22 @@ export default function DeliveryNavigation() {
                 type: "Feature",
                 properties: {},
                 geometry: route,
+              },
+            });
+
+            // Add outline for better visibility
+            map.current!.addLayer({
+              id: "route-outline",
+              type: "line",
+              source: "route",
+              layout: {
+                "line-join": "round",
+                "line-cap": "round",
+              },
+              paint: {
+                "line-color": "#FFFFFF",
+                "line-width": 8,
+                "line-opacity": 0.5,
               },
             });
 
@@ -463,14 +480,46 @@ export default function DeliveryNavigation() {
             });
           }
 
-          // Sistema de bússola
+          // Find next point on route to calculate bearing
+          let nextPoint = routeCoords[0];
+          const currentPos = [position.longitude, position.latitude];
+          
+          // Find closest point on route to current position
+          let minDist = Infinity;
+          let closestIndex = 0;
+          
+          for (let i = 0; i < routeCoords.length; i++) {
+            const dist = Math.sqrt(
+              Math.pow(routeCoords[i][0] - currentPos[0], 2) + 
+              Math.pow(routeCoords[i][1] - currentPos[1], 2)
+            );
+            if (dist < minDist) {
+              minDist = dist;
+              closestIndex = i;
+            }
+          }
+          
+          // Get next point ahead on route for bearing calculation
+          const lookAheadIndex = Math.min(closestIndex + 5, routeCoords.length - 1);
+          nextPoint = routeCoords[lookAheadIndex];
+
+          // Calculate bearing to next point on route
           const bearing = calculateBearing(
             position.latitude,
             position.longitude,
-            destinationCoords[1],
-            destinationCoords[0]
+            nextPoint[1],
+            nextPoint[0]
           );
 
+          // Rotate motorcycle icon to face direction of travel
+          const markerEl = riderMarker.current?.getElement();
+          const svgEl = markerEl?.querySelector('svg');
+          if (svgEl) {
+            svgEl.style.transform = `rotate(${bearing}deg)`;
+            svgEl.style.transition = 'transform 0.5s ease-out';
+          }
+
+          // Rotate map to keep direction of travel pointing up (like Google Maps navigation)
           map.current!.easeTo({
             center: [position.longitude, position.latitude],
             zoom: 18,
