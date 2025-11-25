@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
 
     // Setup auth state listener AFTER initial session is loaded
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       
       console.log('Auth state changed:', event, session?.user?.email);
@@ -67,9 +67,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        setCheckingRole(true);
-        await checkUserRole(session.user.id);
-        if (mounted) setCheckingRole(false);
+        // Use setTimeout to defer Supabase calls and prevent deadlock
+        setTimeout(() => {
+          if (mounted) {
+            setCheckingRole(true);
+            checkUserRole(session.user.id).finally(() => {
+              if (mounted) setCheckingRole(false);
+            });
+          }
+        }, 0);
       } else {
         setIsAdmin(false);
         setIsDeliveryRider(false);
