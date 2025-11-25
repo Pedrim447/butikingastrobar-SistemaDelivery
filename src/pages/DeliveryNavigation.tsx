@@ -352,19 +352,27 @@ export default function DeliveryNavigation() {
         newLngLat[0]
       );
       
-      // Update marker with smooth animation
+      // Update marker position
       riderMarker.current.setLngLat(newLngLat);
       
-      // Rotate the motorcycle icon
+      // Rotate the motorcycle icon without affecting position
       const markerEl = riderMarker.current.getElement();
-      if (markerEl) {
-        markerEl.style.transform = `rotate(${bearing}deg)`;
-        markerEl.style.transition = 'transform 0.5s ease-out';
+      const svgEl = markerEl?.querySelector('svg');
+      if (svgEl) {
+        svgEl.style.transform = `rotate(${bearing}deg)`;
+        svgEl.style.transition = 'transform 0.5s ease-out';
       }
     } else {
       const riderEl = document.createElement("div");
+      riderEl.style.width = "60px";
+      riderEl.style.height = "60px";
+      riderEl.style.display = "flex";
+      riderEl.style.alignItems = "center";
+      riderEl.style.justifyContent = "center";
+      riderEl.style.pointerEvents = "none";
+      
       riderEl.innerHTML = `
-        <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg" style="transform-origin: center center; transition: transform 0.5s ease-out; filter: drop-shadow(0 4px 6px rgba(139, 92, 246, 0.3));">
           <!-- Subtle shadow/glow effect -->
           <circle cx="30" cy="30" r="28" fill="#8B5CF6" opacity="0.15"/>
           
@@ -389,15 +397,12 @@ export default function DeliveryNavigation() {
           </g>
         </svg>
       `;
-      riderEl.style.width = "60px";
-      riderEl.style.height = "60px";
-      riderEl.style.transformOrigin = "center center";
-      riderEl.style.transition = "transform 0.5s ease-out";
-      riderEl.style.filter = "drop-shadow(0 4px 6px rgba(139, 92, 246, 0.3))";
 
       riderMarker.current = new mapboxgl.Marker({ 
         element: riderEl,
-        anchor: 'center'
+        anchor: 'center',
+        rotationAlignment: 'map',
+        pitchAlignment: 'map'
       })
         .setLngLat([position.longitude, position.latitude])
         .addTo(map.current);

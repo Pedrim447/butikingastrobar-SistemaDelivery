@@ -389,6 +389,13 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     // Create motorcycle marker element with clean design
     const el = document.createElement("div");
     el.className = "rider-marker";
+    el.style.width = "60px";
+    el.style.height = "60px";
+    el.style.cursor = "pointer";
+    el.style.display = "flex";
+    el.style.alignItems = "center";
+    el.style.justifyContent = "center";
+    
     el.innerHTML = `
       <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
         <!-- Subtle shadow/glow effect -->
@@ -415,16 +422,13 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
         </g>
       </svg>
     `;
-    el.style.width = "60px";
-    el.style.height = "60px";
-    el.style.cursor = "pointer";
-    el.style.transition = "all 0.5s ease-out";
-    el.style.transformOrigin = "center center";
 
     // Add new marker with smooth animation
     riderMarker.current = new mapboxgl.Marker({ 
       element: el,
-      anchor: 'center'
+      anchor: 'center',
+      rotationAlignment: 'map',
+      pitchAlignment: 'map'
     })
       .setLngLat([longitude, latitude])
       .setPopup(new mapboxgl.Popup({ offset: 30 }).setHTML("<strong>🏍️ Entregador</strong><br>Localização em tempo real"))
