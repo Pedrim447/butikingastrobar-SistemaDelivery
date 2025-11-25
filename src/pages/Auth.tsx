@@ -35,17 +35,21 @@ const Auth = () => {
     
     // Só redireciona se não estiver carregando E não estiver verificando role E tiver um usuário
     if (!authLoading && !checkingRole && user) {
-      console.log('Redirecting authenticated user...');
-      if (isAdmin) {
-        console.log('Redirecting to /admin');
-        navigate('/admin', { replace: true });
-      } else if (isDeliveryRider) {
-        console.log('Redirecting to /entregas');
-        navigate('/entregas', { replace: true });
-      } else {
-        console.log('Redirecting to /');
-        navigate('/', { replace: true });
-      }
+      console.log('Ready to redirect - isAdmin:', isAdmin, 'isDeliveryRider:', isDeliveryRider);
+      
+      // Aguardar um momento para garantir que as roles foram atualizadas
+      setTimeout(() => {
+        if (isAdmin) {
+          console.log('Redirecting to /admin');
+          navigate('/admin', { replace: true });
+        } else if (isDeliveryRider) {
+          console.log('Redirecting to /entregas');
+          navigate('/entregas', { replace: true });
+        } else {
+          console.log('Redirecting to /');
+          navigate('/', { replace: true });
+        }
+      }, 300);
     }
   }, [user, isAdmin, isDeliveryRider, navigate, authLoading, checkingRole]);
 
@@ -69,6 +73,7 @@ const Auth = () => {
         setLoading(false);
       } else {
         toast.success('Login realizado com sucesso!');
+        setLoading(false);
         // O redirecionamento será feito pelo useEffect
       }
     } catch (error) {
@@ -117,6 +122,7 @@ const Auth = () => {
       }
 
       toast.success('Conta criada com sucesso!');
+      setLoading(false);
       // O redirecionamento será feito pelo useEffect
       
       setSignupName('');
