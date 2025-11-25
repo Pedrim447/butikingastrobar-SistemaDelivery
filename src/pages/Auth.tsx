@@ -30,24 +30,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const { signIn, signUp, user, isAdmin, isDeliveryRider, loading: authLoading, checkingRole } = useAuth();
 
-  useEffect(() => {
-    console.log('Auth page - user:', user, 'authLoading:', authLoading, 'checkingRole:', checkingRole, 'isAdmin:', isAdmin, 'isDeliveryRider:', isDeliveryRider);
-    
-    // Só redireciona se não estiver carregando E não estiver verificando role E tiver um usuário
-    if (!authLoading && !checkingRole && user) {
-      console.log('Redirecting authenticated user...');
-      if (isAdmin) {
-        console.log('Redirecting to /admin');
-        navigate('/admin');
-      } else if (isDeliveryRider) {
-        console.log('Redirecting to /delivery-dashboard');
-        navigate('/delivery-dashboard');
-      } else {
-        console.log('Redirecting to /');
-        navigate('/');
-      }
-    }
-  }, [user, isAdmin, isDeliveryRider, navigate, authLoading, checkingRole]);
+  // Não redireciona automaticamente no useEffect - apenas após login bem-sucedido
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +52,26 @@ const Auth = () => {
         setLoading(false);
       } else {
         toast.success('Login realizado com sucesso!');
+        
+        // Aguardar a verificação de role antes de redirecionar
+        const waitForRole = setInterval(() => {
+          if (!checkingRole) {
+            clearInterval(waitForRole);
+            if (isAdmin) {
+              navigate('/admin');
+            } else if (isDeliveryRider) {
+              navigate('/delivery-dashboard');
+            } else {
+              navigate('/');
+            }
+          }
+        }, 100);
+        
+        // Timeout de segurança após 5 segundos
+        setTimeout(() => {
+          clearInterval(waitForRole);
+          navigate('/');
+        }, 5000);
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -116,6 +119,26 @@ const Auth = () => {
       }
 
       toast.success('Conta criada com sucesso!');
+      
+      // Aguardar a verificação de role antes de redirecionar
+      const waitForRole = setInterval(() => {
+        if (!checkingRole) {
+          clearInterval(waitForRole);
+          if (isAdmin) {
+            navigate('/admin');
+          } else if (isDeliveryRider) {
+            navigate('/delivery-dashboard');
+          } else {
+            navigate('/');
+          }
+        }
+      }, 100);
+      
+      // Timeout de segurança após 5 segundos
+      setTimeout(() => {
+        clearInterval(waitForRole);
+        navigate('/');
+      }, 5000);
       
       setSignupName('');
       setSignupPhone('');
