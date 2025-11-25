@@ -60,7 +60,7 @@ const Auth = () => {
             if (isAdmin) {
               navigate('/admin');
             } else if (isDeliveryRider) {
-              navigate('/delivery-dashboard');
+              navigate('/entregas');
             } else {
               navigate('/');
             }
@@ -127,7 +127,7 @@ const Auth = () => {
           if (isAdmin) {
             navigate('/admin');
           } else if (isDeliveryRider) {
-            navigate('/delivery-dashboard');
+            navigate('/entregas');
           } else {
             navigate('/');
           }
