@@ -81,6 +81,77 @@ export default function AdminDashboard() {
     fetchDeliveryRiders();
   }, [user, isAdmin, navigate, authLoading]);
 
+  // Configurar realtime para escutar novos pedidos e atualizações
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const channel = supabase
+      .channel('orders-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'orders'
+        },
+        async (payload) => {
+          console.log('Novo pedido recebido:', payload);
+          
+          // Buscar os dados completos do pedido incluindo order_items
+          const { data: newOrder, error } = await supabase
+            .from('orders')
+            .select('*, order_items(*)')
+            .eq('id', payload.new.id)
+            .single();
+
+          if (!error && newOrder) {
+            setOrders(prevOrders => [newOrder, ...prevOrders]);
+            
+            // Notificação de novo pedido
+            toast.success('Novo pedido recebido!', {
+              description: `Pedido de ${newOrder.customer_name}`,
+              duration: 5000,
+            });
+            
+            // Som de notificação (opcional)
+            const audio = new Audio('/notification.mp3');
+            audio.play().catch(e => console.log('Could not play notification sound'));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders'
+        },
+        async (payload) => {
+          console.log('Pedido atualizado:', payload);
+          
+          // Buscar os dados completos do pedido atualizado
+          const { data: updatedOrder, error } = await supabase
+            .from('orders')
+            .select('*, order_items(*)')
+            .eq('id', payload.new.id)
+            .single();
+
+          if (!error && updatedOrder) {
+            setOrders(prevOrders => 
+              prevOrders.map(order => 
+                order.id === updatedOrder.id ? updatedOrder : order
+              )
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAdmin]);
+
   const fetchOrders = async () => {
     try {
       setLoading(true);
