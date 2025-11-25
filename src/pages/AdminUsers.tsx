@@ -38,8 +38,8 @@ interface UserWithRole {
   email: string;
   role: 'user' | 'admin' | 'delivery_rider';
   created_at: string;
-  rider_name?: string;
-  rider_phone?: string;
+  name?: string;
+  phone?: string;
 }
 
 const AdminUsers = () => {
@@ -51,8 +51,8 @@ const AdminUsers = () => {
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [newRole, setNewRole] = useState<string>("");
-  const [riderName, setRiderName] = useState("");
-  const [riderPhone, setRiderPhone] = useState("");
+  const [userName, setUserName] = useState("");
+  const [userPhone, setUserPhone] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -85,36 +85,27 @@ const AdminUsers = () => {
 
       if (rolesError) throw rolesError;
 
-      // Buscar user_ids com role delivery_rider
-      const { data: riderRoles, error: ridersError } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "delivery_rider");
-
-      if (ridersError) throw ridersError;
-
-      const riderUserIds = riderRoles?.map(r => r.user_id) || [];
-      
-      // Buscar profiles dos delivery riders
-      const { data: riders, error: ridersProfileError } = await supabase
+      // Buscar profiles de TODOS os usuários
+      const userIds = authUsers.users.map(u => u.id);
+      const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, name, phone")
-        .in("id", riderUserIds);
+        .in("id", userIds);
 
-      if (ridersProfileError) throw ridersProfileError;
+      if (profilesError) throw profilesError;
 
       // Combinar dados
       const usersWithRoles: UserWithRole[] = authUsers.users.map((authUser) => {
         const userRole = roles?.find((r) => r.user_id === authUser.id);
-        const riderData = riders?.find((r) => r.id === authUser.id);
+        const profileData = profiles?.find((p) => p.id === authUser.id);
 
         return {
           id: authUser.id,
           email: authUser.email || "",
           role: userRole?.role || 'user',
           created_at: authUser.created_at,
-          rider_name: riderData?.name,
-          rider_phone: riderData?.phone,
+          name: profileData?.name,
+          phone: profileData?.phone,
         };
       });
 
@@ -134,7 +125,8 @@ const AdminUsers = () => {
     } else {
       const filtered = users.filter((user) =>
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.rider_name?.toLowerCase().includes(searchTerm.toLowerCase())
+        user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.phone?.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredUsers(filtered);
     }
@@ -143,71 +135,68 @@ const AdminUsers = () => {
   const handleOpenDialog = (userItem: UserWithRole) => {
     setSelectedUser(userItem);
     setNewRole(userItem.role);
-    setRiderName(userItem.rider_name || "");
-    setRiderPhone(userItem.rider_phone || "");
+    setUserName(userItem.name || "");
+    setUserPhone(userItem.phone || "");
     setDialogOpen(true);
   };
 
-  const handleUpdateRole = async () => {
+  const handleUpdateUser = async () => {
     if (!selectedUser || !newRole) {
       toast.error("Selecione uma função");
       return;
     }
 
-    if (newRole === 'delivery_rider' && (!riderName || !riderPhone)) {
-      toast.error("Nome e telefone são obrigatórios para entregadores");
+    if (!userName || !userPhone) {
+      toast.error("Nome e telefone são obrigatórios");
       return;
     }
 
     try {
-      // Deletar role anterior
-      await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", selectedUser.id);
+      // Atualizar role se mudou
+      if (selectedUser.role !== newRole) {
+        await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", selectedUser.id);
 
-      // Inserir nova role
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({
-          user_id: selectedUser.id,
-          role: newRole as 'user' | 'admin' | 'delivery_rider',
-        });
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert({
+            user_id: selectedUser.id,
+            role: newRole as 'user' | 'admin' | 'delivery_rider',
+          });
 
-      if (roleError) throw roleError;
-
-      // Se for delivery_rider, atualizar perfil
-      if (newRole === 'delivery_rider') {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({
-            name: riderName,
-            phone: riderPhone,
-            delivery_approved: true,
-            delivery_active: true,
-          })
-          .eq("id", selectedUser.id);
-
-        if (profileError) throw profileError;
-      } else {
-        // Se não for mais delivery_rider, resetar campos
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({
-            delivery_approved: false,
-            delivery_active: false,
-          })
-          .eq("id", selectedUser.id);
-
-        if (profileError) throw profileError;
+        if (roleError) throw roleError;
       }
 
-      toast.success("Função atualizada com sucesso!");
+      // Atualizar perfil (nome e telefone para todos)
+      const profileUpdate: any = {
+        name: userName,
+        phone: userPhone,
+      };
+
+      // Se for delivery_rider, marcar como aprovado e ativo
+      if (newRole === 'delivery_rider') {
+        profileUpdate.delivery_approved = true;
+        profileUpdate.delivery_active = true;
+      } else {
+        profileUpdate.delivery_approved = false;
+        profileUpdate.delivery_active = false;
+      }
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update(profileUpdate)
+        .eq("id", selectedUser.id);
+
+      if (profileError) throw profileError;
+
+      toast.success("Usuário atualizado com sucesso!");
       setDialogOpen(false);
       fetchUsers();
     } catch (error) {
-      console.error("Error updating role:", error);
-      toast.error("Erro ao atualizar função");
+      console.error("Error updating user:", error);
+      toast.error("Erro ao atualizar usuário");
     }
   };
 
@@ -280,6 +269,8 @@ const AdminUsers = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Telefone</TableHead>
                   <TableHead>Função</TableHead>
                   <TableHead>Data de Cadastro</TableHead>
                   <TableHead>Ações</TableHead>
@@ -288,7 +279,7 @@ const AdminUsers = () => {
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       Nenhum usuário encontrado
                     </TableCell>
                   </TableRow>
@@ -296,6 +287,8 @@ const AdminUsers = () => {
                   filteredUsers.map((userItem) => (
                   <TableRow key={userItem.id}>
                     <TableCell>{userItem.email}</TableCell>
+                    <TableCell>{userItem.name || "-"}</TableCell>
+                    <TableCell>{userItem.phone || "-"}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {getRoleIcon(userItem.role)}
@@ -313,17 +306,35 @@ const AdminUsers = () => {
                             size="sm"
                             onClick={() => handleOpenDialog(userItem)}
                           >
-                            Editar Função
+                            Editar
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Atualizar Função do Usuário</DialogTitle>
+                            <DialogTitle>Editar Usuário</DialogTitle>
                             <DialogDescription>
-                              Altere a função do usuário {userItem.email}
+                              Edite as informações do usuário {userItem.email}
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4 mt-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="user-name">Nome</Label>
+                              <Input
+                                id="user-name"
+                                value={userName}
+                                onChange={(e) => setUserName(e.target.value)}
+                                placeholder="Nome completo"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="user-phone">Telefone</Label>
+                              <Input
+                                id="user-phone"
+                                value={userPhone}
+                                onChange={(e) => setUserPhone(e.target.value)}
+                                placeholder="(00) 00000-0000"
+                              />
+                            </div>
                             <div className="space-y-2">
                               <Label>Função</Label>
                               <Select value={newRole} onValueChange={setNewRole}>
@@ -338,31 +349,8 @@ const AdminUsers = () => {
                               </Select>
                             </div>
 
-                            {newRole === 'delivery_rider' && (
-                              <>
-                                <div className="space-y-2">
-                                  <Label htmlFor="rider-name">Nome do Entregador</Label>
-                                  <Input
-                                    id="rider-name"
-                                    value={riderName}
-                                    onChange={(e) => setRiderName(e.target.value)}
-                                    placeholder="Nome completo"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="rider-phone">Telefone</Label>
-                                  <Input
-                                    id="rider-phone"
-                                    value={riderPhone}
-                                    onChange={(e) => setRiderPhone(e.target.value)}
-                                    placeholder="(00) 00000-0000"
-                                  />
-                                </div>
-                              </>
-                            )}
-
-                            <Button onClick={handleUpdateRole} className="w-full">
-                              Atualizar
+                            <Button onClick={handleUpdateUser} className="w-full">
+                              Salvar Alterações
                             </Button>
                           </div>
                         </DialogContent>
