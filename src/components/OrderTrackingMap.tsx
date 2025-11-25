@@ -22,11 +22,6 @@ interface Coordinates {
   lat: number;
 }
 
-interface RouteGeometry {
-  type: string;
-  coordinates: number[][];
-}
-
 export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   orderId,
   deliveryRiderId,
@@ -39,7 +34,6 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   const [riderLocation, setRiderLocation] = useState<Location | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<Coordinates | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
-  const [fullRoute, setFullRoute] = useState<RouteGeometry | null>(null);
   const [fullAddress, setFullAddress] = useState<string>("");
   const lastUpdateTime = useRef<number>(Date.now());
 
@@ -255,63 +249,39 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
     }
   };
 
-  const calculateRemainingRoute = (fullRouteCoords: number[][], currentPosition: [number, number]) => {
-    if (!fullRouteCoords || fullRouteCoords.length === 0) return fullRouteCoords;
-
-    // Find the closest point on the route to current position
-    let minDistance = Infinity;
-    let closestIndex = 0;
-
-    for (let i = 0; i < fullRouteCoords.length; i++) {
-      const [lng, lat] = fullRouteCoords[i];
-      const distance = Math.sqrt(
-        Math.pow(lng - currentPosition[0], 2) + Math.pow(lat - currentPosition[1], 2)
-      );
-      
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestIndex = i;
-      }
+  const drawRoute = async (riderLng: number, riderLat: number) => {
+    if (!map.current || !destinationCoords) {
+      console.log("⚠️ [Cliente] Não é possível desenhar rota - mapa ou destino não disponível");
+      return;
     }
 
-    // Return route from closest point to destination
-    return [[currentPosition[0], currentPosition[1]], ...fullRouteCoords.slice(closestIndex + 1)];
-  };
-
-  const drawRoute = async (riderLng: number, riderLat: number, forceNewRoute = false) => {
-    if (!map.current || !destinationCoords) return;
-
     try {
-      // Only fetch new route if we don't have one or if forced
-      if (!fullRoute || forceNewRoute) {
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mapbox-directions`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              startLng: riderLng,
-              startLat: riderLat,
-              endLng: destinationCoords.lng,
-              endLat: destinationCoords.lat,
-            }),
-          }
-        );
-        const data = await response.json();
-
-        if (data.routes && data.routes.length > 0) {
-          setFullRoute(data.routes[0].geometry);
+      console.log("🛣️ [Cliente] Buscando direções da API Mapbox");
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mapbox-directions`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            startLng: riderLng,
+            startLat: riderLat,
+            endLng: destinationCoords.lng,
+            endLat: destinationCoords.lat,
+          }),
         }
+      );
+      const data = await response.json();
+
+      if (!data.routes || data.routes.length === 0) {
+        console.error("❌ [Cliente] Nenhuma rota encontrada");
         return;
       }
 
-      // Calculate remaining route based on current position
-      const remainingCoords = calculateRemainingRoute(
-        fullRoute.coordinates,
-        [riderLng, riderLat]
-      );
+      const route = data.routes[0].geometry;
+      console.log("✅ [Cliente] Rota recebida com", route.coordinates.length, "pontos");
 
       // Remove existing route layers and source if they exist
       if (map.current.getLayer("route-outline")) {
@@ -324,20 +294,17 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
         map.current.removeSource("route");
       }
 
-      // Add remaining route to map
+      // Add route to map
       map.current.addSource("route", {
         type: "geojson",
         data: {
           type: "Feature",
           properties: {},
-          geometry: {
-            type: "LineString",
-            coordinates: remainingCoords,
-          },
+          geometry: route,
         },
       });
 
-      // Add outline layer
+      // Add outline layer for better visibility
       map.current.addLayer({
         id: "route-outline",
         type: "line",
@@ -348,8 +315,8 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
         },
         paint: {
           "line-color": "#FFFFFF",
-          "line-width": 7,
-          "line-opacity": 0.4,
+          "line-width": 8,
+          "line-opacity": 0.5,
         },
       });
 
@@ -369,28 +336,31 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
         },
       });
 
-      // Only fit bounds on first load
-      if (forceNewRoute) {
-        const bounds = new mapboxgl.LngLatBounds();
-        bounds.extend([riderLng, riderLat]);
-        bounds.extend([destinationCoords.lng, destinationCoords.lat]);
-        
-        map.current.fitBounds(bounds, {
-          padding: 80,
-          maxZoom: 15,
-        });
-      }
+      console.log("✅ [Cliente] Rota desenhada no mapa");
+
+      // Fit bounds to show entire route
+      const bounds = new mapboxgl.LngLatBounds();
+      bounds.extend([riderLng, riderLat]);
+      bounds.extend([destinationCoords.lng, destinationCoords.lat]);
+      
+      map.current.fitBounds(bounds, {
+        padding: 80,
+        maxZoom: 15,
+        duration: 1000,
+      });
+      
     } catch (error) {
-      console.error("Erro ao desenhar rota:", error);
+      console.error("❌ [Cliente] Erro ao desenhar rota:", error);
     }
   };
 
-  // Update route when fullRoute changes
+  // Draw route whenever rider location or destination changes
   useEffect(() => {
-    if (fullRoute && riderLocation && isMapReady) {
-      drawRoute(riderLocation.longitude, riderLocation.latitude, true);
+    if (riderLocation && destinationCoords && isMapReady && map.current) {
+      console.log("🛣️ [Cliente] Trigger para desenhar rota - rider e destino disponíveis");
+      drawRoute(riderLocation.longitude, riderLocation.latitude);
     }
-  }, [fullRoute]);
+  }, [riderLocation, destinationCoords, isMapReady]);
 
   const updateRiderMarker = (latitude: number, longitude: number) => {
     if (!map.current) {
@@ -461,25 +431,6 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       .addTo(map.current);
 
     console.log("✅ Marcador do entregador adicionado ao mapa");
-
-    // Update route - força nova rota se não existir
-    const shouldForceNewRoute = !fullRoute;
-    console.log("🛣️ Desenhando rota. Force new:", shouldForceNewRoute);
-    drawRoute(longitude, latitude, shouldForceNewRoute);
-
-    // Ajustar view do mapa para mostrar entregador e destino
-    if (destinationCoords) {
-      const bounds = new mapboxgl.LngLatBounds();
-      bounds.extend([longitude, latitude]);
-      bounds.extend([destinationCoords.lng, destinationCoords.lat]);
-      
-      map.current.fitBounds(bounds, {
-        padding: { top: 100, bottom: 100, left: 50, right: 50 },
-        maxZoom: 15,
-        duration: 1000,
-      });
-      console.log("🗺️ Mapa ajustado para mostrar entregador e destino");
-    }
   };
 
   return (
