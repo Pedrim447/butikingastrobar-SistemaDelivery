@@ -127,10 +127,48 @@ export default function AdminStats() {
     }
   };
 
-  if (authLoading || loading) {
+  const handlePasswordConfirm = () => {
+    setPasswordConfirmed(true);
+    setShowPasswordDialog(false);
+  };
+
+  const handlePasswordCancel = () => {
+    navigate("/admin");
+  };
+
+  // Mostrar loading apenas durante autenticação inicial
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Carregando estatísticas...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Mostrar diálogo de senha antes de qualquer conteúdo
+  if (!passwordConfirmed) {
+    return (
+      <PasswordConfirmDialog
+        open={showPasswordDialog}
+        onConfirm={handlePasswordConfirm}
+        onCancel={handlePasswordCancel}
+        title="Área Restrita"
+        description="Informe a senha de acesso para visualizar as estatísticas"
+      />
+    );
+  }
+
+  // Loading das estatísticas
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Carregando estatísticas...</p>
+        </div>
       </div>
     );
   }
@@ -150,28 +188,6 @@ export default function AdminStats() {
     await signOut();
     navigate("/");
   };
-
-  const handlePasswordConfirm = () => {
-    setPasswordConfirmed(true);
-    setShowPasswordDialog(false);
-  };
-
-  const handlePasswordCancel = () => {
-    navigate("/admin");
-  };
-
-  // Não renderizar conteúdo até que a senha seja confirmada
-  if (!passwordConfirmed) {
-    return (
-      <PasswordConfirmDialog
-        open={showPasswordDialog}
-        onConfirm={handlePasswordConfirm}
-        onCancel={handlePasswordCancel}
-        title="Acesso Restrito - Estatísticas"
-        description="Por segurança, confirme sua senha para acessar as estatísticas do sistema"
-      />
-    );
-  }
 
   return (
     <SidebarProvider>
