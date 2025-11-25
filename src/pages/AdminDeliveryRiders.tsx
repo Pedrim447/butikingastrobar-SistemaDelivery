@@ -187,7 +187,7 @@ export default function AdminDeliveryRiders() {
       }
 
       // Chamar edge function para criar motoboy
-      const { data, error } = await supabase.functions.invoke('create-delivery-rider', {
+      const response = await supabase.functions.invoke('create-delivery-rider', {
         body: {
           name: values.name,
           phone: values.phone,
@@ -196,17 +196,31 @@ export default function AdminDeliveryRiders() {
         },
       });
 
-      if (error) {
-        console.error("Erro ao criar motoboy:", error);
-        toast.error("Erro ao conectar com o servidor");
+      console.log("Response:", response);
+
+      // Verificar se houve erro na invocação
+      if (response.error) {
+        console.error("Function invocation error:", response.error);
+        
+        // Tentar extrair mensagem do body se existir
+        if (response.data?.error) {
+          if (response.data.code === 'EMAIL_EXISTS') {
+            toast.error("Este email já está cadastrado. Use outro email.");
+          } else {
+            toast.error(response.data.error);
+          }
+        } else {
+          toast.error("Erro ao conectar com o servidor");
+        }
         return;
       }
 
-      // Verificar resposta da função
+      // Verificar resposta de sucesso
+      const data = response.data;
+      
       if (data?.error) {
         console.error("Erro retornado:", data.error);
         
-        // Tratar código de erro específico
         if (data.code === 'EMAIL_EXISTS') {
           toast.error("Este email já está cadastrado. Use outro email.");
         } else {
@@ -226,7 +240,7 @@ export default function AdminDeliveryRiders() {
       fetchRiders();
     } catch (error: any) {
       console.error("Erro ao criar motoboy:", error);
-      toast.error(error.message || "Erro ao criar motoboy");
+      toast.error("Erro inesperado ao criar motoboy");
     } finally {
       setCreating(false);
     }
