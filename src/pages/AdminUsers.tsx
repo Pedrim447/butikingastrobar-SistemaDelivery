@@ -73,41 +73,16 @@ const AdminUsers = () => {
     try {
       setLoading(true);
 
-      // Buscar todos os usuários autenticados
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) throw authError;
+      // Chamar edge function para listar usuários
+      const { data, error } = await supabase.functions.invoke('list-users');
 
-      // Buscar roles dos usuários
-      const { data: roles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id, role");
+      if (error) throw error;
 
-      if (rolesError) throw rolesError;
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
-      // Buscar profiles de TODOS os usuários
-      const userIds = authUsers.users.map(u => u.id);
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, name, phone")
-        .in("id", userIds);
-
-      if (profilesError) throw profilesError;
-
-      // Combinar dados
-      const usersWithRoles: UserWithRole[] = authUsers.users.map((authUser) => {
-        const userRole = roles?.find((r) => r.user_id === authUser.id);
-        const profileData = profiles?.find((p) => p.id === authUser.id);
-
-        return {
-          id: authUser.id,
-          email: authUser.email || "",
-          role: userRole?.role || 'user',
-          created_at: authUser.created_at,
-          name: profileData?.name,
-          phone: profileData?.phone,
-        };
-      });
+      const usersWithRoles = data?.users || [];
 
       setUsers(usersWithRoles);
       setFilteredUsers(usersWithRoles);
