@@ -30,7 +30,24 @@ const Auth = () => {
   const navigate = useNavigate();
   const { signIn, signUp, user, isAdmin, isDeliveryRider, loading: authLoading, checkingRole } = useAuth();
 
-  // Não redireciona automaticamente no useEffect - apenas após login bem-sucedido
+  useEffect(() => {
+    console.log('Auth page - user:', user, 'authLoading:', authLoading, 'checkingRole:', checkingRole, 'isAdmin:', isAdmin, 'isDeliveryRider:', isDeliveryRider);
+    
+    // Só redireciona se não estiver carregando E não estiver verificando role E tiver um usuário
+    if (!authLoading && !checkingRole && user) {
+      console.log('Redirecting authenticated user...');
+      if (isAdmin) {
+        console.log('Redirecting to /admin');
+        navigate('/admin', { replace: true });
+      } else if (isDeliveryRider) {
+        console.log('Redirecting to /entregas');
+        navigate('/entregas', { replace: true });
+      } else {
+        console.log('Redirecting to /');
+        navigate('/', { replace: true });
+      }
+    }
+  }, [user, isAdmin, isDeliveryRider, navigate, authLoading, checkingRole]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,26 +69,7 @@ const Auth = () => {
         setLoading(false);
       } else {
         toast.success('Login realizado com sucesso!');
-        
-        // Aguardar a verificação de role antes de redirecionar
-        const waitForRole = setInterval(() => {
-          if (!checkingRole) {
-            clearInterval(waitForRole);
-            if (isAdmin) {
-              navigate('/admin');
-            } else if (isDeliveryRider) {
-              navigate('/entregas');
-            } else {
-              navigate('/');
-            }
-          }
-        }, 100);
-        
-        // Timeout de segurança após 5 segundos
-        setTimeout(() => {
-          clearInterval(waitForRole);
-          navigate('/');
-        }, 5000);
+        // O redirecionamento será feito pelo useEffect
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -119,33 +117,13 @@ const Auth = () => {
       }
 
       toast.success('Conta criada com sucesso!');
-      
-      // Aguardar a verificação de role antes de redirecionar
-      const waitForRole = setInterval(() => {
-        if (!checkingRole) {
-          clearInterval(waitForRole);
-          if (isAdmin) {
-            navigate('/admin');
-          } else if (isDeliveryRider) {
-            navigate('/entregas');
-          } else {
-            navigate('/');
-          }
-        }
-      }, 100);
-      
-      // Timeout de segurança após 5 segundos
-      setTimeout(() => {
-        clearInterval(waitForRole);
-        navigate('/');
-      }, 5000);
+      // O redirecionamento será feito pelo useEffect
       
       setSignupName('');
       setSignupPhone('');
       setSignupEmail('');
       setSignupPassword('');
       setSignupConfirmPassword('');
-      setLoading(false);
     } catch (error) {
       console.error('Signup error:', error);
       toast.error('Erro ao criar conta. Tente novamente.');
