@@ -202,7 +202,17 @@ const AdminUsers = () => {
     }
   };
 
-  if (authLoading || loading) {
+  const handlePasswordConfirm = () => {
+    setPasswordConfirmed(true);
+    setShowPasswordDialog(false);
+  };
+
+  const handlePasswordCancel = () => {
+    navigate("/admin");
+  };
+
+  // Mostrar loading apenas durante autenticação inicial
+  if (authLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
@@ -213,25 +223,28 @@ const AdminUsers = () => {
     );
   }
 
-  const handlePasswordConfirm = () => {
-    setPasswordConfirmed(true);
-    setShowPasswordDialog(false);
-  };
-
-  const handlePasswordCancel = () => {
-    navigate("/admin");
-  };
-
-  // Não renderizar conteúdo até que a senha seja confirmada
+  // Mostrar diálogo de senha antes de qualquer conteúdo
   if (!passwordConfirmed) {
     return (
       <PasswordConfirmDialog
         open={showPasswordDialog}
         onConfirm={handlePasswordConfirm}
         onCancel={handlePasswordCancel}
-        title="Acesso Restrito - Gerenciar Usuários"
-        description="Por segurança, confirme sua senha para acessar o gerenciamento de usuários"
+        title="Área Restrita"
+        description="Informe a senha de acesso para gerenciar usuários"
       />
+    );
+  }
+
+  // Loading dos dados dos usuários
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Carregando usuários...</p>
+        </div>
+      </div>
     );
   }
 
