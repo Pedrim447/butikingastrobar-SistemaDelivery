@@ -3,9 +3,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Lock } from "lucide-react";
+
+// Senha fixa para acesso às áreas administrativas
+const ADMIN_ACCESS_PASSWORD = "admin123";
 
 interface PasswordConfirmDialogProps {
   open: boolean;
@@ -19,51 +21,31 @@ export function PasswordConfirmDialog({
   open,
   onConfirm,
   onCancel,
-  title = "Confirmar Senha",
-  description = "Por segurança, confirme sua senha para continuar",
+  title = "Senha de Acesso",
+  description = "Digite a senha de acesso para continuar",
 }: PasswordConfirmDialogProps) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleConfirm = async () => {
+  const handleConfirm = () => {
     if (!password) {
-      toast.error("Digite sua senha");
+      toast.error("Digite a senha");
       return;
     }
 
     setLoading(true);
 
-    try {
-      // Buscar email do usuário atual
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user?.email) {
-        toast.error("Usuário não encontrado");
-        return;
-      }
-
-      // Tentar fazer sign in com a senha fornecida para validar
-      const { error } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: password,
-      });
-
-      if (error) {
-        toast.error("Senha incorreta");
-        setPassword("");
-        return;
-      }
-
-      // Senha correta
-      toast.success("Senha confirmada!");
+    // Validar senha fixa
+    if (password === ADMIN_ACCESS_PASSWORD) {
+      toast.success("Acesso liberado!");
       setPassword("");
       onConfirm();
-    } catch (error) {
-      console.error("Error confirming password:", error);
-      toast.error("Erro ao confirmar senha");
-    } finally {
-      setLoading(false);
+    } else {
+      toast.error("Senha incorreta");
+      setPassword("");
     }
+
+    setLoading(false);
   };
 
   const handleCancel = () => {
@@ -83,13 +65,13 @@ export function PasswordConfirmDialog({
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="password">Senha Atual</Label>
+            <Label htmlFor="password">Senha de Acesso</Label>
             <Input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Digite sua senha"
+              placeholder="Digite a senha"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   handleConfirm();
