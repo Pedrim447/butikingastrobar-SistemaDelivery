@@ -66,9 +66,7 @@ serve(async (req) => {
     });
 
     if (createError) {
-      console.error('Error creating user:', createError);
-      
-      // Tratar erro de email duplicado
+      // Tratar erro de email duplicado (não logar como erro pois é validação esperada)
       const errorMessage = createError.message || '';
       if (errorMessage.includes('already been registered') || 
           errorMessage.includes('User already exists') ||
@@ -82,6 +80,8 @@ serve(async (req) => {
         );
       }
       
+      // Apenas logar erros inesperados
+      console.error('Error creating user:', createError);
       return new Response(
         JSON.stringify({ error: createError.message }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
