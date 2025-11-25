@@ -9,7 +9,14 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Bike } from "lucide-react";
+import { Bike, Plus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 interface DeliveryRider {
   id: string;
@@ -21,12 +28,31 @@ interface DeliveryRider {
   created_at: string;
 }
 
+const createRiderSchema = z.object({
+  name: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
+  phone: z.string().min(10, "Telefone inválido"),
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
+});
+
 export default function AdminDeliveryRiders() {
   const { user, isAdmin, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [riders, setRiders] = useState<DeliveryRider[]>([]);
   const [pendingRiders, setPendingRiders] = useState<DeliveryRider[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  const form = useForm<z.infer<typeof createRiderSchema>>({
+    resolver: zodResolver(createRiderSchema),
+    defaultValues: {
+      name: "",
+      phone: "",
+      email: "",
+      password: "",
+    },
+  });
 
   useEffect(() => {
     // Aguarda o carregamento da autenticação
@@ -148,6 +174,60 @@ export default function AdminDeliveryRiders() {
     }
   };
 
+  const onSubmit = async (values: z.infer<typeof createRiderSchema>) => {
+    try {
+      setCreating(true);
+
+      // 1. Criar usuário no auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: values.email,
+        password: values.password,
+        options: {
+          data: {
+            name: values.name,
+            phone: values.phone,
+          },
+        },
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("Erro ao criar usuário");
+
+      // 2. Criar registro na tabela delivery_riders
+      const { error: riderError } = await supabase
+        .from("delivery_riders")
+        .insert({
+          user_id: authData.user.id,
+          name: values.name,
+          phone: values.phone,
+          approved: true,
+          is_active: true,
+        });
+
+      if (riderError) throw riderError;
+
+      // 3. Adicionar role de delivery_rider
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({
+          user_id: authData.user.id,
+          role: "delivery_rider",
+        });
+
+      if (roleError) throw roleError;
+
+      toast.success("Motoboy criado com sucesso!");
+      setDialogOpen(false);
+      form.reset();
+      fetchRiders();
+    } catch (error: any) {
+      console.error("Erro ao criar motoboy:", error);
+      toast.error(error.message || "Erro ao criar motoboy");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -168,6 +248,83 @@ export default function AdminDeliveryRiders() {
               <p className="text-muted-foreground">Gerencie os entregadores</p>
             </div>
             <div className="flex gap-2">
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Criar Motoboy
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Criar Novo Motoboy</DialogTitle>
+                  </DialogHeader>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nome Completo</FormLabel>
+                            <FormControl>
+                              <Input placeholder="João Silva" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Telefone</FormLabel>
+                            <FormControl>
+                              <Input placeholder="(11) 99999-9999" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="joao@email.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Senha</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="Mínimo 6 caracteres" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                          Cancelar
+                        </Button>
+                        <Button type="submit" disabled={creating}>
+                          {creating ? "Criando..." : "Criar Motoboy"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
               <Button variant="outline" onClick={() => navigate('/admin')}>
                 Voltar
               </Button>
