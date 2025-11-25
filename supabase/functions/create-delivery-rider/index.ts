@@ -95,6 +95,33 @@ serve(async (req) => {
       );
     }
 
+    // Aguardar um momento para garantir que o trigger handle_new_user executou
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Deletar a role padrão 'user' que o trigger criou
+    await supabaseClient
+      .from('user_roles')
+      .delete()
+      .eq('user_id', newUser.user.id)
+      .eq('role', 'user');
+
+    // Inserir role de delivery_rider
+    const { error: roleError } = await supabaseClient
+      .from('user_roles')
+      .insert({
+        user_id: newUser.user.id,
+        role: 'delivery_rider',
+      });
+
+    if (roleError) {
+      console.error('Error creating role:', roleError);
+      await supabaseClient.auth.admin.deleteUser(newUser.user.id);
+      return new Response(
+        JSON.stringify({ error: 'Failed to assign delivery rider role' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
     // Atualizar perfil com dados de delivery rider
     const { error: profileError } = await supabaseClient
       .from('profiles')
@@ -114,25 +141,6 @@ serve(async (req) => {
         JSON.stringify({ error: 'Failed to update profile' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
-    }
-
-    // Adicionar role de delivery_rider
-    const { error: roleError } = await supabaseClient
-      .from('user_roles')
-      .insert({
-        user_id: newUser.user.id,
-        role: 'delivery_rider',
-      });
-
-    if (roleError) {
-      console.error('Error creating role:', roleError);
-      // Não falhar se a role já existe (trigger pode ter criado)
-      if (!roleError.message.includes('duplicate')) {
-        return new Response(
-          JSON.stringify({ error: 'Failed to assign role' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        );
-      }
     }
 
     return new Response(
