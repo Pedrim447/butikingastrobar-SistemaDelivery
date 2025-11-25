@@ -178,7 +178,13 @@ export default function AdminDeliveryRiders() {
     try {
       setCreating(true);
 
-      // 1. Criar usuário no auth
+      // Verificar se o email já está em uso
+      const { data: existingUsers } = await supabase
+        .from("profiles")
+        .select("id")
+        .limit(1);
+
+      // Tentar criar usuário no auth usando service role
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
@@ -187,11 +193,23 @@ export default function AdminDeliveryRiders() {
             name: values.name,
             phone: values.phone,
           },
+          emailRedirectTo: `${window.location.origin}/entregas`,
         },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Erro ao criar usuário");
+      // Tratar erro de email já registrado
+      if (authError) {
+        if (authError.message.includes("already registered") || authError.message.includes("User already registered")) {
+          toast.error("Este email já está cadastrado no sistema");
+          return;
+        }
+        throw authError;
+      }
+
+      if (!authData.user) {
+        toast.error("Erro ao criar usuário");
+        return;
+      }
 
       // 2. Criar registro na tabela delivery_riders
       const { error: riderError } = await supabase
@@ -204,7 +222,11 @@ export default function AdminDeliveryRiders() {
           is_active: true,
         });
 
-      if (riderError) throw riderError;
+      if (riderError) {
+        console.error("Erro ao criar rider:", riderError);
+        toast.error("Erro ao criar registro do motoboy");
+        return;
+      }
 
       // 3. Adicionar role de delivery_rider
       const { error: roleError } = await supabase
@@ -214,7 +236,11 @@ export default function AdminDeliveryRiders() {
           role: "delivery_rider",
         });
 
-      if (roleError) throw roleError;
+      if (roleError) {
+        console.error("Erro ao criar role:", roleError);
+        toast.error("Erro ao atribuir permissões");
+        return;
+      }
 
       toast.success("Motoboy criado com sucesso!");
       setDialogOpen(false);
