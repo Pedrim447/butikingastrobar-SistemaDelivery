@@ -84,27 +84,13 @@ export default function DeliveryNavigation() {
 
     const fetchOrder = async () => {
       try {
-        const { data: riderData } = await supabase
-          .from("delivery_riders")
-          .select("id")
-          .eq("user_id", user.id)
-          .single();
-
-        if (!mounted) return;
-
-        if (!riderData) {
-          toast.error("Você não é um entregador cadastrado");
-          navigate("/");
-          return;
-        }
-
-        setRiderId(riderData.id);
+        setRiderId(user.id);
 
         const { data: orderData, error } = await supabase
           .from("orders")
           .select("*")
           .eq("id", orderId)
-          .eq("delivery_rider_id", riderData.id)
+          .eq("delivery_rider_id", user.id)
           .single();
 
         if (!mounted) return;

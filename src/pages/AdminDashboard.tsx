@@ -47,7 +47,7 @@ interface DeliveryRider {
   id: string;
   name: string;
   phone: string;
-  is_active: boolean;
+  delivery_active: boolean;
 }
 
 export default function AdminDashboard() {
@@ -102,12 +102,23 @@ export default function AdminDashboard() {
 
   const fetchDeliveryRiders = async () => {
     try {
-      // Busca motoboys aprovados e ativos
+      // Buscar user_ids com role delivery_rider
+      const { data: rolesData, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "delivery_rider");
+
+      if (rolesError) throw rolesError;
+
+      const userIds = rolesData?.map(r => r.user_id) || [];
+
+      // Busca perfis de motoboys aprovados e ativos
       const { data, error } = await supabase
-        .from("delivery_riders")
-        .select("id, name, phone, is_active")
-        .eq("is_active", true)
-        .eq("approved", true)
+        .from("profiles")
+        .select("id, name, phone, delivery_active")
+        .in("id", userIds)
+        .eq("delivery_active", true)
+        .eq("delivery_approved", true)
         .order("name");
 
       if (error) throw error;

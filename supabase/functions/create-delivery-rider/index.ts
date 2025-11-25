@@ -95,23 +95,23 @@ serve(async (req) => {
       );
     }
 
-    // Criar registro na tabela delivery_riders
-    const { error: riderError } = await supabaseClient
-      .from('delivery_riders')
-      .insert({
-        user_id: newUser.user.id,
+    // Atualizar perfil com dados de delivery rider
+    const { error: profileError } = await supabaseClient
+      .from('profiles')
+      .update({
         name,
         phone,
-        approved: true,
-        is_active: true,
-      });
+        delivery_approved: true,
+        delivery_active: true,
+      })
+      .eq('id', newUser.user.id);
 
-    if (riderError) {
-      console.error('Error creating delivery rider:', riderError);
+    if (profileError) {
+      console.error('Error updating profile:', profileError);
       // Tentar limpar o usuário criado
       await supabaseClient.auth.admin.deleteUser(newUser.user.id);
       return new Response(
-        JSON.stringify({ error: 'Failed to create delivery rider record' }),
+        JSON.stringify({ error: 'Failed to update profile' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
