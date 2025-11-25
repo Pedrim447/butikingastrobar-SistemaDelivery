@@ -416,29 +416,48 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
       riderMarker.current.remove();
     }
 
-    // Create motorcycle marker element with animation
+    // Create motorcycle marker element with clean design
     const el = document.createElement("div");
     el.className = "rider-marker";
     el.innerHTML = `
-      <svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="25" cy="25" r="24" fill="#8B5CF6" stroke="white" stroke-width="2" class="animate-pulse"/>
-        <g transform="translate(10, 13)">
-          <path d="M20 11L17 11L15.5 7L11 7L11 9L14 9L15 11L12 11L10 15L14 15L16 18L18 18L20 11Z" fill="white"/>
-          <circle cx="11" cy="19" r="3" fill="white"/>
-          <circle cx="19" cy="19" r="3" fill="white"/>
-          <path d="M13 11L16 11" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+      <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Subtle shadow/glow effect -->
+        <circle cx="30" cy="30" r="28" fill="#8B5CF6" opacity="0.15"/>
+        
+        <!-- Main motorcycle icon -->
+        <g transform="translate(15, 18)">
+          <!-- Motorcycle body -->
+          <path d="M25 8L22 8L20 3L14 3L14 5.5L18 5.5L19.5 8L15 8L12 14L17 14L19.5 18L22 18L25 8Z" fill="#8B5CF6" stroke="#8B5CF6" stroke-width="0.5"/>
+          
+          <!-- Back wheel -->
+          <circle cx="13" cy="20" r="4" fill="white" stroke="#8B5CF6" stroke-width="1.5"/>
+          <circle cx="13" cy="20" r="2" fill="#8B5CF6"/>
+          
+          <!-- Front wheel -->
+          <circle cx="23" cy="20" r="4" fill="white" stroke="#8B5CF6" stroke-width="1.5"/>
+          <circle cx="23" cy="20" r="2" fill="#8B5CF6"/>
+          
+          <!-- Handlebar -->
+          <path d="M19 8L22 8" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round"/>
+          
+          <!-- Rider (simplified) -->
+          <circle cx="16" cy="6" r="2.5" fill="#8B5CF6"/>
         </g>
       </svg>
     `;
-    el.style.width = "50px";
-    el.style.height = "50px";
+    el.style.width = "60px";
+    el.style.height = "60px";
     el.style.cursor = "pointer";
     el.style.transition = "all 0.5s ease-out";
+    el.style.transformOrigin = "center center";
 
     // Add new marker with smooth animation
-    riderMarker.current = new mapboxgl.Marker(el)
+    riderMarker.current = new mapboxgl.Marker({ 
+      element: el,
+      anchor: 'center'
+    })
       .setLngLat([longitude, latitude])
-      .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML("<strong>🏍️ Entregador</strong><br>Localização em tempo real"))
+      .setPopup(new mapboxgl.Popup({ offset: 30 }).setHTML("<strong>🏍️ Entregador</strong><br>Localização em tempo real"))
       .addTo(map.current);
 
     console.log("✅ Marcador do entregador adicionado ao mapa");
@@ -466,18 +485,11 @@ export const OrderTrackingMap: React.FC<OrderTrackingMapProps> = ({
   return (
     <div className="relative">
       <style>{`
-        @keyframes pulse {
-          0%, 100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-          50% {
-            transform: scale(1.1);
-            opacity: 0.8;
-          }
-        }
         .rider-marker {
-          animation: pulse 2s infinite;
+          filter: drop-shadow(0 4px 6px rgba(139, 92, 246, 0.3));
+        }
+        .rider-marker:hover {
+          filter: drop-shadow(0 6px 8px rgba(139, 92, 246, 0.5));
         }
       `}</style>
       <div ref={mapContainer} className="h-[500px] rounded-lg shadow-lg" />
