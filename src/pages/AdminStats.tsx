@@ -7,6 +7,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
+import { PasswordConfirmDialog } from "@/components/PasswordConfirmDialog";
 import {
   BarChart,
   Bar,
@@ -38,6 +39,8 @@ const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
 export default function AdminStats() {
   const { user, isAdmin, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [passwordConfirmed, setPasswordConfirmed] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [dailyStats, setDailyStats] = useState<DailyStats>({
     revenue: 0,
     orders: 0,
@@ -68,8 +71,14 @@ export default function AdminStats() {
       return;
     }
 
+    // Se não confirmou a senha ainda, mostrar dialog
+    if (!passwordConfirmed) {
+      setShowPasswordDialog(true);
+      return;
+    }
+
     fetchStats();
-  }, [user, isAdmin, navigate, authLoading]);
+  }, [user, isAdmin, navigate, authLoading, passwordConfirmed]);
 
   const fetchStats = async () => {
     try {
@@ -141,6 +150,28 @@ export default function AdminStats() {
     await signOut();
     navigate("/");
   };
+
+  const handlePasswordConfirm = () => {
+    setPasswordConfirmed(true);
+    setShowPasswordDialog(false);
+  };
+
+  const handlePasswordCancel = () => {
+    navigate("/admin");
+  };
+
+  // Não renderizar conteúdo até que a senha seja confirmada
+  if (!passwordConfirmed) {
+    return (
+      <PasswordConfirmDialog
+        open={showPasswordDialog}
+        onConfirm={handlePasswordConfirm}
+        onCancel={handlePasswordCancel}
+        title="Acesso Restrito - Estatísticas"
+        description="Por segurança, confirme sua senha para acessar as estatísticas do sistema"
+      />
+    );
+  }
 
   return (
     <SidebarProvider>
