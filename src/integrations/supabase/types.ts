@@ -40,7 +40,7 @@ export type Database = {
       }
       delivery_rider_locations: {
         Row: {
-          delivery_rider_id: string
+          delivery_rider_id: string | null
           id: string
           latitude: number
           longitude: number
@@ -48,7 +48,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          delivery_rider_id: string
+          delivery_rider_id?: string | null
           id?: string
           latitude: number
           longitude: number
@@ -56,7 +56,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          delivery_rider_id?: string
+          delivery_rider_id?: string | null
           id?: string
           latitude?: number
           longitude?: number
@@ -65,13 +65,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "delivery_rider_locations_delivery_rider_id_fkey"
-            columns: ["delivery_rider_id"]
-            isOneToOne: false
-            referencedRelation: "delivery_riders"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "delivery_rider_locations_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
@@ -79,39 +72,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      delivery_riders: {
-        Row: {
-          approved: boolean | null
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          name: string
-          phone: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          approved?: boolean | null
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          phone: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          approved?: boolean | null
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          phone?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
       }
       guest_customers: {
         Row: {
@@ -287,13 +247,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "orders_delivery_rider_id_fkey"
-            columns: ["delivery_rider_id"]
-            isOneToOne: false
-            referencedRelation: "delivery_riders"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "orders_guest_token_fkey"
             columns: ["guest_token"]
             isOneToOne: false
@@ -349,6 +302,8 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          delivery_active: boolean | null
+          delivery_approved: boolean | null
           id: string
           name: string
           phone: string
@@ -356,6 +311,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          delivery_active?: boolean | null
+          delivery_approved?: boolean | null
           id: string
           name: string
           phone: string
@@ -363,6 +320,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          delivery_active?: boolean | null
+          delivery_approved?: boolean | null
           id?: string
           name?: string
           phone?: string

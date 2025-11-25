@@ -11,7 +11,6 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Bike, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,11 +19,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 
 interface DeliveryRider {
   id: string;
-  user_id: string;
   name: string;
   phone: string;
-  is_active: boolean;
-  approved: boolean;
+  delivery_approved: boolean;
+  delivery_active: boolean;
   created_at: string;
 }
 
@@ -55,7 +53,6 @@ export default function AdminDeliveryRiders() {
   });
 
   useEffect(() => {
-    // Aguarda o carregamento da autenticação
     if (authLoading) return;
 
     if (!user) {
@@ -75,28 +72,47 @@ export default function AdminDeliveryRiders() {
     try {
       setLoading(true);
       
-      // Buscar motoboys aprovados
+      // Buscar perfis com role de delivery_rider
+      const { data: rolesData, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "delivery_rider");
+
+      if (rolesError) throw rolesError;
+
+      const userIds = rolesData?.map(r => r.user_id) || [];
+
+      if (userIds.length === 0) {
+        setRiders([]);
+        setPendingRiders([]);
+        return;
+      }
+
+      // Buscar perfis aprovados
       const { data: approvedData, error: approvedError } = await supabase
-        .from("delivery_riders")
+        .from("profiles")
         .select("*")
-        .eq("approved", true)
+        .in("id", userIds)
+        .eq("delivery_approved", true)
         .order("created_at", { ascending: false });
 
       if (approvedError) throw approvedError;
-      setRiders(approvedData || []);
 
-      // Buscar motoboys pendentes de aprovação
+      // Buscar perfis pendentes
       const { data: pendingData, error: pendingError } = await supabase
-        .from("delivery_riders")
+        .from("profiles")
         .select("*")
-        .eq("approved", false)
+        .in("id", userIds)
+        .eq("delivery_approved", false)
         .order("created_at", { ascending: false });
 
       if (pendingError) throw pendingError;
+
+      setRiders(approvedData || []);
       setPendingRiders(pendingData || []);
     } catch (error) {
       console.error("Erro ao buscar motoboys:", error);
-      toast.error("Erro ao carregar motoboys");
+      toast.error("Erro ao carregar lista de motoboys");
     } finally {
       setLoading(false);
     }
@@ -105,8 +121,8 @@ export default function AdminDeliveryRiders() {
   const approveRider = async (riderId: string) => {
     try {
       const { error } = await supabase
-        .from("delivery_riders")
-        .update({ approved: true, is_active: true })
+        .from("profiles")
+        .update({ delivery_approved: true, delivery_active: true })
         .eq("id", riderId);
 
       if (error) throw error;
@@ -121,30 +137,27 @@ export default function AdminDeliveryRiders() {
 
   const rejectRider = async (riderId: string) => {
     try {
-      // Buscar user_id do rider
-      const { data: riderData } = await supabase
-        .from("delivery_riders")
-        .select("user_id")
-        .eq("id", riderId)
-        .single();
-
-      if (!riderData) return;
-
-      // Deletar role
-      await supabase
+      // Remover role de delivery_rider
+      const { error: roleError } = await supabase
         .from("user_roles")
         .delete()
-        .eq("user_id", riderData.user_id);
+        .eq("user_id", riderId)
+        .eq("role", "delivery_rider");
 
-      // Deletar rider
-      const { error } = await supabase
-        .from("delivery_riders")
-        .delete()
+      if (roleError) throw roleError;
+
+      // Resetar campos de delivery no perfil
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ 
+          delivery_approved: false, 
+          delivery_active: false 
+        })
         .eq("id", riderId);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
-      toast.success("Cadastro rejeitado");
+      toast.success("Motoboy rejeitado");
       fetchRiders();
     } catch (error) {
       console.error("Erro ao rejeitar motoboy:", error);
@@ -160,17 +173,17 @@ export default function AdminDeliveryRiders() {
   const toggleRiderStatus = async (riderId: string, currentStatus: boolean) => {
     try {
       const { error } = await supabase
-        .from("delivery_riders")
-        .update({ is_active: !currentStatus })
+        .from("profiles")
+        .update({ delivery_active: !currentStatus })
         .eq("id", riderId);
 
       if (error) throw error;
 
-      toast.success("Status atualizado com sucesso!");
+      toast.success(`Motoboy ${!currentStatus ? 'ativado' : 'desativado'} com sucesso!`);
       fetchRiders();
     } catch (error) {
-      console.error("Erro ao atualizar status:", error);
-      toast.error("Erro ao atualizar status");
+      console.error("Erro ao alterar status:", error);
+      toast.error("Erro ao alterar status do motoboy");
     }
   };
 
@@ -178,7 +191,6 @@ export default function AdminDeliveryRiders() {
     try {
       setCreating(true);
 
-      // Obter token de autenticação
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -186,7 +198,6 @@ export default function AdminDeliveryRiders() {
         return;
       }
 
-      // Chamar edge function para criar motoboy
       const response = await supabase.functions.invoke('create-delivery-rider', {
         body: {
           name: values.name,
@@ -198,11 +209,9 @@ export default function AdminDeliveryRiders() {
 
       console.log("Response:", response);
 
-      // Verificar se houve erro na invocação
       if (response.error) {
         console.error("Function invocation error:", response.error);
         
-        // Tentar extrair mensagem do body se existir
         if (response.data?.error) {
           if (response.data.code === 'EMAIL_EXISTS') {
             toast.error("Este email já está cadastrado. Use outro email.");
@@ -215,7 +224,6 @@ export default function AdminDeliveryRiders() {
         return;
       }
 
-      // Verificar resposta de sucesso
       const data = response.data;
       
       if (data?.error) {
@@ -352,7 +360,6 @@ export default function AdminDeliveryRiders() {
             </div>
           </div>
 
-          {/* Pendentes de Aprovação */}
           {pendingRiders.length > 0 && (
             <div className="mb-8">
               <h2 className="text-xl font-semibold mb-4">Aguardando Aprovação ({pendingRiders.length})</h2>
@@ -393,7 +400,6 @@ export default function AdminDeliveryRiders() {
             </div>
           )}
 
-          {/* Motoboys Aprovados */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Motoboys Ativos</h2>
             <div className="rounded-md border">
@@ -422,14 +428,14 @@ export default function AdminDeliveryRiders() {
                         </TableCell>
                         <TableCell>{rider.phone}</TableCell>
                         <TableCell>
-                          <Badge variant={rider.is_active ? "default" : "secondary"}>
-                            {rider.is_active ? "Ativo" : "Inativo"}
+                          <Badge variant={rider.delivery_active ? "default" : "secondary"}>
+                            {rider.delivery_active ? "Ativo" : "Inativo"}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <Switch
-                            checked={rider.is_active}
-                            onCheckedChange={() => toggleRiderStatus(rider.id, rider.is_active)}
+                            checked={rider.delivery_active}
+                            onCheckedChange={() => toggleRiderStatus(rider.id, rider.delivery_active)}
                           />
                         </TableCell>
                       </TableRow>

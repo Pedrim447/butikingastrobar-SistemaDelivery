@@ -85,17 +85,28 @@ const AdminUsers = () => {
 
       if (rolesError) throw rolesError;
 
-      // Buscar dados dos delivery riders
-      const { data: riders, error: ridersError } = await supabase
-        .from("delivery_riders")
-        .select("user_id, name, phone");
+      // Buscar user_ids com role delivery_rider
+      const { data: riderRoles, error: ridersError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "delivery_rider");
 
       if (ridersError) throw ridersError;
+
+      const riderUserIds = riderRoles?.map(r => r.user_id) || [];
+      
+      // Buscar profiles dos delivery riders
+      const { data: riders, error: ridersProfileError } = await supabase
+        .from("profiles")
+        .select("id, name, phone")
+        .in("id", riderUserIds);
+
+      if (ridersProfileError) throw ridersProfileError;
 
       // Combinar dados
       const usersWithRoles: UserWithRole[] = authUsers.users.map((authUser) => {
         const userRole = roles?.find((r) => r.user_id === authUser.id);
-        const riderData = riders?.find((r) => r.user_id === authUser.id);
+        const riderData = riders?.find((r) => r.id === authUser.id);
 
         return {
           id: authUser.id,
@@ -165,31 +176,30 @@ const AdminUsers = () => {
 
       if (roleError) throw roleError;
 
-      // Se for delivery_rider, criar/atualizar perfil de entregador
+      // Se for delivery_rider, atualizar perfil
       if (newRole === 'delivery_rider') {
-        const { error: riderError } = await supabase
-          .from("delivery_riders")
-          .upsert({
-            user_id: selectedUser.id,
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
             name: riderName,
             phone: riderPhone,
-            approved: true,
-            is_active: true,
-          }, {
-            onConflict: 'user_id'
-          });
+            delivery_approved: true,
+            delivery_active: true,
+          })
+          .eq("id", selectedUser.id);
 
-        if (riderError) throw riderError;
+        if (profileError) throw profileError;
       } else {
-        // Se não for mais delivery_rider, remover da tabela delivery_riders
-        const { error: deleteRiderError } = await supabase
-          .from("delivery_riders")
-          .delete()
-          .eq("user_id", selectedUser.id);
+        // Se não for mais delivery_rider, resetar campos
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            delivery_approved: false,
+            delivery_active: false,
+          })
+          .eq("id", selectedUser.id);
 
-        if (deleteRiderError && deleteRiderError.code !== 'PGRST116') {
-          console.error("Error deleting rider:", deleteRiderError);
-        }
+        if (profileError) throw profileError;
       }
 
       toast.success("Função atualizada com sucesso!");

@@ -61,22 +61,11 @@ export default function DeliveryDashboard() {
     try {
       setLoading(true);
       
-      // First get the delivery rider id
-      const { data: riderData, error: riderError } = await supabase
-        .from("delivery_riders")
-        .select("id")
-        .eq("user_id", user?.id)
-        .single();
-
-      if (riderError) throw riderError;
-
-      setRiderId(riderData.id);
-
-      // Then fetch orders assigned to this rider
+      // Fetch orders assigned to this user
       const { data: ordersData, error } = await supabase
         .from("orders")
         .select("*, order_items(*)")
-        .eq("delivery_rider_id", riderData.id)
+        .eq("delivery_rider_id", user?.id)
         .in("status", ["preparing", "out_for_delivery"])
         .order("created_at", { ascending: false });
 
