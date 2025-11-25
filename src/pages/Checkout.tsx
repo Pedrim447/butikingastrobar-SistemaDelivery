@@ -88,10 +88,21 @@ const Checkout = () => {
     }
   }, [addressData]);
 
-  // Load user profile data on mount - sempre carrega quando usuário está logado
+  // Load user profile data on mount - SOMENTE na primeira carga
   useEffect(() => {
     const loadUserProfile = async () => {
       if (!user) return;
+      
+      // Se já tem dados salvos no localStorage, não sobrescreve
+      const savedForm = localStorage.getItem('checkout_form');
+      if (savedForm) {
+        try {
+          const parsed = JSON.parse(savedForm);
+          if (parsed.name && parsed.phone) {
+            return; // Já tem dados, não carrega do perfil
+          }
+        } catch {}
+      }
       
       try {
         const { data, error } = await supabase
@@ -103,11 +114,10 @@ const Checkout = () => {
         if (error) throw error;
         
         if (data) {
-          // Sempre atualiza nome e telefone do perfil
           setFormData(prev => ({
             ...prev,
-            name: data.name || prev.name,
-            phone: data.phone || prev.phone,
+            name: data.name,
+            phone: data.phone,
           }));
         }
       } catch (error) {
@@ -120,29 +130,37 @@ const Checkout = () => {
     }
   }, [user]);
 
-  // Load guest data on mount - carrega dados do guest
+  // Load guest data on mount - SOMENTE na primeira carga
   useEffect(() => {
-    if (!guestData || user) return; // Não carrega guest se usuário está logado
+    if (!guestData) return;
     
-    // Sempre carrega dados do guest (mas não sobrescreve se usuário estiver logado)
+    // Se já tem dados salvos no localStorage, não sobrescreve
+    const savedForm = localStorage.getItem('checkout_form');
+    if (savedForm) {
+      try {
+        const parsed = JSON.parse(savedForm);
+        if (parsed.name && parsed.phone && parsed.cep) {
+          return; // Já tem dados, não carrega do guest
+        }
+      } catch {}
+    }
+    
     setFormData(prev => ({
       ...prev,
-      name: guestData.name || prev.name,
-      phone: guestData.phone || prev.phone,
-      cep: guestData.address.cep || prev.cep,
-      address: guestData.address.street || prev.address,
-      number: guestData.address.number || prev.number,
-      reference: guestData.address.complement || prev.reference,
-      neighborhood: guestData.address.neighborhood || prev.neighborhood,
+      name: guestData.name,
+      phone: guestData.phone,
+      cep: guestData.address.cep,
+      address: guestData.address.street,
+      number: guestData.address.number || '',
+      reference: guestData.address.complement || '',
+      neighborhood: guestData.address.neighborhood,
     }));
     
-    if (guestData.address.city && guestData.address.state) {
-      setAddressData({
-        city: guestData.address.city,
-        state: guestData.address.state,
-      });
-    }
-  }, [guestData, user]);
+    setAddressData({
+      city: guestData.address.city,
+      state: guestData.address.state,
+    });
+  }, [guestData]);
 
   const subtotal = getCartTotal();
   const deliveryFee = 5.0;
@@ -349,26 +367,12 @@ const Checkout = () => {
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="name" className="text-xs">Nome *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Seu nome completo"
-                    className="h-9 text-sm"
-                    required
-                  />
+                  <p className="text-xs text-muted-foreground mb-1">Nome</p>
+                  <p className="text-sm font-medium">{formData.name}</p>
                 </div>
                 <div>
-                  <Label htmlFor="phone" className="text-xs">Telefone *</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="(00) 00000-0000"
-                    className="h-9 text-sm"
-                    required
-                  />
+                  <p className="text-xs text-muted-foreground mb-1">Telefone</p>
+                  <p className="text-sm font-medium">{formData.phone}</p>
                 </div>
               </div>
 
