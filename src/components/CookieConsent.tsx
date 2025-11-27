@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Cookie, X } from 'lucide-react';
+import { safeStorage } from '@/lib/safeStorage';
 
 const COOKIE_CONSENT_KEY = 'cookie_consent_accepted';
 
@@ -9,19 +10,19 @@ export const CookieConsent = () => {
   const [showConsent, setShowConsent] = useState(false);
 
   useEffect(() => {
-    const hasConsent = localStorage.getItem(COOKIE_CONSENT_KEY);
+    const hasConsent = safeStorage.getItem(COOKIE_CONSENT_KEY);
     if (!hasConsent) {
       setShowConsent(true);
     }
   }, []);
 
   const handleAccept = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'true');
+    safeStorage.setItem(COOKIE_CONSENT_KEY, 'true');
     setShowConsent(false);
   };
 
   const handleDecline = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'false');
+    safeStorage.setItem(COOKIE_CONSENT_KEY, 'false');
     setShowConsent(false);
   };
 
@@ -39,7 +40,7 @@ export const CookieConsent = () => {
               <h3 className="text-lg font-bold mb-2">🍪 Cookies e Dados Locais</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Para melhorar sua experiência e permitir que você faça pedidos como <strong>convidado</strong> sem criar conta, 
-                salvamos seus dados (nome, telefone, endereço) no navegador usando cookies e localStorage. 
+                salvamos seus dados (nome, telefone, endereço) no navegador de forma segura. 
                 Assim, você não precisa digitar tudo novamente nas próximas compras!
               </p>
               <div className="flex flex-col sm:flex-row gap-2">

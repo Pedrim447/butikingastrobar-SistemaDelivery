@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { safeStorage } from '@/lib/safeStorage';
 
 export interface GuestAddress {
   street: string;
@@ -27,7 +28,7 @@ export const useGuestMode = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem(GUEST_TOKEN_KEY);
+    const token = safeStorage.getItem(GUEST_TOKEN_KEY);
     if (token) {
       setGuestToken(token);
       loadGuestData(token);
@@ -95,7 +96,7 @@ export const useGuestMode = () => {
       if (error) throw error;
 
       const token = data.guest_token;
-      localStorage.setItem(GUEST_TOKEN_KEY, token);
+      safeStorage.setItem(GUEST_TOKEN_KEY, token);
       setGuestToken(token);
       
       // Define os dados diretamente sem recarregar
@@ -191,7 +192,7 @@ export const useGuestMode = () => {
   };
 
   const clearGuestData = () => {
-    localStorage.removeItem(GUEST_TOKEN_KEY);
+    safeStorage.removeItem(GUEST_TOKEN_KEY);
     setGuestToken(null);
     setGuestData(null);
   };

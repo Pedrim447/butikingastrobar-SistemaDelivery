@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Product } from '@/types';
+import { safeStorage } from '@/lib/safeStorage';
 
 interface CartContextType {
   cart: CartItem[];
@@ -17,7 +18,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
-      const saved = localStorage.getItem('cart');
+      const saved = safeStorage.getItem('cart');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -26,8 +27,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     try {
-      // Sempre salva no localStorage, independente de cookies
-      localStorage.setItem('cart', JSON.stringify(cart));
+      // Sempre salva no storage disponível, independente de cookies
+      safeStorage.setItem('cart', JSON.stringify(cart));
     } catch (error) {
       console.error('Erro ao salvar carrinho:', error);
     }
