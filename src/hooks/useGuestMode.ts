@@ -63,9 +63,15 @@ export const useGuestMode = () => {
             cep: data.address_cep,
           },
         });
+      } else {
+        // Token existe no storage mas não tem dados no banco - limpar token órfão
+        console.warn('Guest token found but no data in database. Clearing orphaned token.');
+        clearGuestData();
       }
     } catch (error) {
       console.error('Error loading guest data:', error);
+      // Em caso de erro, limpar token para forçar novo cadastro
+      clearGuestData();
     } finally {
       setLoading(false);
     }
