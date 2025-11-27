@@ -31,25 +31,22 @@ const Auth = () => {
   const { signIn, signUp, user, isAdmin, isDeliveryRider, loading: authLoading, checkingRole } = useAuth();
 
   useEffect(() => {
-    console.log('Auth page - user:', user, 'authLoading:', authLoading, 'checkingRole:', checkingRole, 'isAdmin:', isAdmin, 'isDeliveryRider:', isDeliveryRider);
-    
-    // Só redireciona se não estiver carregando E não estiver verificando role E tiver um usuário
+    // Só redireciona se:
+    // 1. Não estiver carregando auth
+    // 2. Não estiver verificando role
+    // 3. Tiver um usuário logado
     if (!authLoading && !checkingRole && user) {
-      console.log('Ready to redirect - isAdmin:', isAdmin, 'isDeliveryRider:', isDeliveryRider);
-      
-      // Aguardar um momento para garantir que as roles foram atualizadas
-      setTimeout(() => {
-        if (isAdmin) {
-          console.log('Redirecting to /admin');
-          navigate('/admin', { replace: true });
-        } else if (isDeliveryRider) {
-          console.log('Redirecting to /entregas');
-          navigate('/entregas', { replace: true });
-        } else {
-          console.log('Redirecting to /');
-          navigate('/', { replace: true });
-        }
-      }, 300);
+      // Redireciona direto sem delay
+      if (isAdmin) {
+        console.log('Redirecting admin to /admin');
+        navigate('/admin', { replace: true });
+      } else if (isDeliveryRider) {
+        console.log('Redirecting delivery rider to /entregas');
+        navigate('/entregas', { replace: true });
+      } else {
+        console.log('Redirecting user to /');
+        navigate('/', { replace: true });
+      }
     }
   }, [user, isAdmin, isDeliveryRider, navigate, authLoading, checkingRole]);
 
@@ -72,9 +69,9 @@ const Auth = () => {
         );
         setLoading(false);
       } else {
-        toast.success('Login realizado com sucesso!');
-        setLoading(false);
-        // O redirecionamento será feito pelo useEffect
+        toast.success('Login realizado!');
+        // O redirecionamento será feito pelo useEffect assim que as roles estiverem disponíveis
+        // Não desabilitamos o loading aqui para evitar múltiplos cliques
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -121,15 +118,9 @@ const Auth = () => {
         return;
       }
 
-      toast.success('Conta criada com sucesso!');
-      setLoading(false);
-      // O redirecionamento será feito pelo useEffect
-      
-      setSignupName('');
-      setSignupPhone('');
-      setSignupEmail('');
-      setSignupPassword('');
-      setSignupConfirmPassword('');
+      toast.success('Conta criada!');
+      // O redirecionamento será feito pelo useEffect assim que as roles estiverem disponíveis
+      // Não desabilitamos o loading aqui para evitar múltiplos cliques
     } catch (error) {
       console.error('Signup error:', error);
       toast.error('Erro ao criar conta. Tente novamente.');

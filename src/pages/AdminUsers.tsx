@@ -45,7 +45,7 @@ interface UserWithRole {
 
 const AdminUsers = () => {
   const navigate = useNavigate();
-  const { user, isAdmin, loading: authLoading, signOut } = useAuth();
+  const { user, isAdmin, loading: authLoading, checkingRole, signOut } = useAuth();
   const [passwordConfirmed, setPasswordConfirmed] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [users, setUsers] = useState<UserWithRole[]>([]);
@@ -59,14 +59,17 @@ const AdminUsers = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    } else if (!authLoading && !isAdmin) {
-      navigate("/");
-    } else if (!authLoading && isAdmin && !passwordConfirmed) {
+    // Aguarda o carregamento completo da autenticação E verificação de role
+    if (authLoading || checkingRole) return;
+    
+    if (!user) {
+      navigate("/auth", { replace: true });
+    } else if (!isAdmin) {
+      navigate("/", { replace: true });
+    } else if (!passwordConfirmed) {
       setShowPasswordDialog(true);
     }
-  }, [user, isAdmin, authLoading, navigate, passwordConfirmed]);
+  }, [user, isAdmin, authLoading, checkingRole, navigate, passwordConfirmed]);
 
   useEffect(() => {
     if (isAdmin && passwordConfirmed) {

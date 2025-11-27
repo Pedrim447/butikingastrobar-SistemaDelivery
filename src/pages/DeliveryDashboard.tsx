@@ -32,7 +32,7 @@ interface Order {
 }
 
 export default function DeliveryDashboard() {
-  const { user, isDeliveryRider, signOut, loading: authLoading } = useAuth();
+  const { user, isDeliveryRider, signOut, loading: authLoading, checkingRole } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,21 +41,24 @@ export default function DeliveryDashboard() {
   const [riderId, setRiderId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Aguarda o carregamento da autenticação
-    if (authLoading) return;
+    // Aguarda o carregamento completo da autenticação E verificação de role
+    if (authLoading || checkingRole) return;
 
     if (!user) {
-      navigate("/auth");
+      console.log('DeliveryDashboard: No user, redirecting to /auth');
+      navigate("/auth", { replace: true });
       return;
     }
     
     if (!isDeliveryRider) {
-      navigate("/");
+      console.log('DeliveryDashboard: User is not delivery rider, redirecting to /');
+      navigate("/", { replace: true });
       return;
     }
 
+    console.log('DeliveryDashboard: User is delivery rider, fetching orders');
     fetchMyOrders();
-  }, [user, isDeliveryRider, navigate, authLoading]);
+  }, [user, isDeliveryRider, navigate, authLoading, checkingRole]);
 
   const fetchMyOrders = async () => {
     try {
