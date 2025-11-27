@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Loader2, Pencil, MapPin } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ArrowLeft, Loader2, Pencil, MapPin, CreditCard, Wallet, DollarSign, QrCode } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +15,7 @@ import { z } from 'zod';
 import { useGuestMode } from '@/hooks/useGuestMode';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeStorage } from '@/lib/safeStorage';
+import PixPayment from '@/components/PixPayment';
 
 const checkoutSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100),
@@ -27,6 +29,7 @@ const checkoutSchema = z.object({
   reference: z.string().max(200).optional(),
   neighborhood: z.string().min(3, 'Bairro obrigatório').max(100),
   notes: z.string().max(500).optional(),
+  paymentMethod: z.enum(['pix', 'dinheiro', 'cartao_debito', 'cartao_credito']),
 });
 
 const Checkout = () => {
@@ -37,6 +40,15 @@ const Checkout = () => {
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'dinheiro' | 'cartao_debito' | 'cartao_credito'>('dinheiro');
+  const [showPixPayment, setShowPixPayment] = useState(false);
+  const [pixData, setPixData] = useState<{
+    orderId: string;
+    qrCode: string;
+    qrCodeBase64: string;
+    expiresAt: string;
+    paymentId: string;
+  } | null>(null);
   
   const [formData, setFormData] = useState(() => {
     try {
@@ -243,7 +255,7 @@ const Checkout = () => {
     
     try {
       // Validate form
-      checkoutSchema.parse(formData);
+      checkoutSchema.parse({ ...formData, paymentMethod });
       
       if (cart.length === 0) {
         toast.error('Carrinho vazio');
@@ -260,7 +272,7 @@ const Checkout = () => {
 
       const trackingCode = trackingData;
 
-      // Update guest customer if exists, otherwise we'll just create the order
+      // Update guest customer if exists
       if (guestToken) {
         await updateGuestCustomer(
           formData.name,
@@ -277,7 +289,7 @@ const Checkout = () => {
         );
       }
 
-      // Create order with tracking code, guest_token, and user_id
+      // Create order
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -285,7 +297,7 @@ const Checkout = () => {
           guest_token: guestToken || null,
           customer_name: formData.name,
           customer_phone: formData.phone,
-          customer_cep: formData.cep.replace(/\D/g, ''), // Remove hífen antes de salvar
+          customer_cep: formData.cep.replace(/\D/g, ''),
           customer_address: `${formData.address}, ${formData.number}${formData.reference ? ' - ' + formData.reference : ''}`,
           customer_neighborhood: formData.neighborhood,
           customer_city: addressData.city,
@@ -293,16 +305,18 @@ const Checkout = () => {
           delivery_fee: deliveryFee,
           subtotal: subtotal,
           total: total,
-          status: 'pending',
+          status: paymentMethod === 'pix' ? 'pending' : 'confirmed',
           notes: formData.notes || null,
           tracking_code: trackingCode,
+          payment_method: paymentMethod,
+          payment_status: paymentMethod === 'pix' ? 'pending' : 'paid',
         })
         .select()
         .single();
 
       if (orderError) throw orderError;
 
-      // Save tracking code to storage
+      // Save tracking code
       safeStorage.setItem("lastOrderCode", trackingCode);
 
       // Create order items
@@ -322,13 +336,36 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
-      // Limpar dados salvos do formulário após pedido confirmado
-      safeStorage.removeItem('checkout_form');
-      safeStorage.removeItem('checkout_address');
-      
-      clearCart();
-      toast.success('Pedido realizado com sucesso!');
-      navigate(`/confirmacao?tracking=${trackingCode}`);
+      // Se for PIX, criar pagamento
+      if (paymentMethod === 'pix') {
+        const { data: pixResponse, error: pixError } = await supabase.functions.invoke('create-pix-payment', {
+          body: {
+            orderId: orderData.id,
+            amount: total,
+            customerEmail: user?.email || `${formData.phone}@cliente.com`,
+            customerName: formData.name,
+          },
+        });
+
+        if (pixError) throw pixError;
+
+        setPixData({
+          orderId: orderData.id,
+          qrCode: pixResponse.qrCode,
+          qrCodeBase64: pixResponse.qrCodeBase64,
+          expiresAt: pixResponse.expiresAt,
+          paymentId: pixResponse.paymentId,
+        });
+        setShowPixPayment(true);
+        setLoading(false);
+      } else {
+        // Para outros métodos, redirecionar direto
+        safeStorage.removeItem('checkout_form');
+        safeStorage.removeItem('checkout_address');
+        clearCart();
+        toast.success('Pedido realizado com sucesso!');
+        navigate(`/confirmacao?tracking=${trackingCode}`);
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         error.errors.forEach(err => {
@@ -338,14 +375,54 @@ const Checkout = () => {
         console.error('Error creating order:', error);
         toast.error('Erro ao criar pedido');
       }
-    } finally {
       setLoading(false);
     }
+  };
+
+  const handlePixPaymentConfirmed = () => {
+    safeStorage.removeItem('checkout_form');
+    safeStorage.removeItem('checkout_address');
+    clearCart();
+    if (pixData) {
+      const trackingCode = safeStorage.getItem("lastOrderCode");
+      navigate(`/confirmacao?tracking=${trackingCode}`);
+    }
+  };
+
+  const handleCancelPix = async () => {
+    if (pixData) {
+      try {
+        await supabase
+          .from('orders')
+          .update({ payment_status: 'cancelled', status: 'cancelled' })
+          .eq('id', pixData.orderId);
+      } catch (error) {
+        console.error('Error cancelling order:', error);
+      }
+    }
+    setShowPixPayment(false);
+    setPixData(null);
+    setLoading(false);
+    toast.info('Pedido cancelado');
   };
 
   if (cart.length === 0) {
     navigate('/');
     return null;
+  }
+
+  if (showPixPayment && pixData) {
+    return (
+      <PixPayment
+        orderId={pixData.orderId}
+        qrCode={pixData.qrCode}
+        qrCodeBase64={pixData.qrCodeBase64}
+        expiresAt={pixData.expiresAt}
+        paymentId={pixData.paymentId}
+        onPaymentConfirmed={handlePixPaymentConfirmed}
+        onCancel={handleCancelPix}
+      />
+    );
   }
 
   return (
@@ -499,6 +576,56 @@ const Checkout = () => {
                   className="text-sm resize-none"
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Forma de Pagamento</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RadioGroup value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
+                <div className="flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
+                  <RadioGroupItem value="pix" id="pix" />
+                  <Label htmlFor="pix" className="flex-1 cursor-pointer flex items-center gap-2">
+                    <QrCode className="w-5 h-5 text-primary" />
+                    <div>
+                      <p className="font-medium">PIX</p>
+                      <p className="text-xs text-muted-foreground">Aprovação instantânea</p>
+                    </div>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
+                  <RadioGroupItem value="dinheiro" id="dinheiro" />
+                  <Label htmlFor="dinheiro" className="flex-1 cursor-pointer flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="font-medium">Dinheiro</p>
+                      <p className="text-xs text-muted-foreground">Pagar na entrega</p>
+                    </div>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
+                  <RadioGroupItem value="cartao_debito" id="cartao_debito" />
+                  <Label htmlFor="cartao_debito" className="flex-1 cursor-pointer flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="font-medium">Cartão de Débito</p>
+                      <p className="text-xs text-muted-foreground">Pagar na entrega</p>
+                    </div>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
+                  <RadioGroupItem value="cartao_credito" id="cartao_credito" />
+                  <Label htmlFor="cartao_credito" className="flex-1 cursor-pointer flex items-center gap-2">
+                    <Wallet className="w-5 h-5 text-purple-600" />
+                    <div>
+                      <p className="font-medium">Cartão de Crédito</p>
+                      <p className="text-xs text-muted-foreground">Pagar na entrega</p>
+                    </div>
+                  </Label>
+                </div>
+              </RadioGroup>
             </CardContent>
           </Card>
 

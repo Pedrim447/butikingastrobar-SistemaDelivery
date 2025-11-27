@@ -36,6 +36,12 @@ export interface Order {
   status: 'pending' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled';
   notes: string | null;
   created_at: string;
+  payment_method?: 'pix' | 'dinheiro' | 'cartao_debito' | 'cartao_credito' | null;
+  payment_status?: 'pending' | 'paid' | 'failed' | 'cancelled';
+  payment_id?: string | null;
+  payment_qr_code?: string | null;
+  payment_qr_code_base64?: string | null;
+  payment_expires_at?: string | null;
 }
 
 export interface OrderItem {
