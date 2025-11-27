@@ -13,8 +13,9 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { Printer, Search, ArrowLeft } from "lucide-react";
+import { Printer, Search, ArrowLeft, AlertTriangle, CreditCard, DollarSign, Wallet, QrCode } from "lucide-react";
 import { OrderItemsGrouped } from "@/components/OrderItemsGrouped";
 
 interface Order {
@@ -34,6 +35,8 @@ interface Order {
   delivery_rider_id: string | null;
   cancellation_reason: string | null;
   tracking_code: string | null;
+  payment_method: 'pix' | 'dinheiro' | 'cartao_debito' | 'cartao_credito' | null;
+  payment_status: 'pending' | 'paid' | 'failed' | 'cancelled' | null;
   order_items: Array<{
     product_id: string;
     product_name: string;
@@ -108,7 +111,7 @@ export default function AdminDashboard() {
             .single();
 
           if (!error && newOrder) {
-            setOrders(prevOrders => [newOrder, ...prevOrders]);
+            setOrders(prevOrders => [newOrder as Order, ...prevOrders]);
             
             // Notificação de novo pedido
             toast.success('Novo pedido recebido!', {
@@ -142,7 +145,7 @@ export default function AdminDashboard() {
           if (!error && updatedOrder) {
             setOrders(prevOrders => 
               prevOrders.map(order => 
-                order.id === updatedOrder.id ? updatedOrder : order
+                order.id === updatedOrder.id ? updatedOrder as Order : order
               )
             );
           }
@@ -165,7 +168,7 @@ export default function AdminDashboard() {
 
       if (error) throw error;
 
-      setOrders(ordersData || []);
+      setOrders((ordersData as Order[]) || []);
     } catch (error) {
       console.error("Erro ao buscar pedidos:", error);
       toast.error("Erro ao carregar pedidos");
@@ -337,6 +340,48 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
     return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
   };
 
+  const getPaymentMethodBadge = (method: string | null) => {
+    if (!method) return null;
+    
+    const methodMap: Record<string, { label: string; icon: any }> = {
+      pix: { label: "PIX", icon: QrCode },
+      dinheiro: { label: "Dinheiro", icon: DollarSign },
+      cartao_debito: { label: "Déb.", icon: CreditCard },
+      cartao_credito: { label: "Créd.", icon: Wallet },
+    };
+
+    const methodInfo = methodMap[method];
+    if (!methodInfo) return <Badge variant="outline">{method}</Badge>;
+
+    const Icon = methodInfo.icon;
+    return (
+      <Badge variant="outline" className="gap-1">
+        <Icon className="w-3 h-3" />
+        {methodInfo.label}
+      </Badge>
+    );
+  };
+
+  const getPaymentStatusBadge = (status: string | null, method: string | null) => {
+    if (!status || method !== 'pix') return null;
+    
+    const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+      pending: { label: "Aguardando", variant: "outline" },
+      paid: { label: "Pago", variant: "default" },
+      failed: { label: "Falhou", variant: "destructive" },
+      cancelled: { label: "Cancelado", variant: "destructive" },
+    };
+
+    const statusInfo = statusMap[status] || { label: status, variant: "outline" as const };
+    return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
+  };
+
+  const shouldShowPaymentWarning = (order: Order) => {
+    return order.payment_method === 'pix' && 
+           order.payment_status !== 'paid' && 
+           (order.status === 'preparing' || order.status === 'out_for_delivery');
+  };
+
   const filterOrders = (status?: string) => {
     let filtered = orders;
     
@@ -428,12 +473,13 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
             </div>
             <div className="rounded-md border">
               <Table>
-                <TableHeader>
+                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[100px]">Nº Pedido</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Telefone</TableHead>
                     <TableHead>Itens</TableHead>
+                    <TableHead>Pagamento</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Data</TableHead>
@@ -463,85 +509,101 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                           </DialogContent>
                         </Dialog>
                       </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          {getPaymentMethodBadge(order.payment_method)}
+                          {getPaymentStatusBadge(order.payment_status, order.payment_method)}
+                        </div>
+                      </TableCell>
                       <TableCell>R$ {order.total.toFixed(2)}</TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
                       <TableCell>{new Date(order.created_at).toLocaleString("pt-BR")}</TableCell>
                       <TableCell>
-                        <div className="flex gap-2 flex-wrap">
-                          {order.status === "pending" && (
-                            <Button size="sm" onClick={() => updateOrderStatus(order.id, "preparing")}>
-                              Iniciar Produção
+                        <div className="flex flex-col gap-2">
+                          {shouldShowPaymentWarning(order) && (
+                            <Alert variant="destructive" className="py-2 px-3">
+                              <AlertTriangle className="h-4 w-4" />
+                              <AlertDescription className="text-xs">
+                                PIX não pago! Entrar em contato com o cliente.
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                          <div className="flex gap-2 flex-wrap">
+                            {order.status === "pending" && (
+                              <Button size="sm" onClick={() => updateOrderStatus(order.id, "preparing")}>
+                                Iniciar Produção
+                              </Button>
+                            )}
+                            {order.status === "preparing" && (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button size="sm" onClick={() => setSelectedOrderForRider(order.id)}>
+                                    Atribuir Motoboy
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Selecionar Motoboy</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div>
+                                      <Label>Motoboy</Label>
+                                      <Select value={selectedRiderId} onValueChange={setSelectedRiderId}>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Selecione um motoboy" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {deliveryRiders.map((rider) => (
+                                            <SelectItem key={rider.id} value={rider.id}>
+                                              {rider.name} - {rider.phone}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <Button onClick={assignRiderToOrder} className="w-full">
+                                      Confirmar
+                                    </Button>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            )}
+                            <Button size="sm" variant="outline" onClick={() => printLabel(order)}>
+                              <Printer className="h-4 w-4" />
                             </Button>
-                          )}
-                          {order.status === "preparing" && (
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button size="sm" onClick={() => setSelectedOrderForRider(order.id)}>
-                                  Atribuir Motoboy
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Selecionar Motoboy</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                  <div>
-                                    <Label>Motoboy</Label>
-                                    <Select value={selectedRiderId} onValueChange={setSelectedRiderId}>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Selecione um motoboy" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {deliveryRiders.map((rider) => (
-                                          <SelectItem key={rider.id} value={rider.id}>
-                                            {rider.name} - {rider.phone}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  <Button onClick={assignRiderToOrder} className="w-full">
-                                    Confirmar
+                            {order.status !== "cancelled" && order.status !== "delivered" && (
+                              <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => setSelectedOrderForRider(order.id)}
+                                  >
+                                    Cancelar
                                   </Button>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-                          )}
-                          <Button size="sm" variant="outline" onClick={() => printLabel(order)}>
-                            <Printer className="h-4 w-4" />
-                          </Button>
-                          {order.status !== "cancelled" && order.status !== "delivered" && (
-                            <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-                              <DialogTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => setSelectedOrderForRider(order.id)}
-                                >
-                                  Cancelar
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Cancelar Pedido</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                  <div>
-                                    <Label>Motivo do Cancelamento</Label>
-                                    <Textarea
-                                      value={cancellationReason}
-                                      onChange={(e) => setCancellationReason(e.target.value)}
-                                      placeholder="Informe o motivo..."
-                                      rows={3}
-                                    />
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Cancelar Pedido</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div>
+                                      <Label>Motivo do Cancelamento</Label>
+                                      <Textarea
+                                        value={cancellationReason}
+                                        onChange={(e) => setCancellationReason(e.target.value)}
+                                        placeholder="Informe o motivo..."
+                                        rows={3}
+                                      />
+                                    </div>
+                                    <Button onClick={cancelOrder} variant="destructive" className="w-full">
+                                      Confirmar Cancelamento
+                                    </Button>
                                   </div>
-                                  <Button onClick={cancelOrder} variant="destructive" className="w-full">
-                                    Confirmar Cancelamento
-                                  </Button>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-                          )}
+                                </DialogContent>
+                              </Dialog>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                     </TableRow>
