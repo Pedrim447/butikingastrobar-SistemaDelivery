@@ -36,7 +36,7 @@ const Checkout = () => {
   const { cart, getCartTotal, clearCart } = useCart();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { guestToken, guestData, updateGuestCustomer, loading: guestLoading } = useGuestMode();
+  const { guestToken, guestData, updateGuestCustomer, clearGuestData, loading: guestLoading } = useGuestMode();
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
@@ -175,6 +175,19 @@ const Checkout = () => {
     });
   }, [guestData]);
 
+  // Verificar se tem dados válidos para acessar checkout
+  useEffect(() => {
+    // Aguardar carregamento dos dados de guest
+    if (guestLoading) return;
+    
+    // Se não tiver usuário autenticado E não tiver dados de guest válidos, redirecionar
+    if (!user && (!guestToken || !guestData || !guestData.name || !guestData.phone)) {
+      console.warn('Checkout access denied: no valid user or guest data');
+      toast.error('Por favor, preencha seus dados antes de finalizar o pedido');
+      navigate('/cart');
+    }
+  }, [user, guestToken, guestData, guestLoading, navigate]);
+
   const subtotal = getCartTotal();
   const deliveryFee = 5.0;
   const total = subtotal + deliveryFee;
@@ -262,6 +275,25 @@ const Checkout = () => {
         return;
       }
 
+      // Validação extra: garantir que tem dados válidos para criar pedido
+      if (!user && !guestToken) {
+        toast.error('Por favor, preencha seus dados antes de finalizar o pedido');
+        navigate('/cart');
+        return;
+      }
+
+      // Validação: nome e telefone são obrigatórios
+      if (!formData.name || !formData.phone) {
+        toast.error('Nome e telefone são obrigatórios');
+        return;
+      }
+
+      // Validação: cidade e estado são obrigatórios
+      if (!addressData.city || !addressData.state) {
+        toast.error('Por favor, preencha o CEP para obter cidade e estado');
+        return;
+      }
+
       setLoading(true);
 
       // Generate tracking code
@@ -274,7 +306,7 @@ const Checkout = () => {
 
       // Update guest customer if exists
       if (guestToken) {
-        await updateGuestCustomer(
+        const { error: updateError } = await updateGuestCustomer(
           formData.name,
           formData.phone,
           {
@@ -287,6 +319,14 @@ const Checkout = () => {
             cep: formData.cep,
           }
         );
+
+        // Se falhar ao atualizar dados do guest, parar o fluxo
+        if (updateError) {
+          console.error('Erro ao atualizar dados do guest:', updateError);
+          toast.error('Erro ao atualizar seus dados. Por favor, tente novamente.');
+          setLoading(false);
+          return;
+        }
       }
 
       // Create order

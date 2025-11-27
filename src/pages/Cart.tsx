@@ -22,7 +22,7 @@ const Cart = () => {
   } = useCart();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { guestToken, loading: guestLoading } = useGuestMode();
+  const { guestToken, guestData, loading: guestLoading } = useGuestMode();
   const [showGuestPrompt, setShowGuestPrompt] = useState(false);
 
   const subtotal = getCartTotal();
@@ -30,13 +30,13 @@ const Cart = () => {
   const total = subtotal + deliveryFee;
 
   const handleCheckout = () => {
-    // Verifica se tem usuário autenticado OU dados de convidado
-    if (!user && !guestToken) {
-      // Se não tiver nenhum dos dois, mostra o prompt para coletar dados
+    // Verifica se tem usuário autenticado OU dados de convidado válidos
+    if (!user && (!guestToken || !guestData || !guestData.name || !guestData.phone)) {
+      // Se não tiver dados válidos, mostra o prompt para coletar dados
       setShowGuestPrompt(true);
       return;
     }
-    // Se tiver dados, pode ir para checkout
+    // Se tiver dados válidos, pode ir para checkout
     navigate('/checkout');
   };
 
