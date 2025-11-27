@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { useGuestMode } from '@/hooks/useGuestMode';
 import { useAuth } from '@/contexts/AuthContext';
+import { safeStorage } from '@/lib/safeStorage';
 
 const checkoutSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100),
@@ -39,7 +40,7 @@ const Checkout = () => {
   
   const [formData, setFormData] = useState(() => {
     try {
-      const saved = localStorage.getItem('checkout_form');
+      const saved = safeStorage.getItem('checkout_form');
       if (saved) {
         return JSON.parse(saved);
       }
@@ -59,7 +60,7 @@ const Checkout = () => {
   // Store city and state internally (from CEP)
   const [addressData, setAddressData] = useState(() => {
     try {
-      const saved = localStorage.getItem('checkout_address');
+      const saved = safeStorage.getItem('checkout_address');
       if (saved) {
         return JSON.parse(saved);
       }
@@ -70,19 +71,19 @@ const Checkout = () => {
     };
   });
 
-  // Salvar formData no localStorage sempre que mudar
+  // Salvar formData no storage sempre que mudar
   useEffect(() => {
     try {
-      localStorage.setItem('checkout_form', JSON.stringify(formData));
+      safeStorage.setItem('checkout_form', JSON.stringify(formData));
     } catch (error) {
       console.error('Erro ao salvar formulário:', error);
     }
   }, [formData]);
 
-  // Salvar addressData no localStorage sempre que mudar
+  // Salvar addressData no storage sempre que mudar
   useEffect(() => {
     try {
-      localStorage.setItem('checkout_address', JSON.stringify(addressData));
+      safeStorage.setItem('checkout_address', JSON.stringify(addressData));
     } catch (error) {
       console.error('Erro ao salvar endereço:', error);
     }
@@ -93,8 +94,8 @@ const Checkout = () => {
     const loadUserProfile = async () => {
       if (!user) return;
       
-      // Se já tem dados salvos no localStorage, não sobrescreve
-      const savedForm = localStorage.getItem('checkout_form');
+      // Se já tem dados salvos no storage, não sobrescreve
+      const savedForm = safeStorage.getItem('checkout_form');
       if (savedForm) {
         try {
           const parsed = JSON.parse(savedForm);
@@ -134,8 +135,8 @@ const Checkout = () => {
   useEffect(() => {
     if (!guestData) return;
     
-    // Se já tem dados salvos no localStorage, não sobrescreve
-    const savedForm = localStorage.getItem('checkout_form');
+    // Se já tem dados salvos no storage, não sobrescreve
+    const savedForm = safeStorage.getItem('checkout_form');
     if (savedForm) {
       try {
         const parsed = JSON.parse(savedForm);
@@ -301,8 +302,8 @@ const Checkout = () => {
 
       if (orderError) throw orderError;
 
-      // Save tracking code to localStorage
-      localStorage.setItem("lastOrderCode", trackingCode);
+      // Save tracking code to storage
+      safeStorage.setItem("lastOrderCode", trackingCode);
 
       // Create order items
       const orderItems = cart.map(item => ({
@@ -322,8 +323,8 @@ const Checkout = () => {
       if (itemsError) throw itemsError;
 
       // Limpar dados salvos do formulário após pedido confirmado
-      localStorage.removeItem('checkout_form');
-      localStorage.removeItem('checkout_address');
+      safeStorage.removeItem('checkout_form');
+      safeStorage.removeItem('checkout_address');
       
       clearCart();
       toast.success('Pedido realizado com sucesso!');

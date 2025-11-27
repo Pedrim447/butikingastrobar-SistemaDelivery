@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Package, MapPin, Clock, CheckCircle, XCircle, Bike, ArrowLeft } from "lucide-react";
 import { OrderTrackingMap } from "@/components/OrderTrackingMap";
+import { safeStorage } from "@/lib/safeStorage";
 
 interface Order {
   id: string;
@@ -38,7 +39,7 @@ export default function OrderTracking() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const code = searchParams.get("code") || localStorage.getItem("lastOrderCode");
+    const code = searchParams.get("code") || safeStorage.getItem("lastOrderCode");
     if (code) {
       setTrackingCode(code);
       fetchOrder(code);
@@ -62,7 +63,7 @@ export default function OrderTracking() {
       }
 
       setOrder(data);
-      localStorage.setItem("lastOrderCode", code);
+      safeStorage.setItem("lastOrderCode", code);
     } catch (error) {
       console.error("Erro ao buscar pedido:", error);
       toast.error("Erro ao buscar pedido");
