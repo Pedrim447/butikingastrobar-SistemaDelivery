@@ -192,6 +192,12 @@ export type Database = {
           guest_token: string | null
           id: string
           notes: string | null
+          payment_expires_at: string | null
+          payment_id: string | null
+          payment_method: string | null
+          payment_qr_code: string | null
+          payment_qr_code_base64: string | null
+          payment_status: string | null
           status: string | null
           subtotal: number
           total: number
@@ -215,6 +221,12 @@ export type Database = {
           guest_token?: string | null
           id?: string
           notes?: string | null
+          payment_expires_at?: string | null
+          payment_id?: string | null
+          payment_method?: string | null
+          payment_qr_code?: string | null
+          payment_qr_code_base64?: string | null
+          payment_status?: string | null
           status?: string | null
           subtotal: number
           total: number
@@ -238,6 +250,12 @@ export type Database = {
           guest_token?: string | null
           id?: string
           notes?: string | null
+          payment_expires_at?: string | null
+          payment_id?: string | null
+          payment_method?: string | null
+          payment_qr_code?: string | null
+          payment_qr_code_base64?: string | null
+          payment_status?: string | null
           status?: string | null
           subtotal?: number
           total?: number
