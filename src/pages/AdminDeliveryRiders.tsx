@@ -34,7 +34,7 @@ const createRiderSchema = z.object({
 });
 
 export default function AdminDeliveryRiders() {
-  const { user, isAdmin, signOut, loading: authLoading } = useAuth();
+  const { user, isAdmin, signOut, loading: authLoading, checkingRole } = useAuth();
   const navigate = useNavigate();
   const [riders, setRiders] = useState<DeliveryRider[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,20 +52,21 @@ export default function AdminDeliveryRiders() {
   });
 
   useEffect(() => {
-    if (authLoading) return;
+    // Aguarda o carregamento completo da autenticação E verificação de role
+    if (authLoading || checkingRole) return;
 
     if (!user) {
-      navigate("/auth");
+      navigate("/auth", { replace: true });
       return;
     }
     
     if (!isAdmin) {
-      navigate("/");
+      navigate("/", { replace: true });
       return;
     }
 
     fetchRiders();
-  }, [user, isAdmin, navigate, authLoading]);
+  }, [user, isAdmin, navigate, authLoading, checkingRole]);
 
   const fetchRiders = async () => {
     try {

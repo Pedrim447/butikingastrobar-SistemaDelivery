@@ -51,7 +51,7 @@ interface DeliveryRider {
 }
 
 export default function AdminDashboard() {
-  const { user, isAdmin, signOut, loading: authLoading } = useAuth();
+  const { user, isAdmin, signOut, loading: authLoading, checkingRole } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [deliveryRiders, setDeliveryRiders] = useState<DeliveryRider[]>([]);
@@ -64,22 +64,25 @@ export default function AdminDashboard() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
   useEffect(() => {
-    // Aguarda o carregamento da autenticação
-    if (authLoading) return;
+    // Aguarda o carregamento completo da autenticação E verificação de role
+    if (authLoading || checkingRole) return;
 
     if (!user) {
-      navigate("/auth");
+      console.log('AdminDashboard: No user, redirecting to /auth');
+      navigate("/auth", { replace: true });
       return;
     }
     
     if (!isAdmin) {
-      navigate("/");
+      console.log('AdminDashboard: User is not admin, redirecting to /');
+      navigate("/", { replace: true });
       return;
     }
 
+    console.log('AdminDashboard: User is admin, fetching data');
     fetchOrders();
     fetchDeliveryRiders();
-  }, [user, isAdmin, navigate, authLoading]);
+  }, [user, isAdmin, navigate, authLoading, checkingRole]);
 
   // Configurar realtime para escutar novos pedidos e atualizações
   useEffect(() => {

@@ -37,7 +37,7 @@ interface MonthlyStats extends DailyStats {}
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
 
 export default function AdminStats() {
-  const { user, isAdmin, signOut, loading: authLoading } = useAuth();
+  const { user, isAdmin, signOut, loading: authLoading, checkingRole } = useAuth();
   const navigate = useNavigate();
   const [passwordConfirmed, setPasswordConfirmed] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
@@ -58,16 +58,16 @@ export default function AdminStats() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Aguarda o carregamento da autenticação
-    if (authLoading) return;
+    // Aguarda o carregamento completo da autenticação E verificação de role
+    if (authLoading || checkingRole) return;
 
     if (!user) {
-      navigate("/auth");
+      navigate("/auth", { replace: true });
       return;
     }
     
     if (!isAdmin) {
-      navigate("/");
+      navigate("/", { replace: true });
       return;
     }
 
@@ -78,7 +78,7 @@ export default function AdminStats() {
     }
 
     fetchStats();
-  }, [user, isAdmin, navigate, authLoading, passwordConfirmed]);
+  }, [user, isAdmin, navigate, authLoading, checkingRole, passwordConfirmed]);
 
   const fetchStats = async () => {
     try {

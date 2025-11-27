@@ -67,15 +67,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        // Use setTimeout to defer Supabase calls and prevent deadlock
-        setTimeout(() => {
+        // Defer Supabase calls to prevent deadlock, but make it immediate
+        setCheckingRole(true);
+        Promise.resolve().then(() => {
           if (mounted) {
-            setCheckingRole(true);
             checkUserRole(session.user.id).finally(() => {
               if (mounted) setCheckingRole(false);
             });
           }
-        }, 0);
+        });
       } else {
         setIsAdmin(false);
         setIsDeliveryRider(false);
