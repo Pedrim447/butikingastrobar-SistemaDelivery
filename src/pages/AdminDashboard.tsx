@@ -520,91 +520,89 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
                       <TableCell>{new Date(order.created_at).toLocaleString("pt-BR")}</TableCell>
                       <TableCell>
-                        <div className="flex flex-col gap-2">
-                          {shouldShowPaymentWarning(order) && (
-                            <Alert variant="destructive" className="py-2 px-3">
-                              <AlertTriangle className="h-4 w-4" />
-                              <AlertDescription className="text-xs">
-                                PIX não pago! Entrar em contato com o cliente.
-                              </AlertDescription>
-                            </Alert>
-                          )}
-                          <div className="flex gap-2 flex-wrap">
-                            {order.status === "pending" && (
-                              <Button size="sm" onClick={() => updateOrderStatus(order.id, "preparing")}>
-                                Iniciar Produção
-                              </Button>
-                            )}
-                            {order.status === "preparing" && (
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button size="sm" onClick={() => setSelectedOrderForRider(order.id)}>
-                                    Atribuir Motoboy
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Selecionar Motoboy</DialogTitle>
-                                  </DialogHeader>
-                                  <div className="space-y-4">
-                                    <div>
-                                      <Label>Motoboy</Label>
-                                      <Select value={selectedRiderId} onValueChange={setSelectedRiderId}>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Selecione um motoboy" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {deliveryRiders.map((rider) => (
-                                            <SelectItem key={rider.id} value={rider.id}>
-                                              {rider.name} - {rider.phone}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <Button onClick={assignRiderToOrder} className="w-full">
-                                      Confirmar
-                                    </Button>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
-                            )}
-                            <Button size="sm" variant="outline" onClick={() => printLabel(order)}>
-                              <Printer className="h-4 w-4" />
+                        <div className="flex gap-2 flex-wrap">
+                          {order.status === "pending" && (
+                            <Button size="sm" onClick={() => updateOrderStatus(order.id, "preparing")}>
+                              Iniciar Produção
                             </Button>
-                            {order.status !== "cancelled" && order.status !== "delivered" && (
-                              <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-                                <DialogTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => setSelectedOrderForRider(order.id)}
-                                  >
-                                    Cancelar
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Cancelar Pedido</DialogTitle>
-                                  </DialogHeader>
-                                  <div className="space-y-4">
-                                    <div>
-                                      <Label>Motivo do Cancelamento</Label>
-                                      <Textarea
-                                        value={cancellationReason}
-                                        onChange={(e) => setCancellationReason(e.target.value)}
-                                        placeholder="Informe o motivo..."
-                                        rows={3}
-                                      />
-                                    </div>
-                                    <Button onClick={cancelOrder} variant="destructive" className="w-full">
-                                      Confirmar Cancelamento
-                                    </Button>
+                          )}
+                          {order.status === "preparing" && (
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button size="sm" onClick={() => setSelectedOrderForRider(order.id)}>
+                                  Atribuir Motoboy
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Selecionar Motoboy</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  {shouldShowPaymentWarning(order) && (
+                                    <Alert variant="destructive">
+                                      <AlertTriangle className="h-4 w-4" />
+                                      <AlertDescription>
+                                        Atenção: PIX não confirmado. Verificar pagamento antes de enviar.
+                                      </AlertDescription>
+                                    </Alert>
+                                  )}
+                                  <div>
+                                    <Label>Motoboy</Label>
+                                    <Select value={selectedRiderId} onValueChange={setSelectedRiderId}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Selecione um motoboy" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {deliveryRiders.map((rider) => (
+                                          <SelectItem key={rider.id} value={rider.id}>
+                                            {rider.name} - {rider.phone}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
                                   </div>
-                                </DialogContent>
-                              </Dialog>
-                            )}
-                          </div>
+                                  <Button onClick={assignRiderToOrder} className="w-full">
+                                    Confirmar
+                                  </Button>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          )}
+                          <Button size="sm" variant="outline" onClick={() => printLabel(order)}>
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                          {order.status !== "cancelled" && order.status !== "delivered" && (
+                            <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+                              <DialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => setSelectedOrderForRider(order.id)}
+                                >
+                                  Cancelar
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Cancelar Pedido</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label>Motivo do Cancelamento</Label>
+                                    <Textarea
+                                      value={cancellationReason}
+                                      onChange={(e) => setCancellationReason(e.target.value)}
+                                      placeholder="Informe o motivo..."
+                                      rows={3}
+                                    />
+                                  </div>
+                                  <Button onClick={cancelOrder} variant="destructive" className="w-full">
+                                    Confirmar Cancelamento
+                                  </Button>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -658,22 +656,13 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                         <TableCell>{getStatusBadge(order.status)}</TableCell>
                         <TableCell>{new Date(order.created_at).toLocaleString("pt-BR")}</TableCell>
                         <TableCell>
-                          <div className="flex flex-col gap-2">
-                            {shouldShowPaymentWarning(order) && (
-                              <Alert variant="destructive" className="py-2 px-3">
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertDescription className="text-xs">
-                                  PIX não pago! Entrar em contato com o cliente.
-                                </AlertDescription>
-                              </Alert>
+                          <div className="flex gap-2 flex-wrap">
+                            {order.status === "pending" && (
+                              <Button size="sm" onClick={() => updateOrderStatus(order.id, "preparing")}>
+                                Iniciar Produção
+                              </Button>
                             )}
-                            <div className="flex gap-2 flex-wrap">
-                              {order.status === "pending" && (
-                                <Button size="sm" onClick={() => updateOrderStatus(order.id, "preparing")}>
-                                  Iniciar Produção
-                                </Button>
-                              )}
-                              {order.status === "preparing" && (
+                            {order.status === "preparing" && (
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <Button size="sm" onClick={() => setSelectedOrderForRider(order.id)}>
@@ -685,6 +674,14 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                                     <DialogTitle>Selecionar Motoboy</DialogTitle>
                                   </DialogHeader>
                                   <div className="space-y-4">
+                                    {shouldShowPaymentWarning(order) && (
+                                      <Alert variant="destructive">
+                                        <AlertTriangle className="h-4 w-4" />
+                                        <AlertDescription>
+                                          Atenção: PIX não confirmado. Verificar pagamento antes de enviar.
+                                        </AlertDescription>
+                                      </Alert>
+                                    )}
                                     <div>
                                       <Label>Motoboy</Label>
                                       <Select value={selectedRiderId} onValueChange={setSelectedRiderId}>
@@ -707,42 +704,41 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                                 </DialogContent>
                               </Dialog>
                             )}
-                              <Button size="sm" variant="outline" onClick={() => printLabel(order)}>
-                                <Printer className="h-4 w-4" />
-                              </Button>
-                              {order.status !== "cancelled" && order.status !== "delivered" && (
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => setSelectedOrderForRider(order.id)}
-                                    >
-                                      Cancelar
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent>
-                                    <DialogHeader>
-                                      <DialogTitle>Cancelar Pedido</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="space-y-4">
-                                      <div>
-                                        <Label>Motivo do Cancelamento</Label>
-                                        <Textarea
-                                          value={cancellationReason}
-                                          onChange={(e) => setCancellationReason(e.target.value)}
-                                          placeholder="Informe o motivo..."
-                                          rows={3}
-                                        />
-                                      </div>
-                                      <Button onClick={cancelOrder} variant="destructive" className="w-full">
-                                        Confirmar Cancelamento
-                                      </Button>
+                            <Button size="sm" variant="outline" onClick={() => printLabel(order)}>
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                            {order.status !== "cancelled" && order.status !== "delivered" && (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => setSelectedOrderForRider(order.id)}
+                                  >
+                                    Cancelar
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Cancelar Pedido</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div>
+                                      <Label>Motivo do Cancelamento</Label>
+                                      <Textarea
+                                        value={cancellationReason}
+                                        onChange={(e) => setCancellationReason(e.target.value)}
+                                        placeholder="Informe o motivo..."
+                                        rows={3}
+                                      />
                                     </div>
-                                  </DialogContent>
-                                </Dialog>
-                              )}
-                            </div>
+                                    <Button onClick={cancelOrder} variant="destructive" className="w-full">
+                                      Confirmar Cancelamento
+                                    </Button>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
