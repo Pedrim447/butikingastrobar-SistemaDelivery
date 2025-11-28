@@ -33,7 +33,7 @@ export interface Order {
   delivery_fee: number;
   subtotal: number;
   total: number;
-  status: 'pending' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  status: 'pending' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled';
   notes: string | null;
   created_at: string;
   payment_method?: 'pix' | 'dinheiro' | 'cartao_debito' | 'cartao_credito' | null;

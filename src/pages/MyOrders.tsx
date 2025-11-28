@@ -32,7 +32,6 @@ interface Order {
 
 const statusTranslations: Record<string, string> = {
   pending: 'Pendente',
-  confirmed: 'Confirmado',
   preparing: 'Em Preparo',
   out_for_delivery: 'Saiu para Entrega',
   delivered: 'Entregue',
@@ -41,7 +40,6 @@ const statusTranslations: Record<string, string> = {
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-500',
-  confirmed: 'bg-blue-500',
   preparing: 'bg-orange-500',
   out_for_delivery: 'bg-purple-500',
   delivered: 'bg-success',
@@ -177,7 +175,7 @@ export default function MyOrders() {
           </div>
         </div>
 
-        {(order.status === 'out_for_delivery' || order.status === 'confirmed' || order.status === 'preparing') && (
+        {(order.status === 'out_for_delivery' || order.status === 'preparing') && (
           <Button
             onClick={() => handleTrackOrder(order.tracking_code)}
             className="w-full"
