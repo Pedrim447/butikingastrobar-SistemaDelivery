@@ -332,7 +332,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
       pending: { label: "Pendente", variant: "outline" },
       preparing: { label: "Em Produção", variant: "secondary" },
       out_for_delivery: { label: "Saiu p/ Entrega", variant: "default" },
-      delivered: { label: "Entregue", variant: "default" },
+      delivered: { label: "Concluído", variant: "default" },
       cancelled: { label: "Cancelado", variant: "destructive" },
     };
 
@@ -444,7 +444,8 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
             <TabsTrigger value="all">Histórico ({orders.filter(o => o.status !== "pending").length})</TabsTrigger>
             <TabsTrigger value="pending">Pendentes ({filterOrders("pending").length})</TabsTrigger>
             <TabsTrigger value="preparing">Em Produção ({filterOrders("preparing").length})</TabsTrigger>
-            <TabsTrigger value="delivered">Entregues ({filterOrders("delivered").length})</TabsTrigger>
+            <TabsTrigger value="out_for_delivery">Saiu p/ Entrega ({filterOrders("out_for_delivery").length})</TabsTrigger>
+            <TabsTrigger value="delivered">Concluídos ({filterOrders("delivered").length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all">
@@ -467,7 +468,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                   <SelectItem value="pending">Pendentes</SelectItem>
                   <SelectItem value="preparing">Em Produção</SelectItem>
                   <SelectItem value="out_for_delivery">Saiu p/ Entrega</SelectItem>
-                  <SelectItem value="delivered">Entregues</SelectItem>
+                  <SelectItem value="delivered">Concluídos</SelectItem>
                   <SelectItem value="cancelled">Cancelados</SelectItem>
                 </SelectContent>
               </Select>
@@ -519,7 +520,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                       <TableCell>R$ {order.total.toFixed(2)}</TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
                       <TableCell>{new Date(order.created_at).toLocaleString("pt-BR")}</TableCell>
-                      <TableCell>
+                       <TableCell>
                         <div className="flex gap-2 flex-wrap">
                           {order.status === "pending" && (
                             <Button size="sm" onClick={() => updateOrderStatus(order.id, "preparing")}>
@@ -568,6 +569,11 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                               </DialogContent>
                             </Dialog>
                           )}
+                          {order.status === "out_for_delivery" && (
+                            <Button size="sm" variant="default" onClick={() => updateOrderStatus(order.id, "delivered")}>
+                              Marcar como Entregue
+                            </Button>
+                          )}
                           <Button size="sm" variant="outline" onClick={() => printLabel(order)}>
                             <Printer className="h-4 w-4" />
                           </Button>
@@ -612,7 +618,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
             </div>
           </TabsContent>
 
-          {["pending", "preparing", "delivered"].map((status) => (
+          {["pending", "preparing", "out_for_delivery", "delivered"].map((status) => (
             <TabsContent key={status} value={status}>
               <div className="rounded-md border">
                 <Table>
@@ -703,6 +709,11 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                                   </div>
                                 </DialogContent>
                               </Dialog>
+                            )}
+                            {order.status === "out_for_delivery" && (
+                              <Button size="sm" variant="default" onClick={() => updateOrderStatus(order.id, "delivered")}>
+                                Marcar como Entregue
+                              </Button>
                             )}
                             <Button size="sm" variant="outline" onClick={() => printLabel(order)}>
                               <Printer className="h-4 w-4" />
