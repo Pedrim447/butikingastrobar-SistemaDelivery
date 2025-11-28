@@ -520,65 +520,44 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                       <TableCell>R$ {order.total.toFixed(2)}</TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
                       <TableCell>{new Date(order.created_at).toLocaleString("pt-BR")}</TableCell>
-                       <TableCell>
-                        <div className="flex gap-2 flex-wrap">
+                      <TableCell>
+                        <div className="flex gap-2 flex-wrap items-center">
                           {order.status === "pending" && (
                             <Button size="sm" onClick={() => updateOrderStatus(order.id, "preparing")}>
                               Iniciar Produção
                             </Button>
                           )}
                           {order.status === "preparing" && (
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button size="sm" onClick={() => setSelectedOrderForRider(order.id)}>
-                                  Atribuir Motoboy
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Selecionar Motoboy</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                  {shouldShowPaymentWarning(order) && (
-                                    <Alert variant="destructive">
-                                      <AlertTriangle className="h-4 w-4" />
-                                      <AlertDescription>
-                                        Atenção: PIX não confirmado. Verificar pagamento antes de enviar.
-                                      </AlertDescription>
-                                    </Alert>
-                                  )}
-                                  <div>
-                                    <Label>Motoboy</Label>
-                                    <Select value={selectedRiderId} onValueChange={setSelectedRiderId}>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Selecione um motoboy" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {deliveryRiders.map((rider) => (
-                                          <SelectItem key={rider.id} value={rider.id}>
-                                            {rider.name} - {rider.phone}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  <Button onClick={assignRiderToOrder} className="w-full">
-                                    Confirmar
-                                  </Button>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-                          )}
-                          {order.status === "out_for_delivery" && (
-                            <Button size="sm" variant="default" onClick={() => updateOrderStatus(order.id, "delivered")}>
-                              Marcar como Entregue
-                            </Button>
+                            <div className="flex gap-2 items-center">
+                              <Select 
+                                value={order.delivery_rider_id || ""} 
+                                onValueChange={(riderId) => {
+                                  setSelectedRiderId(riderId);
+                                  setSelectedOrderForRider(order.id);
+                                  assignRiderToOrder();
+                                }}
+                              >
+                                <SelectTrigger className="w-[180px] h-9">
+                                  <SelectValue placeholder="Selecionar Motoboy" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {deliveryRiders.map((rider) => (
+                                    <SelectItem key={rider.id} value={rider.id}>
+                                      {rider.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {shouldShowPaymentWarning(order) && (
+                                <AlertTriangle className="h-4 w-4 text-destructive" />
+                              )}
+                            </div>
                           )}
                           <Button size="sm" variant="outline" onClick={() => printLabel(order)}>
                             <Printer className="h-4 w-4" />
                           </Button>
                           {order.status !== "cancelled" && order.status !== "delivered" && (
-                            <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+                            <Dialog>
                               <DialogTrigger asChild>
                                 <Button
                                   size="sm"
@@ -662,58 +641,37 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                         <TableCell>{getStatusBadge(order.status)}</TableCell>
                         <TableCell>{new Date(order.created_at).toLocaleString("pt-BR")}</TableCell>
                         <TableCell>
-                          <div className="flex gap-2 flex-wrap">
+                          <div className="flex gap-2 flex-wrap items-center">
                             {order.status === "pending" && (
                               <Button size="sm" onClick={() => updateOrderStatus(order.id, "preparing")}>
                                 Iniciar Produção
                               </Button>
                             )}
                             {order.status === "preparing" && (
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button size="sm" onClick={() => setSelectedOrderForRider(order.id)}>
-                                    Atribuir Motoboy
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Selecionar Motoboy</DialogTitle>
-                                  </DialogHeader>
-                                  <div className="space-y-4">
-                                    {shouldShowPaymentWarning(order) && (
-                                      <Alert variant="destructive">
-                                        <AlertTriangle className="h-4 w-4" />
-                                        <AlertDescription>
-                                          Atenção: PIX não confirmado. Verificar pagamento antes de enviar.
-                                        </AlertDescription>
-                                      </Alert>
-                                    )}
-                                    <div>
-                                      <Label>Motoboy</Label>
-                                      <Select value={selectedRiderId} onValueChange={setSelectedRiderId}>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Selecione um motoboy" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {deliveryRiders.map((rider) => (
-                                            <SelectItem key={rider.id} value={rider.id}>
-                                              {rider.name} - {rider.phone}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <Button onClick={assignRiderToOrder} className="w-full">
-                                      Confirmar
-                                    </Button>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
-                            )}
-                            {order.status === "out_for_delivery" && (
-                              <Button size="sm" variant="default" onClick={() => updateOrderStatus(order.id, "delivered")}>
-                                Marcar como Entregue
-                              </Button>
+                              <div className="flex gap-2 items-center">
+                                <Select 
+                                  value={order.delivery_rider_id || ""} 
+                                  onValueChange={(riderId) => {
+                                    setSelectedRiderId(riderId);
+                                    setSelectedOrderForRider(order.id);
+                                    assignRiderToOrder();
+                                  }}
+                                >
+                                  <SelectTrigger className="w-[180px] h-9">
+                                    <SelectValue placeholder="Selecionar Motoboy" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {deliveryRiders.map((rider) => (
+                                      <SelectItem key={rider.id} value={rider.id}>
+                                        {rider.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {shouldShowPaymentWarning(order) && (
+                                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                                )}
+                              </div>
                             )}
                             <Button size="sm" variant="outline" onClick={() => printLabel(order)}>
                               <Printer className="h-4 w-4" />
