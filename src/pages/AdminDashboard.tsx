@@ -366,14 +366,17 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
     // Status de pagamento só aparece para PIX
     if (!status || method !== 'pix') return null;
     
+    // Apenas mostrar status válidos para PIX
     const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
       pending: { label: "Aguardando", variant: "outline" },
       paid: { label: "Pago", variant: "default" },
-      failed: { label: "Falhou", variant: "destructive" },
       cancelled: { label: "Cancelado", variant: "destructive" },
     };
 
-    const statusInfo = statusMap[status] || { label: status, variant: "outline" as const };
+    // Não mostrar status inválidos ou desconhecidos
+    if (!statusMap[status]) return null;
+    
+    const statusInfo = statusMap[status];
     return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
   };
 
