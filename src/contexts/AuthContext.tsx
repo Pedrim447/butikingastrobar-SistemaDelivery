@@ -7,6 +7,7 @@ interface AuthContextType {
   session: Session | null;
   isAdmin: boolean;
   isDeliveryRider: boolean;
+  isPDV: boolean;
   loading: boolean;
   checkingRole: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
@@ -21,6 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDeliveryRider, setIsDeliveryRider] = useState(false);
+  const [isPDV, setIsPDV] = useState(false);
   const [loading, setLoading] = useState(true);
   const [checkingRole, setCheckingRole] = useState(false);
   const isCheckingRoleRef = useRef(false);
@@ -79,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setIsAdmin(false);
         setIsDeliveryRider(false);
+        setIsPDV(false);
         setCheckingRole(false);
       }
     });
@@ -116,14 +119,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Role query result:', { data, error });
 
       if (!error && data) {
-        console.log('Setting isAdmin:', data.role === "admin", 'Setting isDeliveryRider:', data.role === "delivery_rider");
+        console.log('Setting isAdmin:', data.role === "admin", 'Setting isDeliveryRider:', data.role === "delivery_rider", 'Setting isPDV:', data.role === "pdv");
         setIsAdmin(data.role === "admin");
         setIsDeliveryRider(data.role === "delivery_rider");
+        setIsPDV(data.role === "pdv");
         lastCheckedUserIdRef.current = userId;
       } else {
         console.log('No role found or error, setting to false');
         setIsAdmin(false);
         setIsDeliveryRider(false);
+        setIsPDV(false);
         lastCheckedUserIdRef.current = userId;
       }
     } catch (error) {
@@ -166,6 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
     setIsAdmin(false);
     setIsDeliveryRider(false);
+    setIsPDV(false);
     lastCheckedUserIdRef.current = null;
   };
 
@@ -176,6 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session,
         isAdmin,
         isDeliveryRider,
+        isPDV,
         loading,
         checkingRole,
         signIn,

@@ -42,6 +42,11 @@ export interface Order {
   payment_qr_code?: string | null;
   payment_qr_code_base64?: string | null;
   payment_expires_at?: string | null;
+  tipo_pedido?: 'online' | 'pdv';
+  peso_kg?: number | null;
+  preco_kg?: number | null;
+  valor_prato?: number | null;
+  comanda_id?: string | null;
 }
 
 export interface OrderItem {

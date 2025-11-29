@@ -21,6 +21,7 @@ import DeliveryDashboard from "./pages/DeliveryDashboard";
 import DeliveryNavigation from "./pages/DeliveryNavigation";
 import OrderTracking from "./pages/OrderTracking";
 import MyOrders from "./pages/MyOrders";
+import PDV from "./pages/PDV";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/entregas" element={<DeliveryDashboard />} />
               <Route path="/entregas/navegacao/:orderId" element={<DeliveryNavigation />} />
+              <Route path="/painel-pdv" element={<PDV />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </CartProvider>

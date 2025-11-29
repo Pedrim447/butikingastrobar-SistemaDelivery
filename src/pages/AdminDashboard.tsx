@@ -61,6 +61,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [tipoFilter, setTipoFilter] = useState<string>("all");
   const [selectedRiderId, setSelectedRiderId] = useState<string>("");
   const [selectedOrderForRider, setSelectedOrderForRider] = useState<string | null>(null);
   const [cancellationReason, setCancellationReason] = useState("");
@@ -389,6 +390,14 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
   const filterOrders = (status?: string) => {
     let filtered = orders;
     
+    // Filter by order type (online/pdv)
+    if (tipoFilter !== "all") {
+      filtered = filtered.filter(order => 
+        (order as any).tipo_pedido === tipoFilter || 
+        (!((order as any).tipo_pedido) && tipoFilter === "online")
+      );
+    }
+    
     // Filter by status
     if (status && status !== "all") {
       filtered = filtered.filter(order => order.status === status);
@@ -462,6 +471,16 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                   className="pl-9"
                 />
               </div>
+              <Select value={tipoFilter} onValueChange={setTipoFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Tipo de pedido" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os tipos</SelectItem>
+                  <SelectItem value="online">Pedidos Online</SelectItem>
+                  <SelectItem value="pdv">Pedidos PDV</SelectItem>
+                </SelectContent>
+              </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Filtrar por status" />
