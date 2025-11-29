@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, Loader2, Pencil, MapPin, CreditCard, Wallet, DollarSign, QrCode } from 'lucide-react';
+import { ArrowLeft, Loader2, Pencil, MapPin, CreditCard, Wallet, DollarSign, QrCode, Tag, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +16,7 @@ import { useGuestMode } from '@/hooks/useGuestMode';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeStorage } from '@/lib/safeStorage';
 import PixPayment from '@/components/PixPayment';
+import { Coupon } from '@/types';
 
 const checkoutSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100),
@@ -49,6 +50,10 @@ const Checkout = () => {
     expiresAt: string;
     paymentId: string;
   } | null>(null);
+  
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
   
   const [formData, setFormData] = useState(() => {
     try {
@@ -190,7 +195,15 @@ const Checkout = () => {
 
   const subtotal = getCartTotal();
   const deliveryFee = 5.0;
-  const total = subtotal + deliveryFee;
+  
+  // Calcula o desconto do cupom
+  const couponDiscount = appliedCoupon 
+    ? appliedCoupon.discount_type === 'percentage'
+      ? subtotal * (appliedCoupon.discount_value / 100)
+      : appliedCoupon.discount_value
+    : 0;
+  
+  const total = subtotal + deliveryFee - couponDiscount;
 
   const fetchAddressByCep = async (cep: string) => {
     if (cep.length !== 8) return;
@@ -261,6 +274,66 @@ const Checkout = () => {
     if (onlyNumbers.length === 8) {
       fetchAddressByCep(onlyNumbers);
     }
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      toast.error('Digite um código de cupom');
+      return;
+    }
+
+    setApplyingCoupon(true);
+    try {
+      const { data: coupon, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('code', couponCode.toUpperCase())
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!coupon) {
+        toast.error('Cupom inválido ou expirado');
+        setApplyingCoupon(false);
+        return;
+      }
+
+      // Verificar se o cupom expirou
+      if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
+        toast.error('Este cupom já expirou');
+        setApplyingCoupon(false);
+        return;
+      }
+
+      // Verificar se atingiu o limite de usos
+      if (coupon.max_uses && coupon.current_uses >= coupon.max_uses) {
+        toast.error('Este cupom atingiu o limite de usos');
+        setApplyingCoupon(false);
+        return;
+      }
+
+      // Verificar valor mínimo do pedido
+      if (subtotal < coupon.min_order_value) {
+        toast.error(`Valor mínimo do pedido: R$ ${coupon.min_order_value.toFixed(2)}`);
+        setApplyingCoupon(false);
+        return;
+      }
+
+      setAppliedCoupon(coupon as Coupon);
+      toast.success('Cupom aplicado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao aplicar cupom:', error);
+      toast.error('Erro ao aplicar cupom');
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    toast.info('Cupom removido');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -350,6 +423,8 @@ const Checkout = () => {
           tracking_code: trackingCode,
           payment_method: paymentMethod,
           payment_status: paymentMethod === 'pix' ? 'pending' : 'paid',
+          coupon_code: appliedCoupon?.code || null,
+          coupon_discount: couponDiscount,
         })
         .select()
         .single();
@@ -375,6 +450,14 @@ const Checkout = () => {
         .insert(orderItems);
 
       if (itemsError) throw itemsError;
+
+      // Incrementar contador de uso do cupom se foi aplicado
+      if (appliedCoupon) {
+        await supabase
+          .from('coupons')
+          .update({ current_uses: appliedCoupon.current_uses + 1 })
+          .eq('id', appliedCoupon.id);
+      }
 
       // Se for PIX, criar pagamento
       if (paymentMethod === 'pix') {
@@ -671,6 +754,62 @@ const Checkout = () => {
 
           <Card>
             <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Tag className="w-5 h-5" />
+                Cupom de Desconto
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {appliedCoupon ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div>
+                      <p className="font-mono font-semibold text-green-700 dark:text-green-400">
+                        {appliedCoupon.code}
+                      </p>
+                      <p className="text-sm text-green-600 dark:text-green-500">
+                        Desconto de {appliedCoupon.discount_type === 'percentage' 
+                          ? `${appliedCoupon.discount_value}%` 
+                          : `R$ ${appliedCoupon.discount_value.toFixed(2)}`}
+                      </p>
+                    </div>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={handleRemoveCoupon}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Digite o código do cupom"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    className="uppercase"
+                  />
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    onClick={handleApplyCoupon}
+                    disabled={applyingCoupon || !couponCode.trim()}
+                  >
+                    {applyingCoupon ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Aplicar'
+                    )}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Resumo do Pedido</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -682,6 +821,12 @@ const Checkout = () => {
                 <span>Taxa de entrega</span>
                 <span>R$ {deliveryFee.toFixed(2)}</span>
               </div>
+              {appliedCoupon && (
+                <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+                  <span>Desconto ({appliedCoupon.code})</span>
+                  <span>- R$ {couponDiscount.toFixed(2)}</span>
+                </div>
+              )}
               <Separator />
               <div className="flex justify-between font-bold text-lg">
                 <span>Total</span>
