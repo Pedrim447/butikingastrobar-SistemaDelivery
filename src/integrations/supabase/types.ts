@@ -38,6 +38,48 @@ export type Database = {
         }
         Relationships: []
       }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          current_uses: number
+          discount_type: string
+          discount_value: number
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          min_order_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          current_uses?: number
+          discount_type: string
+          discount_value: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          min_order_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          current_uses?: number
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          min_order_value?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       delivery_rider_locations: {
         Row: {
           delivery_rider_id: string | null
@@ -179,6 +221,8 @@ export type Database = {
         Row: {
           cancellation_reason: string | null
           comanda_id: string | null
+          coupon_code: string | null
+          coupon_discount: number | null
           created_at: string | null
           customer_address: string
           customer_cep: string
@@ -213,6 +257,8 @@ export type Database = {
         Insert: {
           cancellation_reason?: string | null
           comanda_id?: string | null
+          coupon_code?: string | null
+          coupon_discount?: number | null
           created_at?: string | null
           customer_address: string
           customer_cep: string
@@ -247,6 +293,8 @@ export type Database = {
         Update: {
           cancellation_reason?: string | null
           comanda_id?: string | null
+          coupon_code?: string | null
+          coupon_discount?: number | null
           created_at?: string | null
           customer_address?: string
           customer_cep?: string

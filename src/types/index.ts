@@ -59,3 +59,17 @@ export interface OrderItem {
   subtotal: number;
   notes: string | null;
 }
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  is_active: boolean;
+  expires_at: string | null;
+  max_uses: number | null;
+  current_uses: number;
+  min_order_value: number;
+  created_at: string;
+  updated_at: string;
+}
