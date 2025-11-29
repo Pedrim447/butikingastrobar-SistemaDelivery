@@ -28,7 +28,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const navigate = useNavigate();
-  const { signIn, signUp, user, isAdmin, isDeliveryRider, loading: authLoading, checkingRole } = useAuth();
+  const { signIn, signUp, user, isAdmin, isDeliveryRider, isPDV, loading: authLoading, checkingRole } = useAuth();
 
   useEffect(() => {
     // Só redireciona se:
@@ -43,12 +43,15 @@ const Auth = () => {
       } else if (isDeliveryRider) {
         console.log('Redirecting delivery rider to /entregas');
         navigate('/entregas', { replace: true });
+      } else if (isPDV) {
+        console.log('Redirecting PDV user to /painel-pdv');
+        navigate('/painel-pdv', { replace: true });
       } else {
         console.log('Redirecting user to /');
         navigate('/', { replace: true });
       }
     }
-  }, [user, isAdmin, isDeliveryRider, navigate, authLoading, checkingRole]);
+  }, [user, isAdmin, isDeliveryRider, isPDV, navigate, authLoading, checkingRole]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
