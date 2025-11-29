@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.mercadopago-webhook]
 verify_jwt = false
+
+[functions.create-pdv-user]
+verify_jwt = false
