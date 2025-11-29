@@ -178,6 +178,7 @@ export type Database = {
       orders: {
         Row: {
           cancellation_reason: string | null
+          comanda_id: string | null
           created_at: string | null
           customer_address: string
           customer_cep: string
@@ -198,15 +199,20 @@ export type Database = {
           payment_qr_code: string | null
           payment_qr_code_base64: string | null
           payment_status: string | null
+          peso_kg: number | null
+          preco_kg: number | null
           status: string | null
           subtotal: number
+          tipo_pedido: string | null
           total: number
           tracking_code: string | null
           updated_at: string | null
           user_id: string | null
+          valor_prato: number | null
         }
         Insert: {
           cancellation_reason?: string | null
+          comanda_id?: string | null
           created_at?: string | null
           customer_address: string
           customer_cep: string
@@ -227,15 +233,20 @@ export type Database = {
           payment_qr_code?: string | null
           payment_qr_code_base64?: string | null
           payment_status?: string | null
+          peso_kg?: number | null
+          preco_kg?: number | null
           status?: string | null
           subtotal: number
+          tipo_pedido?: string | null
           total: number
           tracking_code?: string | null
           updated_at?: string | null
           user_id?: string | null
+          valor_prato?: number | null
         }
         Update: {
           cancellation_reason?: string | null
+          comanda_id?: string | null
           created_at?: string | null
           customer_address?: string
           customer_cep?: string
@@ -256,12 +267,16 @@ export type Database = {
           payment_qr_code?: string | null
           payment_qr_code_base64?: string | null
           payment_status?: string | null
+          peso_kg?: number | null
+          preco_kg?: number | null
           status?: string | null
           subtotal?: number
+          tipo_pedido?: string | null
           total?: number
           tracking_code?: string | null
           updated_at?: string | null
           user_id?: string | null
+          valor_prato?: number | null
         }
         Relationships: [
           {
@@ -373,6 +388,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_comanda_number: { Args: never; Returns: string }
       generate_tracking_code: { Args: never; Returns: string }
       has_role: {
         Args: {
