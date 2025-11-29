@@ -110,19 +110,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Checking user role for:', userId);
       
+      // Buscar todas as roles do usuário
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", userId)
-        .maybeSingle();
+        .eq("user_id", userId);
 
       console.log('Role query result:', { data, error });
 
-      if (!error && data) {
-        console.log('Setting isAdmin:', data.role === "admin", 'Setting isDeliveryRider:', data.role === "delivery_rider", 'Setting isPDV:', data.role === "pdv");
-        setIsAdmin(data.role === "admin");
-        setIsDeliveryRider(data.role === "delivery_rider");
-        setIsPDV(data.role === "pdv");
+      if (!error && data && data.length > 0) {
+        // Extrair todas as roles
+        const roles = data.map(r => r.role);
+        
+        console.log('User roles:', roles);
+        
+        // Verificar se tem cada role
+        setIsAdmin(roles.includes("admin"));
+        setIsDeliveryRider(roles.includes("delivery_rider"));
+        setIsPDV(roles.includes("pdv"));
         lastCheckedUserIdRef.current = userId;
       } else {
         console.log('No role found or error, setting to false');
@@ -135,6 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error checking user role:", error);
       setIsAdmin(false);
       setIsDeliveryRider(false);
+      setIsPDV(false);
     } finally {
       isCheckingRoleRef.current = false;
     }
