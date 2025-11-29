@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,8 +32,12 @@ import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Coupon } from "@/types";
 import { format } from "date-fns";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AdminSidebar } from "@/components/AdminSidebar";
 
 export default function AdminCoupons() {
+  const navigate = useNavigate();
+  const { user, isAdmin, signOut, loading: authLoading, checkingRole } = useAuth();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -46,6 +52,20 @@ export default function AdminCoupons() {
     max_uses: "",
     min_order_value: "",
   });
+
+  // Verificar se o usuário é admin
+  useEffect(() => {
+    if (authLoading || checkingRole) return;
+
+    if (!user || !isAdmin) {
+      console.log('AdminCoupons: User is not admin, redirecting to /');
+      navigate("/", { replace: true });
+      return;
+    }
+
+    console.log('AdminCoupons: User is admin, fetching data');
+    fetchCoupons();
+  }, [user, isAdmin, navigate, authLoading, checkingRole]);
 
   useEffect(() => {
     fetchCoupons();
@@ -183,21 +203,37 @@ export default function AdminCoupons() {
     setDialogOpen(true);
   };
 
-  if (loading) {
-    return <div className="p-8">Carregando...</div>;
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  if (authLoading || loading || checkingRole) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Carregando...</div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Gerenciar Cupons</h1>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleOpenDialog}>
-              <Plus className="w-4 h-4 mr-2" />
-              Novo Cupom
-            </Button>
-          </DialogTrigger>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AdminSidebar onSignOut={handleSignOut} />
+
+        <main className="flex-1 p-8">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold">Gerenciar Cupons</h1>
+              <p className="text-muted-foreground">Crie e gerencie cupons de desconto</p>
+            </div>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={handleOpenDialog}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Cupom
+                </Button>
+              </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>
@@ -306,12 +342,12 @@ export default function AdminCoupons() {
                 </Button>
               </div>
             </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+            </DialogContent>
+          </Dialog>
+          </div>
 
-      <div className="bg-card rounded-lg shadow">
-        <Table>
+          <div className="bg-card rounded-lg shadow">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Código</TableHead>
@@ -380,9 +416,11 @@ export default function AdminCoupons() {
                 </TableRow>
               ))
             )}
-          </TableBody>
-        </Table>
+            </TableBody>
+          </Table>
+        </div>
+        </main>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
