@@ -26,32 +26,16 @@ Deno.serve(async (req) => {
     const pdvExists = existingUsers?.users.some(u => u.email === 'pdv@sistema.com')
     
     if (pdvExists) {
-      // Se já existe, verificar se quem está chamando é admin
-      const authHeader = req.headers.get('Authorization')
-      if (!authHeader) {
-        return new Response(
-          JSON.stringify({ error: 'Usuário PDV já existe. Autenticação de admin necessária para recriar.' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-      
-      const token = authHeader.replace('Bearer ', '')
-      const { data: { user } } = await supabaseAdmin.auth.getUser(token)
-      
-      if (user) {
-        const { data: roleData } = await supabaseAdmin
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single()
-        
-        if (roleData?.role !== 'admin') {
-          return new Response(
-            JSON.stringify({ error: 'Unauthorized: Admin access required' }),
-            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
-        }
-      }
+      return new Response(
+        JSON.stringify({ 
+          error: 'Usuário PDV já existe',
+          credentials: {
+            email: 'pdv@sistema.com',
+            password: 'pdv123456'
+          }
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     // Gerar credenciais para o usuário PDV
