@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { safeStorage } from '@/lib/safeStorage';
 import PixPayment from '@/components/PixPayment';
 import { Coupon } from '@/types';
+import { isDeliveryAllowed, DELIVERY_RESTRICTION_MESSAGE } from '@/lib/deliveryValidation';
 
 const checkoutSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100),
@@ -230,6 +231,18 @@ const Checkout = () => {
         return;
       }
       
+      // Verifica se a entrega é permitida para esta cidade
+      if (!isDeliveryAllowed(data.localidade || '', data.uf || '')) {
+        setFormData(prev => ({
+          ...prev,
+          address: '',
+          neighborhood: '',
+        }));
+        setAddressData({ city: '', state: '' });
+        toast.error(DELIVERY_RESTRICTION_MESSAGE);
+        return;
+      }
+      
       // Preenche apenas se tiver dados
       if (data.logradouro || data.bairro || data.localidade || data.uf) {
         setFormData(prev => ({
@@ -364,6 +377,12 @@ const Checkout = () => {
       // Validação: cidade e estado são obrigatórios
       if (!addressData.city || !addressData.state) {
         toast.error('Por favor, preencha o CEP para obter cidade e estado');
+        return;
+      }
+
+      // Validação: entrega apenas para São Luís - MA
+      if (!isDeliveryAllowed(addressData.city, addressData.state)) {
+        toast.error(DELIVERY_RESTRICTION_MESSAGE);
         return;
       }
 
