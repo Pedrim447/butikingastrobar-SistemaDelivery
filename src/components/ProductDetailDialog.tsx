@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Product } from '@/types';
 import { ShoppingBag, Minus, Plus } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
@@ -22,17 +20,6 @@ interface Extra {
   price: number;
 }
 
-const SAUCE_OPTIONS = [
-  { id: 'maionese', label: 'Maionese da casa' },
-  { id: 'ketchup', label: 'Ketchup' },
-  { id: 'none', label: 'Não desejo molho adicional.' },
-];
-
-const NAPKIN_OPTIONS = [
-  { id: 'yes', label: 'Desejo guardanapo.' },
-  { id: 'no', label: 'Não desejo guardanapo.' },
-];
-
 const EXTRA_TOPPINGS: Extra[] = [
   { id: 'american_cheese', name: 'American Cheese', price: 6.0 },
   { id: 'bacon', name: 'Bacon Artesanal', price: 6.0 },
@@ -45,8 +32,6 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   onOpenChange,
 }) => {
   const [quantity, setQuantity] = useState(1);
-  const [selectedSauce, setSelectedSauce] = useState('none');
-  const [selectedNapkin, setSelectedNapkin] = useState('no');
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
   const { addToCart } = useCart();
 
@@ -69,8 +54,6 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   };
 
   const handleAddToCart = () => {
-    const sauceLabel = SAUCE_OPTIONS.find(s => s.id === selectedSauce)?.label || '';
-    const napkinLabel = NAPKIN_OPTIONS.find(n => n.id === selectedNapkin)?.label || '';
     const extrasLabels = selectedExtras
       .map(id => {
         const extra = EXTRA_TOPPINGS.find(e => e.id === id);
@@ -78,11 +61,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
       })
       .filter(Boolean);
 
-    const notes = [
-      sauceLabel,
-      napkinLabel,
-      ...extrasLabels,
-    ].join(', ');
+    const notes = extrasLabels.join(', ');
 
     addToCart(product, quantity, notes);
     toast.success(`${product.name} adicionado ao carrinho!`);
@@ -90,16 +69,14 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     
     // Reset form
     setQuantity(1);
-    setSelectedSauce('none');
-    setSelectedNapkin('no');
     setSelectedExtras([]);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
         {/* Product Image */}
-        <div className="relative w-full h-64 bg-muted">
+        <div className="relative w-full h-48 bg-muted">
           {product.image_url ? (
             <img
               src={product.image_url}
@@ -121,110 +98,75 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
           </Button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 space-y-4">
           {/* Product Info */}
           <div>
-            <h2 className="text-2xl font-bold mb-2">{product.name}</h2>
+            <h2 className="text-xl font-bold mb-1">{product.name}</h2>
             {product.description && (
-              <p className="text-muted-foreground">{product.description}</p>
+              <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
             )}
           </div>
 
-          {/* Sauce Options */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Vai uma maionese caseira extra? Ketchup?</h3>
-              <Badge variant="destructive">Obrigatório</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">Escolha entre 1 e 2 opções</p>
-            <RadioGroup value={selectedSauce} onValueChange={setSelectedSauce}>
-              {SAUCE_OPTIONS.map(option => (
-                <div key={option.id} className="flex items-center space-x-2 py-2">
-                  <RadioGroupItem value={option.id} id={option.id} />
-                  <Label htmlFor={option.id} className="cursor-pointer flex-1">
-                    {option.label}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
-
-          {/* Napkin Options */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Deseja guardanapo?</h3>
-              <Badge variant="destructive">Obrigatório</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">Escolha no mínimo 1 opção</p>
-            <RadioGroup value={selectedNapkin} onValueChange={setSelectedNapkin}>
-              {NAPKIN_OPTIONS.map(option => (
-                <div key={option.id} className="flex items-center space-x-2 py-2">
-                  <RadioGroupItem value={option.id} id={`napkin-${option.id}`} />
-                  <Label htmlFor={`napkin-${option.id}`} className="cursor-pointer flex-1">
-                    {option.label}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
-
           {/* Extra Toppings */}
-          <div className="space-y-3">
-            <h3 className="font-semibold">Deseja molho adicional?</h3>
-            <p className="text-sm text-muted-foreground">Opcional</p>
+          {EXTRA_TOPPINGS.length > 0 && (
             <div className="space-y-2">
-              {EXTRA_TOPPINGS.map(extra => (
-                <div
-                  key={extra.id}
-                  className="flex items-center justify-between py-2 border-b"
-                >
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={extra.id}
-                      checked={selectedExtras.includes(extra.id)}
-                      onCheckedChange={() => handleExtraToggle(extra.id)}
-                    />
-                    <Label htmlFor={extra.id} className="cursor-pointer">
-                      {extra.name}
-                    </Label>
+              <h3 className="font-semibold text-sm">Adicionais</h3>
+              <div className="space-y-1">
+                {EXTRA_TOPPINGS.map(extra => (
+                  <div
+                    key={extra.id}
+                    className="flex items-center justify-between py-2 border-b last:border-b-0"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={extra.id}
+                        checked={selectedExtras.includes(extra.id)}
+                        onCheckedChange={() => handleExtraToggle(extra.id)}
+                      />
+                      <Label htmlFor={extra.id} className="cursor-pointer text-sm">
+                        {extra.name}
+                      </Label>
+                    </div>
+                    <span className="text-sm font-medium text-primary">
+                      +R$ {extra.price.toFixed(2)}
+                    </span>
                   </div>
-                  <span className="text-sm font-medium">
-                    +R$ {extra.price.toFixed(2)}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer with quantity and add button */}
-        <div className="sticky bottom-0 bg-card border-t p-4 space-y-4">
-          <div className="flex items-center justify-between">
+        <div className="sticky bottom-0 bg-card border-t p-3">
+          <div className="flex items-center justify-between gap-3">
             <span className="text-lg font-bold">
               R$ {calculateTotal().toFixed(2)}
             </span>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
+                className="h-8 w-8"
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
               >
                 <Minus className="w-4 h-4" />
               </Button>
-              <span className="font-bold text-lg w-8 text-center">{quantity}</span>
+              <span className="font-bold w-6 text-center">{quantity}</span>
               <Button
                 variant="outline"
                 size="icon"
+                className="h-8 w-8"
                 onClick={() => setQuantity(quantity + 1)}
               >
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
+            <Button onClick={handleAddToCart} className="flex-1 max-w-[140px]">
+              <ShoppingBag className="w-4 h-4 mr-1" />
+              Adicionar
+            </Button>
           </div>
-          <Button onClick={handleAddToCart} className="w-full" size="lg">
-            <ShoppingBag className="w-4 h-4 mr-2" />
-            ADICIONAR
-          </Button>
         </div>
       </DialogContent>
     </Dialog>
