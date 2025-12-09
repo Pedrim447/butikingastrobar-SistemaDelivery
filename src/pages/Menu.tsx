@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Product, Category } from "@/types";
 import { HeroSection } from "@/components/HeroSection";
+import { CategoryNav } from "@/components/CategoryNav";
 import { CategorySection } from "@/components/CategorySection";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Menu as MenuIcon, Package, LogOut, Tag, Info, ChevronRight, Shield, User } from "lucide-react";
@@ -18,6 +19,7 @@ const Menu = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -153,8 +155,14 @@ const Menu = () => {
     }
   };
 
-  const scrollToMenu = () => {
-    menuRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToCategory = (categoryId: string) => {
+    setActiveCategory(categoryId);
+    const element = document.getElementById(`category-${categoryId}`);
+    if (element) {
+      const offset = 140; // Account for sticky headers
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+      window.scrollTo({ top: elementPosition - offset, behavior: 'smooth' });
+    }
   };
 
   const getProductsByCategory = (categoryId: string) => {
@@ -303,7 +311,9 @@ const Menu = () => {
                         variant="ghost"
                         className="justify-start h-12 text-base"
                         onClick={() => {
-                          scrollToMenu();
+                          if (categories.length > 0) {
+                            scrollToCategory(categories[0].id);
+                          }
                           setMobileMenuOpen(false);
                         }}
                       >
@@ -426,7 +436,16 @@ const Menu = () => {
       </header>
 
       {/* Hero Section */}
-      <HeroSection onOrderNow={scrollToMenu} />
+      <HeroSection />
+
+      {/* Category Navigation */}
+      {!loading && (
+        <CategoryNav 
+          categories={categories} 
+          activeCategory={activeCategory}
+          onCategoryClick={scrollToCategory}
+        />
+      )}
 
       {/* Menu Sections */}
       <div ref={menuRef}>
