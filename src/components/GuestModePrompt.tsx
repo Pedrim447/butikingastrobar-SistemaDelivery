@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useGuestMode, GuestAddress } from '@/hooks/useGuestMode';
 import { User, Phone, MapPin, Home, Loader2 } from 'lucide-react';
+import { isDeliveryAllowed, DELIVERY_RESTRICTION_MESSAGE } from '@/lib/deliveryValidation';
 
 interface GuestModePromptProps {
   open: boolean;
@@ -25,6 +26,7 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
   const [cep, setCep] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
+  const [isDeliveryValid, setIsDeliveryValid] = useState(true);
 
   const { createGuestCustomer } = useGuestMode();
 
@@ -54,6 +56,19 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
         toast.error('CEP não encontrado. Verifique o número ou preencha manualmente.');
         return;
       }
+      
+      // Verifica se a entrega é permitida para esta cidade
+      if (!isDeliveryAllowed(data.localidade || '', data.uf || '')) {
+        setIsDeliveryValid(false);
+        setStreet('');
+        setNeighborhood('');
+        setCity('');
+        setState('');
+        toast.error(DELIVERY_RESTRICTION_MESSAGE);
+        return;
+      }
+      
+      setIsDeliveryValid(true);
       
       // Preenche apenas se tiver dados
       if (data.logradouro || data.bairro || data.localidade || data.uf) {
@@ -108,6 +123,12 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
 
     if (cleanCep.length !== 8) {
       toast.error('CEP deve ter 8 dígitos');
+      return;
+    }
+
+    // Validação final de entrega
+    if (!isDeliveryAllowed(city, state)) {
+      toast.error(DELIVERY_RESTRICTION_MESSAGE);
       return;
     }
 
@@ -291,8 +312,14 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
             </div>
           </div>
 
+          {!isDeliveryValid && (
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+              {DELIVERY_RESTRICTION_MESSAGE}
+            </div>
+          )}
+
           <div className="flex gap-2 pt-4">
-            <Button type="submit" className="flex-1" size="lg" disabled={loading}>
+            <Button type="submit" className="flex-1" size="lg" disabled={loading || !isDeliveryValid}>
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
