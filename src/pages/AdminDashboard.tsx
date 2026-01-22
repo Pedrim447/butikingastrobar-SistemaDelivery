@@ -329,16 +329,16 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
   };
 
   const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      pending: { label: "Pendente", variant: "outline" },
+    const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
+      pending: { label: "Aguardando Confirmação", variant: "outline", className: "bg-yellow-100 text-yellow-800 border-yellow-300" },
       preparing: { label: "Em Produção", variant: "secondary" },
-      out_for_delivery: { label: "Saiu p/ Entrega", variant: "default" },
-      delivered: { label: "Concluído", variant: "default" },
+      out_for_delivery: { label: "Saiu p/ Entrega", variant: "default", className: "bg-orange-500 text-white" },
+      delivered: { label: "Entregue", variant: "default", className: "bg-green-500 text-white" },
       cancelled: { label: "Cancelado", variant: "destructive" },
     };
 
     const statusInfo = statusMap[status] || { label: status, variant: "outline" as const };
-    return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
+    return <Badge variant={statusInfo.variant} className={statusInfo.className}>{statusInfo.label}</Badge>;
   };
 
   const getPaymentMethodBadge = (method: string | null) => {
@@ -451,13 +451,12 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
             </Button>
           </div>
 
-        <Tabs defaultValue="all" className="w-full">
+        <Tabs defaultValue="pending" className="w-full">
           <TabsList className="mb-4">
-            <TabsTrigger value="all">Histórico ({orders.filter(o => o.status !== "pending").length})</TabsTrigger>
-            <TabsTrigger value="pending">Pendentes ({filterOrders("pending").length})</TabsTrigger>
+            <TabsTrigger value="pending">Aguardando Confirmação ({filterOrders("pending").length})</TabsTrigger>
             <TabsTrigger value="preparing">Em Produção ({filterOrders("preparing").length})</TabsTrigger>
             <TabsTrigger value="out_for_delivery">Saiu p/ Entrega ({filterOrders("out_for_delivery").length})</TabsTrigger>
-            <TabsTrigger value="delivered">Concluídos ({filterOrders("delivered").length})</TabsTrigger>
+            <TabsTrigger value="all">Histórico ({orders.filter(o => o.status !== "pending").length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all">
@@ -619,7 +618,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
             </div>
           </TabsContent>
 
-          {["pending", "preparing", "out_for_delivery", "delivered"].map((status) => (
+          {["pending", "preparing", "out_for_delivery"].map((status) => (
             <TabsContent key={status} value={status}>
               <div className="rounded-md border">
                 <Table>
