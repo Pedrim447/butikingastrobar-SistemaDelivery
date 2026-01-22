@@ -402,8 +402,8 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
     if (status && status !== "all") {
       filtered = filtered.filter(order => order.status === status);
     } else if (status === "all") {
-      // "Todos" shows only history (exclude pending)
-      filtered = filtered.filter(order => order.status !== "pending");
+      // "Histórico" shows only delivered and cancelled orders
+      filtered = filtered.filter(order => order.status === "delivered" || order.status === "cancelled");
     }
     
     // Filter by search term (name or ID)
@@ -456,7 +456,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
             <TabsTrigger value="pending">Aguardando Confirmação ({filterOrders("pending").length})</TabsTrigger>
             <TabsTrigger value="preparing">Em Produção ({filterOrders("preparing").length})</TabsTrigger>
             <TabsTrigger value="out_for_delivery">Saiu p/ Entrega ({filterOrders("out_for_delivery").length})</TabsTrigger>
-            <TabsTrigger value="all">Histórico ({orders.filter(o => o.status !== "pending").length})</TabsTrigger>
+            <TabsTrigger value="all">Histórico ({orders.filter(o => o.status === "delivered" || o.status === "cancelled").length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all">
