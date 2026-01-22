@@ -438,6 +438,7 @@ export type Database = {
     Functions: {
       generate_comanda_number: { Args: never; Returns: string }
       generate_tracking_code: { Args: never; Returns: string }
+      get_guest_token: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
