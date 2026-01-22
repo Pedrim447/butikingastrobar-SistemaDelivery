@@ -190,38 +190,38 @@ const Menu = () => {
     <div className="min-h-screen bg-background">
       {/* Fixed Header */}
       <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b shadow-sm">
-        <div className="container mx-auto px-4 py-3">
+        <div className="px-4 md:px-6 py-3">
           {/* Status Bar */}
-          <div className="flex items-center justify-end mb-2 pb-2 border-b border-border/50">
+          <div className="flex items-center justify-end mb-3 pb-3 border-b border-border/50">
             {user && userProfile ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-sm font-semibold">{userProfile.name}</p>
+                  <p className="text-base font-semibold">{userProfile.name}</p>
                   {userRole && (
-                    <p className="text-xs text-muted-foreground">{userRole}</p>
+                    <p className="text-sm text-muted-foreground">{userRole}</p>
                   )}
                 </div>
-                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="w-5 h-5 text-primary" />
+                <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="w-6 h-6 text-primary" />
                 </div>
               </div>
             ) : guestData?.name ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-sm font-semibold">{guestData.name}</p>
-                  <p className="text-xs text-muted-foreground">Modo Convidado</p>
+                  <p className="text-base font-semibold">{guestData.name}</p>
+                  <p className="text-sm text-muted-foreground">Modo Convidado</p>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
-                  <User className="w-5 h-5 text-muted-foreground" />
+                <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center">
+                  <User className="w-6 h-6 text-muted-foreground" />
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Visitante</p>
+                  <p className="text-base text-muted-foreground">Visitante</p>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
-                  <User className="w-5 h-5 text-muted-foreground" />
+                <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center">
+                  <User className="w-6 h-6 text-muted-foreground" />
                 </div>
               </div>
             )}
@@ -231,8 +231,8 @@ const Menu = () => {
             {/* Mobile Menu */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
-                  <MenuIcon className="w-5 h-5" />
+              <Button variant="ghost" size="icon" className="relative h-11 w-11">
+                  <MenuIcon className="w-6 h-6" />
                   {hasActiveOrders && (
                     <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full animate-pulse" />
                   )}
@@ -401,31 +401,30 @@ const Menu = () => {
             </Sheet>
 
             {/* Brand */}
-            <h1 className="text-xl md:text-2xl font-bold text-primary">
+            <h1 className="text-2xl md:text-3xl font-bold text-primary">
               Butikin Gastrobar
             </h1>
 
             {/* Actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"
-                className="hidden md:flex"
+                className="hidden md:flex h-11 w-11"
                 onClick={() => navigate('/meus-pedidos')}
               >
-                <Package className="h-5 w-5" />
+                <Package className="h-6 w-6" />
               </Button>
               
               <Button
                 variant="default"
-                size="sm"
-                className="relative"
+                className="relative h-11 px-4"
                 onClick={() => navigate("/cart")}
               >
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Carrinho</span>
+                <ShoppingCart className="h-5 w-5 mr-2" />
+                <span className="hidden sm:inline text-base">Carrinho</span>
                 {cartCount > 0 && (
-                  <span className="ml-2 bg-primary-foreground text-primary rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold">
+                  <span className="ml-2 bg-primary-foreground text-primary rounded-full w-6 h-6 text-sm flex items-center justify-center font-bold">
                     {cartCount}
                   </span>
                 )}
