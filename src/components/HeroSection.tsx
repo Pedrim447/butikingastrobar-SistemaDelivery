@@ -1,6 +1,7 @@
 import { Clock, MapPin, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useGuestMode } from '@/hooks/useGuestMode';
+import butikinLogo from '@/assets/butikin-logo.jpeg';
 
 export const HeroSection: React.FC = () => {
   const { guestData } = useGuestMode();
@@ -10,8 +11,8 @@ export const HeroSection: React.FC = () => {
       <div className="px-4 md:px-6 py-5 md:py-8">
         <div className="flex items-start gap-5">
           {/* Logo Circle */}
-          <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-primary flex items-center justify-center flex-shrink-0 shadow-lg">
-            <span className="text-primary-foreground font-bold text-xl md:text-2xl">BG</span>
+          <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden flex-shrink-0 shadow-lg">
+            <img src={butikinLogo} alt="ButiKin Logo" className="w-full h-full object-cover" />
           </div>
 
           {/* Info */}
