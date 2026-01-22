@@ -5,9 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Lock } from "lucide-react";
-
-// Senha fixa para acesso às áreas administrativas
-const ADMIN_ACCESS_PASSWORD = "admin123";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PasswordConfirmDialogProps {
   open: boolean;
@@ -22,12 +20,12 @@ export function PasswordConfirmDialog({
   onConfirm,
   onCancel,
   title = "Senha de Acesso",
-  description = "Digite a senha de acesso para continuar",
+  description = "Digite sua senha da conta para continuar",
 }: PasswordConfirmDialogProps) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!password) {
       toast.error("Digite a senha");
       return;
@@ -35,17 +33,35 @@ export function PasswordConfirmDialog({
 
     setLoading(true);
 
-    // Validar senha fixa
-    if (password === ADMIN_ACCESS_PASSWORD) {
-      toast.success("Acesso liberado!");
-      setPassword("");
-      onConfirm();
-    } else {
-      toast.error("Senha incorreta");
-      setPassword("");
-    }
+    try {
+      // Call edge function to verify admin password server-side
+      const { data, error } = await supabase.functions.invoke('verify-admin-password', {
+        body: { password }
+      });
 
-    setLoading(false);
+      if (error) {
+        console.error('Verification error:', error);
+        toast.error("Erro ao verificar senha");
+        setPassword("");
+        setLoading(false);
+        return;
+      }
+
+      if (data?.verified) {
+        toast.success("Acesso liberado!");
+        setPassword("");
+        onConfirm();
+      } else {
+        toast.error(data?.error || "Senha incorreta");
+        setPassword("");
+      }
+    } catch (error) {
+      console.error('Error verifying password:', error);
+      toast.error("Erro ao verificar senha");
+      setPassword("");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -65,13 +81,13 @@ export function PasswordConfirmDialog({
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="password">Senha de Acesso</Label>
+            <Label htmlFor="password">Senha da sua conta</Label>
             <Input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Digite a senha"
+              placeholder="Digite sua senha"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   handleConfirm();
@@ -79,6 +95,9 @@ export function PasswordConfirmDialog({
               }}
               autoFocus
             />
+            <p className="text-xs text-muted-foreground">
+              Por segurança, confirme sua senha de administrador
+            </p>
           </div>
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={handleCancel}>
