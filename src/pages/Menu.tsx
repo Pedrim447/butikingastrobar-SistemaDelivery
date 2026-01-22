@@ -190,7 +190,43 @@ const Menu = () => {
     <div className="min-h-screen bg-background">
       {/* Fixed Header */}
       <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b shadow-sm">
-        <div className="container mx-auto px-3 md:px-4 py-3">
+        <div className="container mx-auto px-4 py-3">
+          {/* Status Bar */}
+          <div className="flex items-center justify-end mb-2 pb-2 border-b border-border/50">
+            {user && userProfile ? (
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-sm font-semibold">{userProfile.name}</p>
+                  {userRole && (
+                    <p className="text-xs text-muted-foreground">{userRole}</p>
+                  )}
+                </div>
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="w-5 h-5 text-primary" />
+                </div>
+              </div>
+            ) : guestData?.name ? (
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-sm font-semibold">{guestData.name}</p>
+                  <p className="text-xs text-muted-foreground">Modo Convidado</p>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+                  <User className="w-5 h-5 text-muted-foreground" />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Visitante</p>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+                  <User className="w-5 h-5 text-muted-foreground" />
+                </div>
+              </div>
+            )}
+          </div>
+          
           <div className="flex items-center justify-between">
             {/* Mobile Menu */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -204,20 +240,25 @@ const Menu = () => {
               </SheetTrigger>
               <SheetContent side="left" className="w-80 p-0">
                 <div className="flex flex-col h-full">
-                  {/* Header with User Info */}
+                  {/* Header */}
                   <div className="p-6 border-b">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center">
-                        <span className="text-primary-foreground font-bold text-lg">BG</span>
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <MenuIcon className="w-6 h-6 text-primary" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-bold">Butikin Gastrobar</h2>
-                        {user && userProfile ? (
-                          <p className="text-sm text-muted-foreground">{userProfile.name}</p>
-                        ) : guestData?.name ? (
-                          <p className="text-sm text-muted-foreground">{guestData.name} (convidado)</p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Visitante</p>
+                        <h2 className="text-lg font-bold">
+                          {user && userProfile 
+                            ? `Olá, ${userProfile.name}!` 
+                            : guestData?.name 
+                            ? `Olá, ${guestData.name}!` 
+                            : 'Menu'}
+                        </h2>
+                        {guestData?.name && (
+                          <p className="text-xs text-muted-foreground">(convidado)</p>
+                        )}
+                        {user && userProfile && (
+                          <p className="text-xs text-muted-foreground">(conta)</p>
                         )}
                       </div>
                     </div>
@@ -344,6 +385,7 @@ const Menu = () => {
                           variant="outline"
                           className="w-full justify-start h-12 text-base"
                           onClick={() => {
+                            console.log('Navegando para /auth (mobile)');
                             navigate('/auth');
                             setMobileMenuOpen(false);
                           }}
@@ -358,30 +400,37 @@ const Menu = () => {
               </SheetContent>
             </Sheet>
 
-            {/* Brand - Centered */}
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shadow-md">
-                <span className="text-primary-foreground font-bold text-sm">BG</span>
-              </div>
-              <h1 className="text-lg md:text-xl font-bold text-foreground">
-                Butikin Gastrobar
-              </h1>
-            </div>
+            {/* Brand */}
+            <h1 className="text-xl md:text-2xl font-bold text-primary">
+              Butikin Gastrobar
+            </h1>
 
-            {/* Cart Button */}
-            <Button
-              variant="default"
-              size="icon"
-              className="relative"
-              onClick={() => navigate("/cart")}
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold">
-                  {cartCount}
-                </span>
-              )}
-            </Button>
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hidden md:flex"
+                onClick={() => navigate('/meus-pedidos')}
+              >
+                <Package className="h-5 w-5" />
+              </Button>
+              
+              <Button
+                variant="default"
+                size="sm"
+                className="relative"
+                onClick={() => navigate("/cart")}
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Carrinho</span>
+                {cartCount > 0 && (
+                  <span className="ml-2 bg-primary-foreground text-primary rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold">
+                    {cartCount}
+                  </span>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </header>
