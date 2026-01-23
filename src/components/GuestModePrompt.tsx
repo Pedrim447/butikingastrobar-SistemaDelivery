@@ -144,10 +144,16 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
       cep: cleanCep,
     };
 
-    const { token, error } = await createGuestCustomer(name, phone, address);
+    const { token, error, errorType } = await createGuestCustomer(name, phone, address);
 
     if (error) {
-      toast.error('Erro ao salvar seus dados');
+      if (errorType === 'network') {
+        toast.error('Erro de conexão. Verifique sua internet e tente novamente.');
+      } else if (errorType === 'permission') {
+        toast.error('Erro de permissão no servidor. Contate o suporte.');
+      } else {
+        toast.error('Erro ao salvar seus dados. Tente novamente.');
+      }
       setLoading(false);
       return;
     }

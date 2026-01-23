@@ -80,53 +80,89 @@ export const useGuestMode = () => {
   const createGuestCustomer = async (
     name: string,
     phone: string,
-    address: GuestAddress
-  ): Promise<{ token: string; error?: any }> => {
-    try {
-      const { data, error } = await supabase
-        .from('guest_customers')
-        .insert({
-          name,
-          phone,
-          address_street: address.street,
-          address_number: address.number,
-          address_complement: address.complement,
-          address_neighborhood: address.neighborhood,
-          address_city: address.city,
-          address_state: address.state,
-          address_cep: address.cep,
-        })
-        .select()
-        .single();
+    address: GuestAddress,
+    maxRetries = 3
+  ): Promise<{ token: string; error?: any; errorType?: 'network' | 'permission' | 'unknown' }> => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const { data, error } = await supabase
+          .from('guest_customers')
+          .insert({
+            name,
+            phone,
+            address_street: address.street,
+            address_number: address.number,
+            address_complement: address.complement,
+            address_neighborhood: address.neighborhood,
+            address_city: address.city,
+            address_state: address.state,
+            address_cep: address.cep,
+          })
+          .select()
+          .single();
 
-      if (error) throw error;
+        if (error) {
+          // Erro de RLS - não tentar novamente
+          if (error.code === '42501') {
+            console.error('RLS policy error:', error);
+            return { token: '', error, errorType: 'permission' };
+          }
+          // Última tentativa - retornar erro
+          if (attempt === maxRetries) {
+            throw error;
+          }
+          // Aguardar antes de tentar novamente (backoff exponencial)
+          await new Promise(r => setTimeout(r, 1000 * attempt));
+          continue;
+        }
 
-      const token = data.guest_token;
-      safeStorage.setItem(GUEST_TOKEN_KEY, token);
-      setGuestToken(token);
-      
-      // Define os dados diretamente sem recarregar
-      setGuestData({
-        id: data.id,
-        guest_token: data.guest_token,
-        name: data.name,
-        phone: data.phone,
-        address: {
-          street: data.address_street,
-          number: data.address_number,
-          complement: data.address_complement || undefined,
-          neighborhood: data.address_neighborhood,
-          city: data.address_city,
-          state: data.address_state,
-          cep: data.address_cep,
-        },
-      });
+        const token = data.guest_token;
+        safeStorage.setItem(GUEST_TOKEN_KEY, token);
+        setGuestToken(token);
+        
+        // Define os dados diretamente sem recarregar
+        setGuestData({
+          id: data.id,
+          guest_token: data.guest_token,
+          name: data.name,
+          phone: data.phone,
+          address: {
+            street: data.address_street,
+            number: data.address_number,
+            complement: data.address_complement || undefined,
+            neighborhood: data.address_neighborhood,
+            city: data.address_city,
+            state: data.address_state,
+            cep: data.address_cep,
+          },
+        });
 
-      return { token };
-    } catch (error) {
-      console.error('Error creating guest customer:', error);
-      return { token: '', error };
+        return { token };
+      } catch (error: any) {
+        console.error(`Error creating guest customer (attempt ${attempt}/${maxRetries}):`, error);
+        
+        // Detectar tipo de erro
+        const isNetworkError = 
+          error?.message?.includes('Load failed') ||
+          error?.message?.includes('network') ||
+          error?.message?.includes('fetch') ||
+          error?.message?.includes('Failed to fetch') ||
+          error?.name === 'TypeError';
+        
+        if (attempt === maxRetries) {
+          return { 
+            token: '', 
+            error, 
+            errorType: isNetworkError ? 'network' : 'unknown' 
+          };
+        }
+        
+        // Aguardar antes de tentar novamente
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
     }
+    
+    return { token: '', error: 'Max retries exceeded', errorType: 'network' };
   };
 
   const updateGuestCustomer = async (
