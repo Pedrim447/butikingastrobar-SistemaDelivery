@@ -80,4 +80,5 @@ export interface SideDish {
   price: number;
   is_available: boolean;
   display_order: number;
+  show_as_product: boolean;
 }
