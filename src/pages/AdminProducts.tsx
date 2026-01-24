@@ -59,6 +59,7 @@ export default function AdminProducts() {
     price: "",
     category_id: "",
     is_available: true,
+    show_as_side_dish: false,
   });
 
   const [categoryForm, setCategoryForm] = useState({
@@ -195,6 +196,7 @@ export default function AdminProducts() {
       price: parseFloat(productForm.price),
       category_id: productForm.category_id,
       is_available: productForm.is_available,
+      show_as_side_dish: productForm.show_as_side_dish,
       image_url: imageUrl,
     };
 
@@ -376,6 +378,7 @@ export default function AdminProducts() {
       price: product.price.toString(),
       category_id: product.category_id,
       is_available: product.is_available,
+      show_as_side_dish: product.show_as_side_dish ?? false,
     });
     setImagePreview(product.image_url);
     setProductDialogOpen(true);
@@ -459,9 +462,26 @@ export default function AdminProducts() {
       price: "",
       category_id: "",
       is_available: true,
+      show_as_side_dish: false,
     });
     setImageFile(null);
     setImagePreview(null);
+  };
+
+  const toggleShowAsSideDish = async (id: string, showAsSideDish: boolean) => {
+    const { error } = await supabase
+      .from("products")
+      .update({ show_as_side_dish: showAsSideDish })
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Erro ao atualizar");
+      console.error(error);
+      return;
+    }
+
+    toast.success(showAsSideDish ? "Exibindo como acompanhamento!" : "Removido dos acompanhamentos!");
+    setProducts(products.map(p => p.id === id ? { ...p, show_as_side_dish: showAsSideDish } : p));
   };
 
   const resetCategoryForm = () => {
@@ -638,6 +658,17 @@ export default function AdminProducts() {
                         <Label htmlFor="available">Produto disponível</Label>
                       </div>
 
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="show-as-side"
+                          checked={productForm.show_as_side_dish}
+                          onCheckedChange={(checked) =>
+                            setProductForm({ ...productForm, show_as_side_dish: checked })
+                          }
+                        />
+                        <Label htmlFor="show-as-side">Mostrar também como Acompanhamento</Label>
+                      </div>
+
                       <div className="flex gap-2">
                         <Button
                           type="button"
@@ -668,13 +699,14 @@ export default function AdminProducts() {
                       <TableHead>Categoria</TableHead>
                       <TableHead>Preço</TableHead>
                       <TableHead>Disponível</TableHead>
+                      <TableHead>Acompanhamento</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {products.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">
                           Nenhum produto cadastrado
                         </TableCell>
                       </TableRow>
@@ -703,6 +735,12 @@ export default function AdminProducts() {
                               <Switch
                                 checked={product.is_available}
                                 onCheckedChange={(checked) => toggleProductAvailability(product.id, checked)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Switch
+                                checked={product.show_as_side_dish ?? false}
+                                onCheckedChange={(checked) => toggleShowAsSideDish(product.id, checked)}
                               />
                             </TableCell>
                             <TableCell className="text-right">
