@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { Product, SideDish } from '@/types';
 import { ShoppingBag, Minus, Plus } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
@@ -23,6 +21,12 @@ interface Accompaniment {
   source: 'side_dish' | 'product';
 }
 
+// Track quantity per accompaniment
+interface SelectedAccompaniment {
+  id: string;
+  quantity: number;
+}
+
 const FREE_SIDES_COUNT = 3; // First 3 sides are free (mandatory)
 
 export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
@@ -31,7 +35,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   onOpenChange,
 }) => {
   const [quantity, setQuantity] = useState(1);
-  const [selectedSides, setSelectedSides] = useState<string[]>([]);
+  const [selectedAccompaniments, setSelectedAccompaniments] = useState<SelectedAccompaniment[]>([]);
   const [accompaniments, setAccompaniments] = useState<Accompaniment[]>([]);
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
@@ -95,35 +99,75 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   if (!product) return null;
 
-  const handleSideToggle = (sideId: string) => {
-    setSelectedSides(prev => {
-      if (prev.includes(sideId)) {
-        return prev.filter(id => id !== sideId);
+  const getSelectedItem = (id: string) => selectedAccompaniments.find(s => s.id === id);
+  
+  const getTotalSelectedCount = () => selectedAccompaniments.reduce((sum, s) => sum + s.quantity, 0);
+
+  const handleToggle = (sideId: string) => {
+    setSelectedAccompaniments(prev => {
+      const existing = prev.find(s => s.id === sideId);
+      if (existing) {
+        // Remove if clicking again and quantity is 1
+        return prev.filter(s => s.id !== sideId);
       } else {
-        return [...prev, sideId];
+        // Add with quantity 1
+        return [...prev, { id: sideId, quantity: 1 }];
       }
     });
   };
 
-  // Calculate extras cost - first FREE_SIDES_COUNT are free, rest are paid
+  const handleQuantityChange = (sideId: string, delta: number) => {
+    setSelectedAccompaniments(prev => {
+      const existing = prev.find(s => s.id === sideId);
+      if (!existing) {
+        if (delta > 0) {
+          return [...prev, { id: sideId, quantity: 1 }];
+        }
+        return prev;
+      }
+      
+      const newQty = existing.quantity + delta;
+      if (newQty <= 0) {
+        return prev.filter(s => s.id !== sideId);
+      }
+      
+      return prev.map(s => s.id === sideId ? { ...s, quantity: newQty } : s);
+    });
+  };
+
+  // Calculate extras cost - first FREE_SIDES_COUNT items are free, rest are paid
   const calculateExtrasTotal = () => {
-    if (selectedSides.length <= FREE_SIDES_COUNT) {
+    const totalCount = getTotalSelectedCount();
+    if (totalCount <= FREE_SIDES_COUNT) {
       return 0;
     }
     
-    // Get the prices of sides beyond the free ones
-    const extraSides = selectedSides.slice(FREE_SIDES_COUNT);
-    return extraSides.reduce((total, sideId) => {
-      const side = accompaniments.find(s => s.id === sideId);
-      return total + (side?.price || 0);
-    }, 0);
+    // Calculate paid extras
+    let freeRemaining = FREE_SIDES_COUNT;
+    let extrasCost = 0;
+    
+    for (const selected of selectedAccompaniments) {
+      const side = accompaniments.find(s => s.id === selected.id);
+      if (!side) continue;
+      
+      const freeToUse = Math.min(freeRemaining, selected.quantity);
+      const paidQty = selected.quantity - freeToUse;
+      freeRemaining -= freeToUse;
+      
+      extrasCost += paidQty * side.price;
+    }
+    
+    return extrasCost;
   };
 
   const calculateTotal = () => {
     return (product.price + calculateExtrasTotal()) * quantity;
   };
 
-  const canAddToCart = selectedSides.length >= FREE_SIDES_COUNT;
+  const totalSelectedCount = getTotalSelectedCount();
+  const canAddToCart = totalSelectedCount >= FREE_SIDES_COUNT;
+  const freeCount = Math.min(totalSelectedCount, FREE_SIDES_COUNT);
+  const extraCount = Math.max(0, totalSelectedCount - FREE_SIDES_COUNT);
 
   const handleAddToCart = () => {
     if (!canAddToCart) {
@@ -131,25 +175,27 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
       return;
     }
 
-    // Build notes with selected sides
-    const freeSides = selectedSides.slice(0, FREE_SIDES_COUNT);
-    const extraSides = selectedSides.slice(FREE_SIDES_COUNT);
-
-    const freeSidesLabels = freeSides.map(id => {
-      const side = accompaniments.find(s => s.id === id);
-      return side?.name || '';
-    }).filter(Boolean);
-
-    const extraSidesLabels = extraSides.map(id => {
-      const side = accompaniments.find(s => s.id === id);
-      if (!side) return '';
-      return `${side.name} (+R$ ${side.price.toFixed(2)})`;
-    }).filter(Boolean);
-
-    let notes = `Acompanhamentos: ${freeSidesLabels.join(', ')}`;
-    if (extraSidesLabels.length > 0) {
-      notes += ` | Extras: ${extraSidesLabels.join(', ')}`;
+    // Build notes with selected accompaniments
+    const sidesDetails: string[] = [];
+    let freeRemaining = FREE_SIDES_COUNT;
+    
+    for (const selected of selectedAccompaniments) {
+      const side = accompaniments.find(s => s.id === selected.id);
+      if (!side) continue;
+      
+      const freeToUse = Math.min(freeRemaining, selected.quantity);
+      const paidQty = selected.quantity - freeToUse;
+      freeRemaining -= freeToUse;
+      
+      if (freeToUse > 0) {
+        sidesDetails.push(`${side.name} x${freeToUse}`);
+      }
+      if (paidQty > 0) {
+        sidesDetails.push(`${side.name} x${paidQty} (+R$ ${(paidQty * side.price).toFixed(2)})`);
+      }
     }
+
+    const notes = `Acompanhamentos: ${sidesDetails.join(', ')}`;
 
     // Adjust product price to include extras
     const adjustedProduct = {
@@ -163,17 +209,14 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     
     // Reset form
     setQuantity(1);
-    setSelectedSides([]);
+    setSelectedAccompaniments([]);
   };
 
   const handleClose = () => {
     onOpenChange(false);
     setQuantity(1);
-    setSelectedSides([]);
+    setSelectedAccompaniments([]);
   };
-
-  const freeCount = Math.min(selectedSides.length, FREE_SIDES_COUNT);
-  const extraCount = Math.max(0, selectedSides.length - FREE_SIDES_COUNT);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -210,8 +253,8 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             )}
           </div>
 
-          {/* Side Dishes Selection */}
-          <div className="space-y-2">
+          {/* Accompaniments Selection */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-sm">Escolha os Acompanhamentos</h3>
               <div className="flex gap-2">
@@ -239,54 +282,56 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 Nenhum acompanhamento disponível
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="grid grid-cols-2 gap-2">
                 {accompaniments.map((side) => {
-                  const isSelected = selectedSides.includes(side.id);
-                  const selectionIndex = selectedSides.indexOf(side.id);
-                  const isPaid = selectionIndex >= FREE_SIDES_COUNT;
+                  const selected = getSelectedItem(side.id);
+                  const isSelected = !!selected;
+                  const itemQty = selected?.quantity || 0;
                   
                   return (
                     <div
                       key={side.id}
-                      className={`flex items-center justify-between py-2 px-2 border rounded-lg transition-colors ${
+                      className={`relative flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all cursor-pointer min-h-[80px] ${
                         isSelected 
-                          ? isPaid 
-                            ? 'border-secondary bg-secondary/10' 
-                            : 'border-primary bg-primary/5' 
-                          : 'border-border'
+                          ? 'border-primary bg-primary/10' 
+                          : 'border-border bg-card hover:border-primary/50'
                       }`}
+                      onClick={() => !isSelected && handleToggle(side.id)}
                     >
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id={side.id}
-                          checked={isSelected}
-                          onCheckedChange={() => handleSideToggle(side.id)}
-                        />
-                        <Label 
-                          htmlFor={side.id} 
-                          className="cursor-pointer text-sm"
-                        >
-                          {side.name}
-                        </Label>
-                        {isPaid && (
-                          <span className="text-xs bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
-                            Extra
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {side.price > 0 ? (
-                          isPaid ? (
-                            <span className="text-sm font-medium text-primary">
-                              +R$ {side.price.toFixed(2)}
-                            </span>
-                          ) : (
-                            <span className="text-sm text-muted-foreground line-through">
-                              R$ {side.price.toFixed(2)}
-                            </span>
-                          )
-                        ) : null}
-                      </div>
+                      {/* Name */}
+                      <span className="text-sm font-medium text-center mb-1 line-clamp-2">
+                        {side.name}
+                      </span>
+                      
+                      {/* Price */}
+                      {side.price > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          R$ {side.price.toFixed(2)}
+                        </span>
+                      )}
+                      
+                      {/* Quantity Controls - show when selected */}
+                      {isSelected && (
+                        <div className="flex items-center gap-2 mt-2" onClick={e => e.stopPropagation()}>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7 rounded-full"
+                            onClick={() => handleQuantityChange(side.id, -1)}
+                          >
+                            <Minus className="w-3 h-3" />
+                          </Button>
+                          <span className="font-bold text-sm w-5 text-center">{itemQty}</span>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7 rounded-full"
+                            onClick={() => handleQuantityChange(side.id, 1)}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -294,12 +339,12 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             )}
             
             <div className="text-xs space-y-1">
-              {selectedSides.length < FREE_SIDES_COUNT && (
+              {totalSelectedCount < FREE_SIDES_COUNT && (
                 <p className="text-destructive">
                   * Obrigatório escolher {FREE_SIDES_COUNT} acompanhamentos (grátis)
                 </p>
               )}
-              {selectedSides.length >= FREE_SIDES_COUNT && (
+              {totalSelectedCount >= FREE_SIDES_COUNT && (
                 <p className="text-primary">
                   ✓ {FREE_SIDES_COUNT} acompanhamentos inclusos. Adicione mais por um valor extra!
                 </p>
