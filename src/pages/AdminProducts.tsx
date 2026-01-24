@@ -72,6 +72,7 @@ export default function AdminProducts() {
     price: "",
     display_order: "",
     is_available: true,
+    show_as_product: false,
   });
 
   useEffect(() => {
@@ -278,6 +279,7 @@ export default function AdminProducts() {
       price: parseFloat(sideDishForm.price) || 0,
       display_order: parseInt(sideDishForm.display_order) || 0,
       is_available: sideDishForm.is_available,
+      show_as_product: sideDishForm.show_as_product,
     };
 
     if (editingSideDish) {
@@ -396,8 +398,25 @@ export default function AdminProducts() {
       price: sideDish.price.toString(),
       display_order: sideDish.display_order.toString(),
       is_available: sideDish.is_available,
+      show_as_product: sideDish.show_as_product ?? false,
     });
     setSideDishDialogOpen(true);
+  };
+
+  const toggleShowAsProduct = async (id: string, showAsProduct: boolean) => {
+    const { error } = await supabase
+      .from("side_dishes")
+      .update({ show_as_product: showAsProduct })
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Erro ao atualizar");
+      console.error(error);
+      return;
+    }
+
+    toast.success(showAsProduct ? "Exibindo como produto!" : "Removido dos produtos!");
+    setSideDishes(sideDishes.map(s => s.id === id ? { ...s, show_as_product: showAsProduct } : s));
   };
 
   const toggleProductAvailability = async (id: string, isAvailable: boolean) => {
@@ -461,6 +480,7 @@ export default function AdminProducts() {
       price: "",
       display_order: "",
       is_available: true,
+      show_as_product: false,
     });
   };
 
@@ -901,6 +921,17 @@ export default function AdminProducts() {
                         <Label htmlFor="side-available">Disponível</Label>
                       </div>
 
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="side-show-product"
+                          checked={sideDishForm.show_as_product}
+                          onCheckedChange={(checked) =>
+                            setSideDishForm({ ...sideDishForm, show_as_product: checked })
+                          }
+                        />
+                        <Label htmlFor="side-show-product">Mostrar também como Produto</Label>
+                      </div>
+
                       <div className="flex gap-2">
                         <Button
                           type="button"
@@ -930,13 +961,14 @@ export default function AdminProducts() {
                       <TableHead>Preço</TableHead>
                       <TableHead>Ordem</TableHead>
                       <TableHead>Disponível</TableHead>
+                      <TableHead>Mostrar como Produto</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sideDishes.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        <TableCell colSpan={6} className="text-center text-muted-foreground">
                           Nenhum acompanhamento cadastrado
                         </TableCell>
                       </TableRow>
@@ -952,6 +984,12 @@ export default function AdminProducts() {
                             <Switch
                               checked={sideDish.is_available}
                               onCheckedChange={(checked) => toggleSideDishAvailability(sideDish.id, checked)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Switch
+                              checked={sideDish.show_as_product ?? false}
+                              onCheckedChange={(checked) => toggleShowAsProduct(sideDish.id, checked)}
                             />
                           </TableCell>
                           <TableCell className="text-right">
@@ -979,8 +1017,9 @@ export default function AdminProducts() {
                 </Table>
               </div>
 
-              <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground">
-                <p><strong>Nota:</strong> Os acompanhamentos serão exibidos no pedido e o cliente deve escolher exatamente 3 itens obrigatórios.</p>
+              <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground space-y-2">
+                <p><strong>Nota:</strong> O cliente deve escolher no mínimo 3 acompanhamentos obrigatórios (grátis). Acompanhamentos adicionais serão cobrados.</p>
+                <p><strong>Mostrar como Produto:</strong> Ative esta opção para que o acompanhamento apareça também como um produto individual no cardápio.</p>
               </div>
             </TabsContent>
           </Tabs>
