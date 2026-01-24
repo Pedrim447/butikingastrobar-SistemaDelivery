@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Product } from '@/types';
+import { Product, SideDish } from '@/types';
 import { ShoppingBag, Minus, Plus } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProductDetailDialogProps {
   product: Product | null;
@@ -14,17 +15,7 @@ interface ProductDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-interface Extra {
-  id: string;
-  name: string;
-  price: number;
-}
-
-const EXTRA_TOPPINGS: Extra[] = [
-  { id: 'american_cheese', name: 'American Cheese', price: 6.0 },
-  { id: 'bacon', name: 'Bacon Artesanal', price: 6.0 },
-  { id: 'caramelized_onion', name: 'Cebola Caramelizada', price: 4.0 },
-];
+const REQUIRED_SIDES_COUNT = 3;
 
 export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   product,
@@ -32,36 +23,72 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   onOpenChange,
 }) => {
   const [quantity, setQuantity] = useState(1);
-  const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
+  const [selectedSides, setSelectedSides] = useState<string[]>([]);
+  const [sideDishes, setSideDishes] = useState<SideDish[]>([]);
+  const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
+
+  useEffect(() => {
+    if (open) {
+      fetchSideDishes();
+    }
+  }, [open]);
+
+  const fetchSideDishes = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('side_dishes')
+      .select('*')
+      .eq('is_available', true)
+      .order('display_order');
+
+    if (error) {
+      console.error('Erro ao carregar acompanhamentos:', error);
+      setSideDishes([]);
+    } else {
+      setSideDishes(data as SideDish[]);
+    }
+    setLoading(false);
+  };
 
   if (!product) return null;
 
-  const handleExtraToggle = (extraId: string) => {
-    setSelectedExtras(prev =>
-      prev.includes(extraId)
-        ? prev.filter(id => id !== extraId)
-        : [...prev, extraId]
-    );
+  const handleSideToggle = (sideId: string) => {
+    setSelectedSides(prev => {
+      if (prev.includes(sideId)) {
+        return prev.filter(id => id !== sideId);
+      } else if (prev.length < REQUIRED_SIDES_COUNT) {
+        return [...prev, sideId];
+      }
+      return prev;
+    });
   };
 
   const calculateTotal = () => {
-    const extrasTotal = selectedExtras.reduce((total, extraId) => {
-      const extra = EXTRA_TOPPINGS.find(e => e.id === extraId);
-      return total + (extra?.price || 0);
+    const sidesTotal = selectedSides.reduce((total, sideId) => {
+      const side = sideDishes.find(s => s.id === sideId);
+      return total + (side?.price || 0);
     }, 0);
-    return (product.price + extrasTotal) * quantity;
+    return (product.price + sidesTotal) * quantity;
   };
 
+  const canAddToCart = selectedSides.length === REQUIRED_SIDES_COUNT;
+
   const handleAddToCart = () => {
-    const extrasLabels = selectedExtras
+    if (!canAddToCart) {
+      toast.error(`Selecione exatamente ${REQUIRED_SIDES_COUNT} acompanhamentos!`);
+      return;
+    }
+
+    const sidesLabels = selectedSides
       .map(id => {
-        const extra = EXTRA_TOPPINGS.find(e => e.id === id);
-        return extra ? `${extra.name} (+R$ ${extra.price.toFixed(2)})` : '';
+        const side = sideDishes.find(s => s.id === id);
+        if (!side) return '';
+        return side.price > 0 ? `${side.name} (+R$ ${side.price.toFixed(2)})` : side.name;
       })
       .filter(Boolean);
 
-    const notes = extrasLabels.join(', ');
+    const notes = sidesLabels.join(', ');
 
     addToCart(product, quantity, notes);
     toast.success(`${product.name} adicionado ao carrinho!`);
@@ -69,11 +96,17 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     
     // Reset form
     setQuantity(1);
-    setSelectedExtras([]);
+    setSelectedSides([]);
+  };
+
+  const handleClose = () => {
+    onOpenChange(false);
+    setQuantity(1);
+    setSelectedSides([]);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
         {/* Product Image */}
         <div className="relative w-full h-48 bg-muted">
@@ -92,7 +125,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             variant="secondary"
             size="icon"
             className="absolute top-4 left-4 rounded-full"
-            onClick={() => onOpenChange(false)}
+            onClick={handleClose}
           >
             ×
           </Button>
@@ -107,34 +140,71 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             )}
           </div>
 
-          {/* Extra Toppings */}
-          {EXTRA_TOPPINGS.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="font-semibold text-sm">Adicionais</h3>
-              <div className="space-y-1">
-                {EXTRA_TOPPINGS.map(extra => (
-                  <div
-                    key={extra.id}
-                    className="flex items-center justify-between py-2 border-b last:border-b-0"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id={extra.id}
-                        checked={selectedExtras.includes(extra.id)}
-                        onCheckedChange={() => handleExtraToggle(extra.id)}
-                      />
-                      <Label htmlFor={extra.id} className="cursor-pointer text-sm">
-                        {extra.name}
-                      </Label>
-                    </div>
-                    <span className="text-sm font-medium text-primary">
-                      +R$ {extra.price.toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+          {/* Side Dishes Selection */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm">Escolha os Acompanhamentos</h3>
+              <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                selectedSides.length === REQUIRED_SIDES_COUNT 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-amber-100 text-amber-800'
+              }`}>
+                {selectedSides.length}/{REQUIRED_SIDES_COUNT} selecionados
+              </span>
             </div>
-          )}
+            
+            {loading ? (
+              <div className="text-center py-4 text-muted-foreground text-sm">
+                Carregando acompanhamentos...
+              </div>
+            ) : sideDishes.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground text-sm">
+                Nenhum acompanhamento disponível
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {sideDishes.map(side => {
+                  const isSelected = selectedSides.includes(side.id);
+                  const isDisabled = !isSelected && selectedSides.length >= REQUIRED_SIDES_COUNT;
+                  
+                  return (
+                    <div
+                      key={side.id}
+                      className={`flex items-center justify-between py-2 px-2 border rounded-lg transition-colors ${
+                        isSelected ? 'border-primary bg-primary/5' : 'border-border'
+                      } ${isDisabled ? 'opacity-50' : ''}`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id={side.id}
+                          checked={isSelected}
+                          disabled={isDisabled}
+                          onCheckedChange={() => handleSideToggle(side.id)}
+                        />
+                        <Label 
+                          htmlFor={side.id} 
+                          className={`cursor-pointer text-sm ${isDisabled ? 'cursor-not-allowed' : ''}`}
+                        >
+                          {side.name}
+                        </Label>
+                      </div>
+                      {side.price > 0 && (
+                        <span className="text-sm font-medium text-primary">
+                          +R$ {side.price.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            {selectedSides.length < REQUIRED_SIDES_COUNT && (
+              <p className="text-xs text-amber-600">
+                * Obrigatório escolher {REQUIRED_SIDES_COUNT} acompanhamentos
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Footer with quantity and add button */}
@@ -162,7 +232,11 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
-            <Button onClick={handleAddToCart} className="flex-1 max-w-[140px]">
+            <Button 
+              onClick={handleAddToCart} 
+              className="flex-1 max-w-[140px]"
+              disabled={!canAddToCart}
+            >
               <ShoppingBag className="w-4 h-4 mr-1" />
               Adicionar
             </Button>

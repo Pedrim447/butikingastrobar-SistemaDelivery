@@ -73,3 +73,11 @@ export interface Coupon {
   created_at: string;
   updated_at: string;
 }
+
+export interface SideDish {
+  id: string;
+  name: string;
+  price: number;
+  is_available: boolean;
+  display_order: number;
+}
