@@ -346,6 +346,7 @@ export type Database = {
           is_available: boolean | null
           name: string
           price: number
+          show_as_side_dish: boolean | null
           updated_at: string | null
         }
         Insert: {
@@ -357,6 +358,7 @@ export type Database = {
           is_available?: boolean | null
           name: string
           price: number
+          show_as_side_dish?: boolean | null
           updated_at?: string | null
         }
         Update: {
@@ -368,6 +370,7 @@ export type Database = {
           is_available?: boolean | null
           name?: string
           price?: number
+          show_as_side_dish?: boolean | null
           updated_at?: string | null
         }
         Relationships: [

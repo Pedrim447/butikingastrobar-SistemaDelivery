@@ -13,6 +13,7 @@ export interface Product {
   image_url: string | null;
   category_id: string;
   is_available: boolean;
+  show_as_side_dish?: boolean;
 }
 
 export interface CartItem {

@@ -15,6 +15,14 @@ interface ProductDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Combined type for accompaniments (can come from side_dishes table or products table)
+interface Accompaniment {
+  id: string;
+  name: string;
+  price: number;
+  source: 'side_dish' | 'product';
+}
+
 const FREE_SIDES_COUNT = 3; // First 3 sides are free (mandatory)
 
 export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
@@ -24,30 +32,64 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 }) => {
   const [quantity, setQuantity] = useState(1);
   const [selectedSides, setSelectedSides] = useState<string[]>([]);
-  const [sideDishes, setSideDishes] = useState<SideDish[]>([]);
+  const [accompaniments, setAccompaniments] = useState<Accompaniment[]>([]);
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
 
   useEffect(() => {
     if (open) {
-      fetchSideDishes();
+      fetchAccompaniments();
     }
   }, [open]);
 
-  const fetchSideDishes = async () => {
+  const fetchAccompaniments = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('side_dishes')
-      .select('*')
-      .eq('is_available', true)
-      .order('display_order');
+    
+    // Fetch both side_dishes and products marked as accompaniments in parallel
+    const [sideDishesResult, productsResult] = await Promise.all([
+      supabase
+        .from('side_dishes')
+        .select('*')
+        .eq('is_available', true)
+        .order('display_order'),
+      supabase
+        .from('products')
+        .select('*')
+        .eq('is_available', true)
+        .eq('show_as_side_dish', true)
+        .order('name')
+    ]);
 
-    if (error) {
-      console.error('Erro ao carregar acompanhamentos:', error);
-      setSideDishes([]);
-    } else {
-      setSideDishes(data as SideDish[]);
+    const accompanimentsList: Accompaniment[] = [];
+
+    // Add side dishes
+    if (!sideDishesResult.error && sideDishesResult.data) {
+      sideDishesResult.data.forEach((sd: SideDish) => {
+        accompanimentsList.push({
+          id: `side_${sd.id}`,
+          name: sd.name,
+          price: sd.price,
+          source: 'side_dish'
+        });
+      });
     }
+
+    // Add products marked as accompaniments (excluding the current product being viewed)
+    if (!productsResult.error && productsResult.data) {
+      productsResult.data.forEach((p: Product) => {
+        // Don't show the current product as an accompaniment option
+        if (product && p.id !== product.id) {
+          accompanimentsList.push({
+            id: `prod_${p.id}`,
+            name: p.name,
+            price: p.price,
+            source: 'product'
+          });
+        }
+      });
+    }
+
+    setAccompaniments(accompanimentsList);
     setLoading(false);
   };
 
@@ -70,10 +112,9 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     }
     
     // Get the prices of sides beyond the free ones
-    // We charge for the ones that have price > 0
     const extraSides = selectedSides.slice(FREE_SIDES_COUNT);
     return extraSides.reduce((total, sideId) => {
-      const side = sideDishes.find(s => s.id === sideId);
+      const side = accompaniments.find(s => s.id === sideId);
       return total + (side?.price || 0);
     }, 0);
   };
@@ -95,12 +136,12 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     const extraSides = selectedSides.slice(FREE_SIDES_COUNT);
 
     const freeSidesLabels = freeSides.map(id => {
-      const side = sideDishes.find(s => s.id === id);
+      const side = accompaniments.find(s => s.id === id);
       return side?.name || '';
     }).filter(Boolean);
 
     const extraSidesLabels = extraSides.map(id => {
-      const side = sideDishes.find(s => s.id === id);
+      const side = accompaniments.find(s => s.id === id);
       if (!side) return '';
       return `${side.name} (+R$ ${side.price.toFixed(2)})`;
     }).filter(Boolean);
@@ -176,13 +217,13 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               <div className="flex gap-2">
                 <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                   freeCount >= FREE_SIDES_COUNT 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-amber-100 text-amber-800'
+                    ? 'bg-primary/10 text-primary' 
+                    : 'bg-destructive/10 text-destructive'
                 }`}>
                   {freeCount}/{FREE_SIDES_COUNT} obrigatórios
                 </span>
                 {extraCount > 0 && (
-                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-secondary text-secondary-foreground">
                     +{extraCount} extras
                   </span>
                 )}
@@ -193,16 +234,15 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               <div className="text-center py-4 text-muted-foreground text-sm">
                 Carregando acompanhamentos...
               </div>
-            ) : sideDishes.length === 0 ? (
+            ) : accompaniments.length === 0 ? (
               <div className="text-center py-4 text-muted-foreground text-sm">
                 Nenhum acompanhamento disponível
               </div>
             ) : (
               <div className="space-y-1">
-                {sideDishes.map((side, index) => {
+                {accompaniments.map((side) => {
                   const isSelected = selectedSides.includes(side.id);
                   const selectionIndex = selectedSides.indexOf(side.id);
-                  const isFree = selectionIndex >= 0 && selectionIndex < FREE_SIDES_COUNT;
                   const isPaid = selectionIndex >= FREE_SIDES_COUNT;
                   
                   return (
@@ -211,7 +251,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                       className={`flex items-center justify-between py-2 px-2 border rounded-lg transition-colors ${
                         isSelected 
                           ? isPaid 
-                            ? 'border-blue-500 bg-blue-50' 
+                            ? 'border-secondary bg-secondary/10' 
                             : 'border-primary bg-primary/5' 
                           : 'border-border'
                       }`}
@@ -229,7 +269,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                           {side.name}
                         </Label>
                         {isPaid && (
-                          <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                          <span className="text-xs bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
                             Extra
                           </span>
                         )}
@@ -237,7 +277,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                       <div className="flex items-center gap-2">
                         {side.price > 0 ? (
                           isPaid ? (
-                            <span className="text-sm font-medium text-blue-600">
+                            <span className="text-sm font-medium text-primary">
                               +R$ {side.price.toFixed(2)}
                             </span>
                           ) : (
@@ -255,12 +295,12 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             
             <div className="text-xs space-y-1">
               {selectedSides.length < FREE_SIDES_COUNT && (
-                <p className="text-amber-600">
+                <p className="text-destructive">
                   * Obrigatório escolher {FREE_SIDES_COUNT} acompanhamentos (grátis)
                 </p>
               )}
               {selectedSides.length >= FREE_SIDES_COUNT && (
-                <p className="text-green-600">
+                <p className="text-primary">
                   ✓ {FREE_SIDES_COUNT} acompanhamentos inclusos. Adicione mais por um valor extra!
                 </p>
               )}
