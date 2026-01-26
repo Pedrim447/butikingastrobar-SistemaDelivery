@@ -1,98 +1,84 @@
 
-# Plano para Corrigir Erro de Criação de Pedido (RLS)
+
+# Plano Definitivo: Corrigir Erro RLS na Criação de Pedidos
 
 ## Diagnóstico do Problema
 
-Após análise detalhada, identifiquei que o erro "new row violates row-level security policy for table 'orders'" continua ocorrendo porque a política RLS atual tem uma **falha na subquery EXISTS**.
+O erro `42501` ("new row violates row-level security policy for table orders") continua ocorrendo mesmo após múltiplas correções porque **a política atual é muito restritiva** em relação ao estado de autenticação.
 
-### Causa Raiz
-A política atual usa:
-```sql
-EXISTS (SELECT 1 FROM guest_customers gc WHERE gc.guest_token = orders.guest_token)
-```
+### Problema Identificado
 
-O problema é que dentro de uma política RLS de INSERT no PostgreSQL, a referência `orders.guest_token` pode não estar resolvendo corretamente para o valor sendo inserido. Em políticas RLS, deve-se usar apenas o nome da coluna (sem a qualificação da tabela) para referenciar os dados da linha sendo inserida.
+A política atual tem 4 cenários muito específicos:
+1. Usuário autenticado (`auth.uid() IS NOT NULL`) + `user_id = auth.uid()` + `guest_token IS NULL`
+2. Convidado: `user_id IS NULL` + `guest_token NOT NULL` + token válido
+3. PDV: `auth.uid() IS NOT NULL` + role PDV + tipo_pedido = 'pdv'
+4. Anônimo: `auth.uid() IS NULL` + `user_id IS NULL` + token válido
+
+**O problema:** O sistema pode estar em um estado intermediário onde `auth.uid()` retorna um valor (sessão anônima anterior) mas o usuário está tentando fazer checkout como convidado. Isso faz com que nenhum cenário seja satisfeito.
 
 ---
 
 ## Solução Proposta
 
-### Etapa 1: Atualizar a Política RLS da Tabela `orders`
+### Etapa 1: Criar Política RLS Simplificada e Robusta
 
-Criar uma nova política de INSERT com a sintaxe correta:
+Vou criar uma nova política que é **menos restritiva** mas ainda segura:
 
 ```sql
--- Remover política atual
 DROP POLICY IF EXISTS "Create orders" ON public.orders;
 
--- Criar nova política com referência correta às colunas
 CREATE POLICY "Create orders" ON public.orders
 FOR INSERT WITH CHECK (
-  -- Cenário 1: Usuário autenticado criando pedido
-  (auth.uid() IS NOT NULL AND user_id = auth.uid())
+  -- Cenário 1: Usuário autenticado criando para si
+  (user_id IS NOT NULL AND user_id = auth.uid())
   OR
-  -- Cenário 2: Pedido de convidado
-  (
-    user_id IS NULL 
-    AND guest_token IS NOT NULL 
-    AND EXISTS (
-      SELECT 1 FROM public.guest_customers gc 
-      WHERE gc.guest_token = guest_token  -- SEM "orders." prefix
-    )
-  )
+  -- Cenário 2: Pedido guest com token válido (independe de auth.uid)
+  (user_id IS NULL AND guest_token IS NOT NULL AND validate_guest_token(guest_token))
   OR
   -- Cenário 3: PDV
-  (
-    auth.uid() IS NOT NULL
-    AND has_role(auth.uid(), 'pdv'::app_role) 
-    AND tipo_pedido = 'pdv'::text
+  (has_role(auth.uid(), 'pdv'::app_role) AND tipo_pedido = 'pdv'::text)
+);
+```
+
+**Mudanças principais:**
+- Removido a verificação `auth.uid() IS NOT NULL` e `auth.uid() IS NULL` que causava conflitos
+- Cenário de guest agora funciona **independente** do estado de `auth.uid()`
+- PDV simplificado (a função `has_role` já verifica se existe uid)
+
+### Etapa 2: Atualizar Políticas de `order_items` (Consistência)
+
+Garantir que a política de INSERT em `order_items` também funcione corretamente para guests:
+
+```sql
+DROP POLICY IF EXISTS "Create order items for own orders" ON public.order_items;
+
+CREATE POLICY "Create order items for own orders" ON public.order_items
+FOR INSERT WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.orders o
+    WHERE o.id = order_id
+    AND (
+      o.user_id = auth.uid()
+      OR (o.user_id IS NULL AND o.guest_token IS NOT NULL AND validate_guest_token(o.guest_token))
+      OR (has_role(auth.uid(), 'pdv'::app_role) AND o.tipo_pedido = 'pdv'::text)
+    )
   )
 );
 ```
 
-A diferença crucial é usar `guest_token` em vez de `orders.guest_token` na subquery.
-
-### Etapa 2: Verificar Lógica no Código (Opcional mas Recomendado)
-
-Ajustar `src/pages/Checkout.tsx` para ser mais explícito sobre qual tipo de pedido está sendo criado:
-
-```typescript
-// Determinar se é pedido de usuário autenticado ou convidado
-const isAuthenticatedOrder = !!user?.id;
-const isGuestOrder = !user?.id && !!guestToken;
-
-const { data: orderData, error: orderError } = await supabase
-  .from('orders')
-  .insert({
-    user_id: isAuthenticatedOrder ? user.id : null,
-    guest_token: isGuestOrder ? guestToken : null,
-    // ... resto dos campos
-  })
-```
-
 ---
 
-## Detalhes Técnicos
+## Arquivos que Serão Modificados
 
-### Por que a Referência `orders.guest_token` Falha?
-
-Em PostgreSQL, dentro de políticas RLS para INSERT, os valores da linha sendo inserida são referenciados diretamente pelo nome da coluna. Quando você usa `orders.guest_token`, o PostgreSQL pode interpretar como uma tentativa de acessar a tabela `orders` de forma global (que no contexto de INSERT não tem linhas "existentes" da linha atual).
-
-A sintaxe correta para acessar valores sendo inseridos:
-- ✅ `guest_token` (correto - referencia o valor sendo inserido)
-- ❌ `orders.guest_token` (incorreto - pode causar ambiguidade)
-
-### Arquivos Afetados
-1. **Migração SQL** - Nova política RLS
-2. **src/pages/Checkout.tsx** (opcional) - Melhorar lógica de determinação do tipo de pedido
+1. **Nova migração SQL** - Políticas RLS simplificadas para `orders` e `order_items`
 
 ---
 
 ## Resultado Esperado
 
-Após aplicar a correção:
-1. Usuários autenticados poderão criar pedidos normalmente
-2. Convidados (guests) poderão criar pedidos sem erro de RLS
-3. Usuários PDV continuarão funcionando normalmente
+Após a correção:
+- Usuários autenticados poderão criar pedidos normalmente
+- Convidados (guests) poderão criar pedidos **independentemente** do estado da sessão de auth
+- Usuários PDV continuarão funcionando
+- O checkout funcionará sem erros de RLS
 
-O fluxo de checkout funcionará sem interrupções para todos os cenários.
