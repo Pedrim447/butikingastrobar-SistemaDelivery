@@ -426,6 +426,16 @@ const Checkout = () => {
       const isAuthenticatedOrder = !!user?.id;
       const isGuestOrder = !user?.id && !!guestToken;
 
+      // DEBUG: Log dos dados críticos para RLS
+      console.log('=== DEBUG CHECKOUT RLS ===');
+      console.log('user?.id:', user?.id);
+      console.log('guestToken:', guestToken);
+      console.log('isAuthenticatedOrder:', isAuthenticatedOrder);
+      console.log('isGuestOrder:', isGuestOrder);
+      console.log('user_id que será enviado:', isAuthenticatedOrder ? user.id : null);
+      console.log('guest_token que será enviado:', isGuestOrder ? guestToken : null);
+      console.log('=========================');
+
       // Create order
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
