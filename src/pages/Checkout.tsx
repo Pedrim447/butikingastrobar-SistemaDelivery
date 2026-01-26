@@ -421,12 +421,17 @@ const Checkout = () => {
         }
       }
 
+      // Determinar se é pedido de usuário autenticado ou convidado
+      // IMPORTANTE: Nunca enviar ambos user_id e guest_token - deve ser um OU outro
+      const isAuthenticatedOrder = !!user?.id;
+      const isGuestOrder = !user?.id && !!guestToken;
+
       // Create order
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
-          user_id: user?.id || null,
-          guest_token: guestToken || null,
+          user_id: isAuthenticatedOrder ? user.id : null,
+          guest_token: isGuestOrder ? guestToken : null,
           customer_name: formData.name,
           customer_phone: formData.phone,
           customer_cep: formData.cep.replace(/\D/g, ''),
