@@ -482,6 +482,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      validate_guest_token: { Args: { token: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user" | "delivery_rider" | "pdv"
