@@ -482,7 +482,19 @@ export type Database = {
         }
         Returns: boolean
       }
-      validate_guest_token: { Args: { token: string }; Returns: boolean }
+      validate_guest_token:
+        | {
+            Args: { token: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.validate_guest_token(token => text), public.validate_guest_token(token => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
+        | {
+            Args: { token: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.validate_guest_token(token => text), public.validate_guest_token(token => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
     }
     Enums: {
       app_role: "admin" | "user" | "delivery_rider" | "pdv"
