@@ -38,7 +38,7 @@ const Checkout = () => {
   const { cart, getCartTotal, clearCart } = useCart();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { guestToken, guestData, updateGuestCustomer, clearGuestData, loading: guestLoading } = useGuestMode();
+  const { guestToken, guestData, createGuestCustomer, updateGuestCustomer, clearGuestData, loading: guestLoading } = useGuestMode();
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
@@ -182,16 +182,32 @@ const Checkout = () => {
   }, [guestData]);
 
   // Verificar se tem dados válidos para acessar checkout
+  // RELAXADO: permite acesso se tiver dados no formulário OU guest token
   useEffect(() => {
     // Aguardar carregamento dos dados de guest
     if (guestLoading) return;
     
-    // Se não tiver usuário autenticado E não tiver dados de guest válidos, redirecionar
-    if (!user && (!guestToken || !guestData || !guestData.name || !guestData.phone)) {
-      console.warn('Checkout access denied: no valid user or guest data');
-      toast.error('Por favor, preencha seus dados antes de finalizar o pedido');
-      navigate('/cart');
+    // Se tiver usuário autenticado, permite
+    if (user) return;
+    
+    // Se tiver guest token com dados, permite
+    if (guestToken && guestData && guestData.name && guestData.phone) return;
+    
+    // Se tiver dados salvos no localStorage do formulário, permite
+    const savedForm = safeStorage.getItem('checkout_form');
+    if (savedForm) {
+      try {
+        const parsed = JSON.parse(savedForm);
+        if (parsed.name && parsed.phone) {
+          return; // Permite acesso com dados do localStorage
+        }
+      } catch {}
     }
+    
+    // Sem dados válidos - redirecionar
+    console.warn('Checkout access denied: no valid user, guest or saved form data');
+    toast.error('Por favor, preencha seus dados antes de finalizar o pedido');
+    navigate('/cart');
   }, [user, guestToken, guestData, guestLoading, navigate]);
 
   const subtotal = getCartTotal();
@@ -361,13 +377,6 @@ const Checkout = () => {
         return;
       }
 
-      // Validação extra: garantir que tem dados válidos para criar pedido
-      if (!user && !guestToken) {
-        toast.error('Por favor, preencha seus dados antes de finalizar o pedido');
-        navigate('/cart');
-        return;
-      }
-
       // Validação: nome e telefone são obrigatórios
       if (!formData.name || !formData.phone) {
         toast.error('Nome e telefone são obrigatórios');
@@ -396,44 +405,74 @@ const Checkout = () => {
 
       const trackingCode = trackingData;
 
-      // Update guest customer if exists
-      if (guestToken) {
-        const { error: updateError } = await updateGuestCustomer(
-          formData.name,
-          formData.phone,
-          {
-            street: formData.address,
-            number: formData.number,
-            complement: formData.reference,
-            neighborhood: formData.neighborhood,
-            city: addressData.city,
-            state: addressData.state,
-            cep: formData.cep,
-          }
-        );
+      // Se não tem usuário autenticado, precisamos de um guest token
+      let effectiveGuestToken = guestToken;
+      
+      if (!user) {
+        if (guestToken) {
+          // Atualizar dados do guest existente
+          const { error: updateError } = await updateGuestCustomer(
+            formData.name,
+            formData.phone,
+            {
+              street: formData.address,
+              number: formData.number,
+              complement: formData.reference,
+              neighborhood: formData.neighborhood,
+              city: addressData.city,
+              state: addressData.state,
+              cep: formData.cep,
+            }
+          );
 
-        // Se falhar ao atualizar dados do guest, parar o fluxo
-        if (updateError) {
-          console.error('Erro ao atualizar dados do guest:', updateError);
-          toast.error('Erro ao atualizar seus dados. Por favor, tente novamente.');
-          setLoading(false);
-          return;
+          if (updateError) {
+            console.error('Erro ao atualizar dados do guest:', updateError);
+            toast.error('Erro ao atualizar seus dados. Por favor, tente novamente.');
+            setLoading(false);
+            return;
+          }
+        } else {
+          // Criar novo guest customer automaticamente
+          console.log('Criando novo guest customer automaticamente...');
+          const { token: newToken, error: createError } = await createGuestCustomer(
+            formData.name,
+            formData.phone,
+            {
+              street: formData.address,
+              number: formData.number,
+              complement: formData.reference,
+              neighborhood: formData.neighborhood,
+              city: addressData.city,
+              state: addressData.state,
+              cep: formData.cep,
+            }
+          );
+
+          if (createError || !newToken) {
+            console.error('Erro ao criar guest customer:', createError);
+            toast.error('Erro ao processar seus dados. Por favor, tente novamente.');
+            setLoading(false);
+            return;
+          }
+          
+          effectiveGuestToken = newToken;
+          console.log('Guest customer criado com token:', newToken);
         }
       }
 
       // Determinar se é pedido de usuário autenticado ou convidado
       // IMPORTANTE: Nunca enviar ambos user_id e guest_token - deve ser um OU outro
       const isAuthenticatedOrder = !!user?.id;
-      const isGuestOrder = !user?.id && !!guestToken;
+      const isGuestOrder = !user?.id && !!effectiveGuestToken;
 
       // DEBUG: Log dos dados críticos para RLS
       console.log('=== DEBUG CHECKOUT RLS ===');
       console.log('user?.id:', user?.id);
-      console.log('guestToken:', guestToken);
+      console.log('effectiveGuestToken:', effectiveGuestToken);
       console.log('isAuthenticatedOrder:', isAuthenticatedOrder);
       console.log('isGuestOrder:', isGuestOrder);
       console.log('user_id que será enviado:', isAuthenticatedOrder ? user.id : null);
-      console.log('guest_token que será enviado:', isGuestOrder ? guestToken : null);
+      console.log('guest_token que será enviado:', isGuestOrder ? effectiveGuestToken : null);
       console.log('=========================');
 
       // Create order
@@ -441,7 +480,7 @@ const Checkout = () => {
         .from('orders')
         .insert({
           user_id: isAuthenticatedOrder ? user.id : null,
-          guest_token: isGuestOrder ? guestToken : null,
+          guest_token: isGuestOrder ? effectiveGuestToken : null,
           customer_name: formData.name,
           customer_phone: formData.phone,
           customer_cep: formData.cep.replace(/\D/g, ''),
