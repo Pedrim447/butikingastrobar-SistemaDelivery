@@ -19,6 +19,7 @@ import AdminDeliveryRiders from "./pages/AdminDeliveryRiders";
 import AdminUsers from "./pages/AdminUsers";
 import AdminCoupons from "./pages/AdminCoupons";
 import AdminProducts from "./pages/AdminProducts";
+import AdminSideDishes from "./pages/AdminSideDishes";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
 import DeliveryNavigation from "./pages/DeliveryNavigation";
 import OrderTracking from "./pages/OrderTracking";
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/stats" element={<AdminStats />} />
               <Route path="/admin/products" element={<AdminProducts />} />
+              <Route path="/admin/side-dishes" element={<AdminSideDishes />} />
               <Route path="/admin/delivery-riders" element={<AdminDeliveryRiders />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/coupons" element={<AdminCoupons />} />
