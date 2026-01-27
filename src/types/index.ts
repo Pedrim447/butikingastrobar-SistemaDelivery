@@ -11,8 +11,10 @@ export interface Product {
   description: string | null;
   price: number;
   image_url: string | null;
-  category_id: string;
+  category_id: string | null;
   is_available: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface CartItem {
