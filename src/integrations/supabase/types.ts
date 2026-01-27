@@ -346,6 +346,7 @@ export type Database = {
           is_available: boolean | null
           name: string
           price: number
+          show_as_side_dish: boolean | null
           updated_at: string | null
         }
         Insert: {
@@ -357,6 +358,7 @@ export type Database = {
           is_available?: boolean | null
           name: string
           price: number
+          show_as_side_dish?: boolean | null
           updated_at?: string | null
         }
         Update: {
@@ -368,6 +370,7 @@ export type Database = {
           is_available?: boolean | null
           name?: string
           price?: number
+          show_as_side_dish?: boolean | null
           updated_at?: string | null
         }
         Relationships: [
@@ -410,6 +413,39 @@ export type Database = {
         }
         Relationships: []
       }
+      side_dishes: {
+        Row: {
+          created_at: string | null
+          display_order: number | null
+          id: string
+          is_available: boolean | null
+          name: string
+          price: number
+          show_as_product: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_available?: boolean | null
+          name: string
+          price?: number
+          show_as_product?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_available?: boolean | null
+          name?: string
+          price?: number
+          show_as_product?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -438,6 +474,7 @@ export type Database = {
     Functions: {
       generate_comanda_number: { Args: never; Returns: string }
       generate_tracking_code: { Args: never; Returns: string }
+      get_guest_token: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -445,6 +482,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      validate_guest_token:
+        | {
+            Args: { token: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.validate_guest_token(token => text), public.validate_guest_token(token => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
+        | {
+            Args: { token: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.validate_guest_token(token => text), public.validate_guest_token(token => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
     }
     Enums: {
       app_role: "admin" | "user" | "delivery_rider" | "pdv"
