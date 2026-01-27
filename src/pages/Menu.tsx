@@ -503,9 +503,9 @@ const Menu = () => {
             
             {/* Uncategorized products (side dishes shown as products) */}
             {uncategorizedProducts.length > 0 && (
-              <div id="category-outros">
+              <div id="category-acompanhamentos">
                 <CategorySection
-                  category={{ id: 'outros', name: 'Outros', slug: 'outros', display_order: 999 }}
+                  category={{ id: 'acompanhamentos', name: 'Acompanhamentos', slug: 'acompanhamentos', display_order: 999 }}
                   products={uncategorizedProducts}
                 />
               </div>
