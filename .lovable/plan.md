@@ -1,144 +1,196 @@
 
+## Objetivo
 
-## Resumo do Problema
+Restaurar o diálogo de detalhes do produto para exibir o sistema de **acompanhamentos obrigatórios** conforme as imagens de referência, onde:
+- O cliente deve escolher **3 acompanhamentos obrigatórios (grátis)**
+- Acompanhamentos adicionais além dos 3 são **cobrados pelo preço unitário**
+- Layout em **grid de 2 colunas**
+- Contador visual mostrando **"X/3 obrigatórios"**
+- Mensagem de aviso **"* Obrigatório escolher 3 acompanhamentos (grátis)"**
 
-O erro 42501 continua acontecendo porque:
+## Dados Existentes no Banco
 
-1. O **INSERT funciona** (política `Allow order creation` permite inserir)
-2. **Mas o SELECT que vem depois falha** - quando você usa `.insert().select().single()`, o Supabase faz um SELECT após inserir para retornar os dados
-3. A política SELECT exige que `get_guest_token()` retorne o token do guest, mas essa função lê o header `x-guest-token` da requisição
-4. **O header `x-guest-token` nunca é enviado** pelo cliente, então a função retorna vazio e o SELECT é bloqueado
+Os acompanhamentos já estão configurados:
 
-## Solução Definitiva
-
-Vou implementar uma solução em duas partes que resolve o problema de forma permanente:
-
-### Parte 1: Criar cliente Supabase com suporte a guest token
-
-Criar um arquivo separado que exporta uma função para fazer requisições com o header `x-guest-token`:
-
-```text
-src/lib/supabaseWithGuest.ts (novo arquivo)
-```
-
-Este arquivo:
-- Exporta uma função `getSupabaseWithGuestToken()` que retorna o cliente Supabase com headers dinâmicos
-- Lê o guest token do localStorage e adiciona como header `x-guest-token`
-- Pode ser usado em qualquer lugar que precise de operações com guest
-
-### Parte 2: Atualizar a política SELECT para ser mais flexível
-
-Modificar a política SELECT da tabela `orders` para permitir:
-- Usuários autenticados verem seus pedidos (`user_id = auth.uid()`)
-- **Qualquer pessoa ver pedidos que acabou de criar** usando a validação do token via campo (não via header)
-- Admins verem todos os pedidos
-- Entregadores verem pedidos atribuídos
-
-A nova política usará:
-```sql
--- Para guests: validar se o guest_token do registro existe na tabela guest_customers
--- Isso não depende do header, apenas do valor salvo no pedido
-(guest_token IS NOT NULL AND validate_guest_token(guest_token))
-```
-
-### Parte 3: Atualizar o Checkout para usar o novo cliente
-
-O arquivo `src/pages/Checkout.tsx` será atualizado para:
-- Importar a função `getSupabaseWithGuestToken`
-- Usar o cliente com headers para fazer o INSERT
-- Isso garante que o SELECT subsequente também funcione
+| Nome | Preço | Ordem |
+|------|-------|-------|
+| Arroz Branco | Grátis | 1 |
+| Feijão | Grátis | 2 |
+| Farofa | Grátis | 3 |
+| Salada | R$ 6.00 | 4 |
+| Batata Frita | Grátis | 5 |
+| Purê de Batata | Grátis | 6 |
+| Vinagrete | Grátis | 7 |
+| Macarrão | Grátis | 8 |
+| **Cupim no molho madeira** (produto) | R$ 27.00 | - |
 
 ## Alterações de Arquivos
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `src/lib/supabaseWithGuest.ts` | Criar novo - função helper para cliente com guest token |
-| `src/pages/Checkout.tsx` | Atualizar - usar cliente com guest token para criar pedidos |
-| Migração SQL | Atualizar política SELECT para não depender do header |
+| `src/components/ProductDetailDialog.tsx` | Refatorar completamente para incluir o sistema de acompanhamentos |
 
-## Detalhes Técnicos
+## Detalhes da Implementação
 
-### Novo arquivo: src/lib/supabaseWithGuest.ts
+### 1. Carregar acompanhamentos do banco de dados
+
+Buscar dinamicamente os side dishes da tabela `side_dishes` e produtos com `show_as_side_dish = true`:
 
 ```typescript
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/integrations/supabase/types';
-import { safeStorage } from './safeStorage';
+// Buscar da tabela side_dishes
+const { data: sideDishes } = await supabase
+  .from('side_dishes')
+  .select('*')
+  .eq('is_available', true)
+  .order('display_order');
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Buscar produtos que também são acompanhamentos
+const { data: productSideDishes } = await supabase
+  .from('products')
+  .select('*')
+  .eq('show_as_side_dish', true)
+  .eq('is_available', true);
+```
 
-export const getSupabaseWithGuestToken = () => {
-  const guestToken = safeStorage.getItem('guest_token');
+### 2. Estado com suporte a quantidades múltiplas
+
+Em vez de apenas marcar/desmarcar, cada acompanhamento terá controle de quantidade (+/-):
+
+```typescript
+const [accompanimentQuantities, setAccompanimentQuantities] = useState<Record<string, number>>({});
+
+// Contagem total de acompanhamentos selecionados
+const totalAccompaniments = Object.values(accompanimentQuantities).reduce((a, b) => a + b, 0);
+```
+
+### 3. Lógica de preços (3 grátis + extras pagos)
+
+```typescript
+const calculateAccompanimentsPrice = () => {
+  let freeRemaining = MANDATORY_COUNT; // 3
+  let totalExtra = 0;
   
-  return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: {
-      storage: localStorage,
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-    global: {
-      headers: guestToken ? { 'x-guest-token': guestToken } : {},
-    },
-  });
+  // Ordenar por preço (grátis primeiro)
+  const sortedItems = Object.entries(accompanimentQuantities)
+    .filter(([_, qty]) => qty > 0)
+    .sort((a, b) => {
+      const priceA = getItemPrice(a[0]);
+      const priceB = getItemPrice(b[0]);
+      return priceA - priceB;
+    });
+  
+  for (const [id, qty] of sortedItems) {
+    const price = getItemPrice(id);
+    for (let i = 0; i < qty; i++) {
+      if (freeRemaining > 0) {
+        freeRemaining--;
+      } else {
+        totalExtra += price;
+      }
+    }
+  }
+  
+  return totalExtra;
 };
 ```
 
-### Nova política SELECT (via migração SQL)
+### 4. Interface Visual (Grid 2 colunas)
 
-```sql
-DROP POLICY IF EXISTS "View own orders" ON public.orders;
+```text
+┌─────────────────────────────────────────┐
+│ [Imagem do Produto]                     │
+├─────────────────────────────────────────┤
+│ Bolinha de bacalhau                     │
+│ Petisco tradicional preparado com...    │
+├─────────────────────────────────────────┤
+│ Escolha os Acompanhamentos    2/3 obrig │
+│ ┌─────────────┐ ┌─────────────┐         │
+│ │ [-] 1 [+]   │ │ [-] 1 [+]   │         │
+│ │ Arroz Branco│ │ Feijão      │         │
+│ └─────────────┘ └─────────────┘         │
+│ ┌─────────────┐ ┌─────────────┐         │
+│ │ [-] 0 [+]   │ │ [-] 0 [+]   │         │
+│ │ Farofa      │ │ Salada      │         │
+│ │             │ │ R$ 6.00     │         │
+│ └─────────────┘ └─────────────┘         │
+│ ...                                     │
+│ * Obrigatório escolher 3 (grátis)       │
+├─────────────────────────────────────────┤
+│ R$ 37.00  [-] 1 [+]   [Adicionar]       │
+└─────────────────────────────────────────┘
+```
 
-CREATE POLICY "View own orders"
-ON public.orders
-FOR SELECT
-TO public
-USING (
-  -- Usuário autenticado vendo seus próprios pedidos
-  (auth.uid() IS NOT NULL AND user_id = auth.uid())
-  OR
-  -- Guest vendo pedidos via header x-guest-token
-  (guest_token IS NOT NULL AND guest_token::text = get_guest_token())
-  OR
-  -- Guest vendo pedidos via validação direta do token (para .select() após INSERT)
-  (guest_token IS NOT NULL AND validate_guest_token(guest_token::text))
-  OR
-  -- Entregador vendo pedidos atribuídos
-  (auth.uid() IS NOT NULL AND delivery_rider_id = auth.uid())
-  OR
-  -- Admin vendo todos
-  has_role(auth.uid(), 'admin'::app_role)
-  OR
-  -- PDV vendo pedidos PDV
-  (has_role(auth.uid(), 'pdv'::app_role) AND tipo_pedido = 'pdv')
+### 5. Validação no botão Adicionar
+
+O botão só será habilitado quando exatamente 3+ acompanhamentos forem selecionados:
+
+```typescript
+const canAddToCart = totalAccompaniments >= MANDATORY_COUNT;
+
+// No handleAddToCart
+if (!canAddToCart) {
+  toast.error('Selecione pelo menos 3 acompanhamentos!');
+  return;
+}
+```
+
+### 6. Notas do pedido
+
+Consolidar todas as escolhas nas notas:
+
+```typescript
+const notes = `Acompanhamentos: ${selectedNames.join(', ')}${extraCost > 0 ? ` | Adicionais: +R$ ${extraCost.toFixed(2)}` : ''}`;
+```
+
+## Fluxo Visual
+
+```text
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│ Cliente clica    │────>│ Dialog abre com  │────>│ Cliente escolhe  │
+│ no produto       │     │ acompanhamentos  │     │ 3+ itens         │
+└──────────────────┘     └──────────────────┘     └────────┬─────────┘
+                                                           │
+                                                           v
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│ Item adicionado  │<────│ Preço calculado  │<────│ Botão habilitado │
+│ ao carrinho      │     │ (3 grátis+extras)│     │ quando >= 3      │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+```
+
+## Componente de Acompanhamento Individual
+
+```typescript
+interface AccompanimentCardProps {
+  item: SideDish;
+  quantity: number;
+  onQuantityChange: (qty: number) => void;
+  isFree: boolean; // true se ainda há slots grátis disponíveis
+}
+
+const AccompanimentCard = ({ item, quantity, onQuantityChange, isFree }: AccompanimentCardProps) => (
+  <div className="border rounded-lg p-3 flex flex-col items-center">
+    <div className="flex items-center gap-2 mb-2">
+      <Button size="sm" variant="outline" onClick={() => onQuantityChange(Math.max(0, quantity - 1))}>
+        <Minus className="w-3 h-3" />
+      </Button>
+      <span className="w-6 text-center font-medium">{quantity}</span>
+      <Button size="sm" variant="outline" onClick={() => onQuantityChange(quantity + 1)}>
+        <Plus className="w-3 h-3" />
+      </Button>
+    </div>
+    <span className="font-medium text-sm text-center">{item.name}</span>
+    {item.price > 0 && (
+      <span className="text-xs text-muted-foreground">R$ {item.price.toFixed(2)}</span>
+    )}
+  </div>
 );
 ```
 
-### Alteração no Checkout.tsx
+## Resumo
 
-```typescript
-// Antes
-import { supabase } from '@/integrations/supabase/client';
-
-// Depois
-import { getSupabaseWithGuestToken } from '@/lib/supabaseWithGuest';
-
-// No handleSubmit, usar:
-const supabaseClient = guestToken ? getSupabaseWithGuestToken() : supabase;
-const { data: orderData, error: orderError } = await supabaseClient
-  .from('orders')
-  .insert({...})
-  .select()
-  .single();
-```
-
-## Por que esta solução é definitiva
-
-1. **Resolve a causa raiz**: O problema era que o SELECT após INSERT falhava porque não tinha como validar o guest. Agora tem duas formas de validar.
-
-2. **Não depende apenas de headers**: A política também valida usando `validate_guest_token()` que verifica se o token existe na tabela `guest_customers`.
-
-3. **Compatível com tudo**: Funciona para usuários autenticados, guests, PDV e admins.
-
-4. **Segura**: Guests só podem ver pedidos que pertencem a tokens válidos registrados no banco.
-
+Esta implementação restaura o sistema de acompanhamentos obrigatórios exatamente como mostrado nas imagens, com:
+- Dados dinâmicos do banco de dados
+- Grid de 2 colunas com controles de quantidade
+- Lógica de 3 obrigatórios grátis
+- Validação antes de adicionar ao carrinho
+- Consolidação das escolhas nas notas do pedido
