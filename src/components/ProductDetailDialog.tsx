@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { Product } from '@/types';
 import { ShoppingBag, Minus, Plus } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProductDetailDialogProps {
   product: Product | null;
@@ -14,17 +13,15 @@ interface ProductDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-interface Extra {
+interface SideDish {
   id: string;
   name: string;
   price: number;
+  display_order: number | null;
+  type: 'side_dish' | 'product';
 }
 
-const EXTRA_TOPPINGS: Extra[] = [
-  { id: 'american_cheese', name: 'American Cheese', price: 6.0 },
-  { id: 'bacon', name: 'Bacon Artesanal', price: 6.0 },
-  { id: 'caramelized_onion', name: 'Cebola Caramelizada', price: 4.0 },
-];
+const MANDATORY_COUNT = 3;
 
 export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   product,
@@ -32,44 +29,150 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   onOpenChange,
 }) => {
   const [quantity, setQuantity] = useState(1);
-  const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
+  const [accompanimentQuantities, setAccompanimentQuantities] = useState<Record<string, number>>({});
+  const [sideDishes, setSideDishes] = useState<SideDish[]>([]);
+  const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
+
+  useEffect(() => {
+    if (open) {
+      fetchSideDishes();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      // Reset form when dialog closes
+      setQuantity(1);
+      setAccompanimentQuantities({});
+    }
+  }, [open]);
+
+  const fetchSideDishes = async () => {
+    setLoading(true);
+    try {
+      // Fetch from side_dishes table
+      const { data: sideDishesData, error: sideDishesError } = await supabase
+        .from('side_dishes')
+        .select('*')
+        .eq('is_available', true)
+        .order('display_order');
+
+      if (sideDishesError) throw sideDishesError;
+
+      // Fetch products that are also side dishes
+      const { data: productSideDishesData, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('show_as_side_dish', true)
+        .eq('is_available', true);
+
+      if (productsError) throw productsError;
+
+      // Combine and format
+      const combined: SideDish[] = [
+        ...(sideDishesData || []).map(sd => ({
+          id: sd.id,
+          name: sd.name,
+          price: sd.price,
+          display_order: sd.display_order,
+          type: 'side_dish' as const,
+        })),
+        ...(productSideDishesData || []).map(p => ({
+          id: `product_${p.id}`,
+          name: p.name,
+          price: p.price,
+          display_order: 999, // Products come after side dishes
+          type: 'product' as const,
+        })),
+      ];
+
+      // Sort by display_order
+      combined.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+
+      setSideDishes(combined);
+    } catch (error) {
+      console.error('Error fetching side dishes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!product) return null;
 
-  const handleExtraToggle = (extraId: string) => {
-    setSelectedExtras(prev =>
-      prev.includes(extraId)
-        ? prev.filter(id => id !== extraId)
-        : [...prev, extraId]
-    );
+  const getItemPrice = (id: string): number => {
+    const item = sideDishes.find(sd => sd.id === id);
+    return item?.price || 0;
   };
 
-  const calculateTotal = () => {
-    const extrasTotal = selectedExtras.reduce((total, extraId) => {
-      const extra = EXTRA_TOPPINGS.find(e => e.id === extraId);
-      return total + (extra?.price || 0);
-    }, 0);
-    return (product.price + extrasTotal) * quantity;
+  const totalAccompaniments = Object.values(accompanimentQuantities).reduce((a, b) => a + b, 0);
+
+  const calculateAccompanimentsPrice = (): number => {
+    let freeRemaining = MANDATORY_COUNT;
+    let totalExtra = 0;
+
+    // Sort items by price (free items first to maximize savings for customer)
+    const sortedItems = Object.entries(accompanimentQuantities)
+      .filter(([_, qty]) => qty > 0)
+      .sort((a, b) => {
+        const priceA = getItemPrice(a[0]);
+        const priceB = getItemPrice(b[0]);
+        return priceA - priceB;
+      });
+
+    for (const [id, qty] of sortedItems) {
+      const price = getItemPrice(id);
+      for (let i = 0; i < qty; i++) {
+        if (freeRemaining > 0) {
+          freeRemaining--;
+        } else {
+          totalExtra += price;
+        }
+      }
+    }
+
+    return totalExtra;
   };
+
+  const calculateTotal = (): number => {
+    const accompanimentsPrice = calculateAccompanimentsPrice();
+    return (product.price + accompanimentsPrice) * quantity;
+  };
+
+  const handleQuantityChange = (id: string, newQty: number) => {
+    setAccompanimentQuantities(prev => ({
+      ...prev,
+      [id]: Math.max(0, newQty),
+    }));
+  };
+
+  const canAddToCart = totalAccompaniments >= MANDATORY_COUNT;
 
   const handleAddToCart = () => {
-    const extrasLabels = selectedExtras
-      .map(id => {
-        const extra = EXTRA_TOPPINGS.find(e => e.id === id);
-        return extra ? `${extra.name} (+R$ ${extra.price.toFixed(2)})` : '';
+    if (!canAddToCart) {
+      toast.error('Selecione pelo menos 3 acompanhamentos!');
+      return;
+    }
+
+    // Build notes with accompaniment details
+    const selectedItems = Object.entries(accompanimentQuantities)
+      .filter(([_, qty]) => qty > 0)
+      .map(([id, qty]) => {
+        const item = sideDishes.find(sd => sd.id === id);
+        if (!item) return '';
+        return qty > 1 ? `${qty}x ${item.name}` : item.name;
       })
       .filter(Boolean);
 
-    const notes = extrasLabels.join(', ');
+    const extraCost = calculateAccompanimentsPrice();
+    let notes = `Acompanhamentos: ${selectedItems.join(', ')}`;
+    if (extraCost > 0) {
+      notes += ` | Adicionais: +R$ ${extraCost.toFixed(2)}`;
+    }
 
     addToCart(product, quantity, notes);
     toast.success(`${product.name} adicionado ao carrinho!`);
     onOpenChange(false);
-    
-    // Reset form
-    setQuantity(1);
-    setSelectedExtras([]);
   };
 
   return (
@@ -107,34 +210,61 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             )}
           </div>
 
-          {/* Extra Toppings */}
-          {EXTRA_TOPPINGS.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="font-semibold text-sm">Adicionais</h3>
-              <div className="space-y-1">
-                {EXTRA_TOPPINGS.map(extra => (
-                  <div
-                    key={extra.id}
-                    className="flex items-center justify-between py-2 border-b last:border-b-0"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id={extra.id}
-                        checked={selectedExtras.includes(extra.id)}
-                        onCheckedChange={() => handleExtraToggle(extra.id)}
-                      />
-                      <Label htmlFor={extra.id} className="cursor-pointer text-sm">
-                        {extra.name}
-                      </Label>
-                    </div>
-                    <span className="text-sm font-medium text-primary">
-                      +R$ {extra.price.toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+          {/* Accompaniments Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm">Escolha os Acompanhamentos</h3>
+              <span className={`text-sm font-medium ${totalAccompaniments >= MANDATORY_COUNT ? 'text-green-600' : 'text-orange-500'}`}>
+                {totalAccompaniments}/{MANDATORY_COUNT} obrigatórios
+              </span>
             </div>
-          )}
+
+            {loading ? (
+              <div className="text-center py-4 text-muted-foreground">Carregando...</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {sideDishes.map(item => {
+                  const qty = accompanimentQuantities[item.id] || 0;
+                  return (
+                    <div
+                      key={item.id}
+                      className="border rounded-lg p-3 flex flex-col items-center"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-7 w-7"
+                          onClick={() => handleQuantityChange(item.id, qty - 1)}
+                        >
+                          <Minus className="w-3 h-3" />
+                        </Button>
+                        <span className="w-6 text-center font-medium">{qty}</span>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-7 w-7"
+                          onClick={() => handleQuantityChange(item.id, qty + 1)}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <span className="font-medium text-sm text-center">{item.name}</span>
+                      {item.price > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          R$ {item.price.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              * Obrigatório escolher 3 acompanhamentos (grátis)
+            </p>
+          </div>
         </div>
 
         {/* Footer with quantity and add button */}
@@ -162,7 +292,11 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
-            <Button onClick={handleAddToCart} className="flex-1 max-w-[140px]">
+            <Button 
+              onClick={handleAddToCart} 
+              className="flex-1 max-w-[140px]"
+              disabled={!canAddToCart}
+            >
               <ShoppingBag className="w-4 h-4 mr-1" />
               Adicionar
             </Button>
