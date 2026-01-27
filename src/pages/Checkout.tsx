@@ -475,10 +475,14 @@ const Checkout = () => {
       console.log('guest_token que será enviado:', isGuestOrder ? effectiveGuestToken : null);
       console.log('=========================');
 
-      // Create order
-      const { data: orderData, error: orderError } = await supabase
+      // Gerar UUID para o pedido no frontend
+      const orderId = crypto.randomUUID();
+
+      // Create order - SEM select() para evitar problemas de RLS
+      const { error: orderError } = await supabase
         .from('orders')
         .insert({
+          id: orderId,
           user_id: isAuthenticatedOrder ? user.id : null,
           guest_token: isGuestOrder ? effectiveGuestToken : null,
           customer_name: formData.name,
@@ -498,18 +502,16 @@ const Checkout = () => {
           payment_status: paymentMethod === 'pix' ? 'pending' : 'paid',
           coupon_code: appliedCoupon?.code || null,
           coupon_discount: couponDiscount,
-        })
-        .select()
-        .single();
+        });
 
       if (orderError) throw orderError;
 
       // Save tracking code
       safeStorage.setItem("lastOrderCode", trackingCode);
 
-      // Create order items
+      // Create order items - SEM select()
       const orderItems = cart.map(item => ({
-        order_id: orderData.id,
+        order_id: orderId,
         product_id: item.product.id,
         product_name: item.product.name,
         product_price: item.product.price,
@@ -536,7 +538,7 @@ const Checkout = () => {
       if (paymentMethod === 'pix') {
         const { data: pixResponse, error: pixError } = await supabase.functions.invoke('create-pix-payment', {
           body: {
-            orderId: orderData.id,
+            orderId: orderId,
             amount: total,
             customerEmail: user?.email || `${formData.phone}@cliente.com`,
             customerName: formData.name,
@@ -546,7 +548,7 @@ const Checkout = () => {
         if (pixError) throw pixError;
 
         setPixData({
-          orderId: orderData.id,
+          orderId: orderId,
           qrCode: pixResponse.qrCode,
           qrCodeBase64: pixResponse.qrCodeBase64,
           expiresAt: pixResponse.expiresAt,
