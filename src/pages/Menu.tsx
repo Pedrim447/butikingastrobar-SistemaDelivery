@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Product, Category, SideDish } from "@/types";
+import { Product, Category } from "@/types";
 import { HeroSection } from "@/components/HeroSection";
 import { CategoryNav } from "@/components/CategoryNav";
 import { CategorySection } from "@/components/CategorySection";
@@ -132,10 +132,9 @@ const Menu = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [categoriesRes, productsRes, sideDishesRes] = await Promise.all([
+      const [categoriesRes, productsRes] = await Promise.all([
         supabase.from("categories").select("*").order("display_order"),
         supabase.from("products").select("*").eq("is_available", true),
-        supabase.from("side_dishes").select("*").eq("is_available", true).eq("show_as_product", true),
       ]);
 
       if (categoriesRes.error) {
@@ -144,27 +143,10 @@ const Menu = () => {
         setCategories(categoriesRes.data);
       }
 
-      // Convert side dishes marked as products into Product format
-      const sideDishProducts: Product[] = [];
-      if (!sideDishesRes.error && sideDishesRes.data) {
-        sideDishesRes.data.forEach((sd: SideDish) => {
-          sideDishProducts.push({
-            id: `sidedish_${sd.id}`,
-            name: sd.name,
-            price: sd.price,
-            description: null,
-            image_url: null,
-            is_available: true,
-            category_id: null as unknown as string, // Will show in "Acompanhamentos" section
-            show_as_side_dish: false,
-          });
-        });
-      }
-
       if (productsRes.error) {
         console.error("Error fetching products:", productsRes.error);
       } else if (productsRes.data) {
-        setProducts([...productsRes.data, ...sideDishProducts]);
+        setProducts(productsRes.data);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -183,15 +165,9 @@ const Menu = () => {
     }
   };
 
-  const getProductsByCategory = (categoryId: string | null) => {
-    if (categoryId === null) {
-      return products.filter((p) => p.category_id === null || p.id.startsWith('sidedish_'));
-    }
+  const getProductsByCategory = (categoryId: string) => {
     return products.filter((p) => p.category_id === categoryId);
   };
-
-  // Get accompaniments displayed as products (no category)
-  const accompanimentProducts = products.filter((p) => p.id.startsWith('sidedish_'));
 
   const cartCount = getCartItemsCount();
   const cartTotal = getCartTotal();
@@ -497,16 +473,6 @@ const Menu = () => {
                 />
               </div>
             ))}
-            
-            {/* Accompaniments as Products Section */}
-            {accompanimentProducts.length > 0 && (
-              <div id="category-accompaniments">
-                <CategorySection
-                  category={{ id: 'accompaniments', name: 'Acompanhamentos', slug: 'acompanhamentos', display_order: 999 }}
-                  products={accompanimentProducts}
-                />
-              </div>
-            )}
           </div>
         )}
       </div>

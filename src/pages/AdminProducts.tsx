@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Pencil, Trash2, Upload, Image as ImageIcon } from "lucide-react";
-import { Product, Category, SideDish } from "@/types";
+import { Product, Category } from "@/types";
 import { toast } from "sonner";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
@@ -41,14 +41,11 @@ export default function AdminProducts() {
   const { user, isAdmin, signOut, loading: authLoading, checkingRole } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [sideDishes, setSideDishes] = useState<SideDish[]>([]);
   const [loading, setLoading] = useState(true);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
-  const [sideDishDialogOpen, setSideDishDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [editingSideDish, setEditingSideDish] = useState<SideDish | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -59,21 +56,12 @@ export default function AdminProducts() {
     price: "",
     category_id: "",
     is_available: true,
-    show_as_side_dish: false,
   });
 
   const [categoryForm, setCategoryForm] = useState({
     name: "",
     slug: "",
     display_order: "",
-  });
-
-  const [sideDishForm, setSideDishForm] = useState({
-    name: "",
-    price: "",
-    display_order: "",
-    is_available: true,
-    show_as_product: false,
   });
 
   useEffect(() => {
@@ -88,7 +76,7 @@ export default function AdminProducts() {
   }, [user, isAdmin, navigate, authLoading, checkingRole]);
 
   const fetchData = async () => {
-    await Promise.all([fetchProducts(), fetchCategories(), fetchSideDishes()]);
+    await Promise.all([fetchProducts(), fetchCategories()]);
     setLoading(false);
   };
 
@@ -120,21 +108,6 @@ export default function AdminProducts() {
     }
 
     setCategories(data as Category[]);
-  };
-
-  const fetchSideDishes = async () => {
-    const { data, error } = await supabase
-      .from("side_dishes")
-      .select("*")
-      .order("display_order");
-
-    if (error) {
-      toast.error("Erro ao carregar acompanhamentos");
-      console.error(error);
-      return;
-    }
-
-    setSideDishes(data as SideDish[]);
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -196,7 +169,6 @@ export default function AdminProducts() {
       price: parseFloat(productForm.price),
       category_id: productForm.category_id,
       is_available: productForm.is_available,
-      show_as_side_dish: productForm.show_as_side_dish,
       image_url: imageUrl,
     };
 
@@ -273,49 +245,6 @@ export default function AdminProducts() {
     resetCategoryForm();
   };
 
-  const handleSideDishSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const sideDishData = {
-      name: sideDishForm.name,
-      price: parseFloat(sideDishForm.price) || 0,
-      display_order: parseInt(sideDishForm.display_order) || 0,
-      is_available: sideDishForm.is_available,
-      show_as_product: sideDishForm.show_as_product,
-    };
-
-    if (editingSideDish) {
-      const { error } = await supabase
-        .from("side_dishes")
-        .update(sideDishData)
-        .eq("id", editingSideDish.id);
-
-      if (error) {
-        toast.error("Erro ao atualizar acompanhamento");
-        console.error(error);
-        return;
-      }
-
-      toast.success("Acompanhamento atualizado com sucesso!");
-    } else {
-      const { error } = await supabase
-        .from("side_dishes")
-        .insert(sideDishData);
-
-      if (error) {
-        toast.error("Erro ao criar acompanhamento");
-        console.error(error);
-        return;
-      }
-
-      toast.success("Acompanhamento criado com sucesso!");
-    }
-
-    setSideDishDialogOpen(false);
-    fetchSideDishes();
-    resetSideDishForm();
-  };
-
   const handleDeleteProduct = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este produto?")) return;
 
@@ -352,24 +281,6 @@ export default function AdminProducts() {
     fetchCategories();
   };
 
-  const handleDeleteSideDish = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir este acompanhamento?")) return;
-
-    const { error } = await supabase
-      .from("side_dishes")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      toast.error("Erro ao excluir acompanhamento");
-      console.error(error);
-      return;
-    }
-
-    toast.success("Acompanhamento excluído com sucesso!");
-    fetchSideDishes();
-  };
-
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
     setProductForm({
@@ -378,7 +289,6 @@ export default function AdminProducts() {
       price: product.price.toString(),
       category_id: product.category_id,
       is_available: product.is_available,
-      show_as_side_dish: product.show_as_side_dish ?? false,
     });
     setImagePreview(product.image_url);
     setProductDialogOpen(true);
@@ -394,66 +304,6 @@ export default function AdminProducts() {
     setCategoryDialogOpen(true);
   };
 
-  const handleEditSideDish = (sideDish: SideDish) => {
-    setEditingSideDish(sideDish);
-    setSideDishForm({
-      name: sideDish.name,
-      price: sideDish.price.toString(),
-      display_order: sideDish.display_order.toString(),
-      is_available: sideDish.is_available,
-      show_as_product: sideDish.show_as_product ?? false,
-    });
-    setSideDishDialogOpen(true);
-  };
-
-  const toggleShowAsProduct = async (id: string, showAsProduct: boolean) => {
-    const { error } = await supabase
-      .from("side_dishes")
-      .update({ show_as_product: showAsProduct })
-      .eq("id", id);
-
-    if (error) {
-      toast.error("Erro ao atualizar");
-      console.error(error);
-      return;
-    }
-
-    toast.success(showAsProduct ? "Exibindo como produto!" : "Removido dos produtos!");
-    setSideDishes(sideDishes.map(s => s.id === id ? { ...s, show_as_product: showAsProduct } : s));
-  };
-
-  const toggleProductAvailability = async (id: string, isAvailable: boolean) => {
-    const { error } = await supabase
-      .from("products")
-      .update({ is_available: isAvailable })
-      .eq("id", id);
-
-    if (error) {
-      toast.error("Erro ao atualizar disponibilidade");
-      console.error(error);
-      return;
-    }
-
-    toast.success(isAvailable ? "Produto ativado!" : "Produto desativado!");
-    setProducts(products.map(p => p.id === id ? { ...p, is_available: isAvailable } : p));
-  };
-
-  const toggleSideDishAvailability = async (id: string, isAvailable: boolean) => {
-    const { error } = await supabase
-      .from("side_dishes")
-      .update({ is_available: isAvailable })
-      .eq("id", id);
-
-    if (error) {
-      toast.error("Erro ao atualizar disponibilidade");
-      console.error(error);
-      return;
-    }
-
-    toast.success(isAvailable ? "Acompanhamento ativado!" : "Acompanhamento desativado!");
-    setSideDishes(sideDishes.map(s => s.id === id ? { ...s, is_available: isAvailable } : s));
-  };
-
   const resetProductForm = () => {
     setEditingProduct(null);
     setProductForm({
@@ -462,26 +312,9 @@ export default function AdminProducts() {
       price: "",
       category_id: "",
       is_available: true,
-      show_as_side_dish: false,
     });
     setImageFile(null);
     setImagePreview(null);
-  };
-
-  const toggleShowAsSideDish = async (id: string, showAsSideDish: boolean) => {
-    const { error } = await supabase
-      .from("products")
-      .update({ show_as_side_dish: showAsSideDish })
-      .eq("id", id);
-
-    if (error) {
-      toast.error("Erro ao atualizar");
-      console.error(error);
-      return;
-    }
-
-    toast.success(showAsSideDish ? "Exibindo como acompanhamento!" : "Removido dos acompanhamentos!");
-    setProducts(products.map(p => p.id === id ? { ...p, show_as_side_dish: showAsSideDish } : p));
   };
 
   const resetCategoryForm = () => {
@@ -490,17 +323,6 @@ export default function AdminProducts() {
       name: "",
       slug: "",
       display_order: "",
-    });
-  };
-
-  const resetSideDishForm = () => {
-    setEditingSideDish(null);
-    setSideDishForm({
-      name: "",
-      price: "",
-      display_order: "",
-      is_available: true,
-      show_as_product: false,
     });
   };
 
@@ -525,14 +347,13 @@ export default function AdminProducts() {
         <main className="flex-1 p-8">
           <div className="mb-6">
             <h1 className="text-3xl font-bold">Gerenciar Cardápio</h1>
-            <p className="text-muted-foreground">Gerencie produtos, categorias e acompanhamentos</p>
+            <p className="text-muted-foreground">Gerencie produtos e categorias do seu cardápio</p>
           </div>
 
           <Tabs defaultValue="products" className="space-y-4">
             <TabsList>
               <TabsTrigger value="products">Produtos</TabsTrigger>
               <TabsTrigger value="categories">Categorias</TabsTrigger>
-              <TabsTrigger value="sidedishes">Acompanhamentos</TabsTrigger>
             </TabsList>
 
             <TabsContent value="products" className="space-y-4">
@@ -658,17 +479,6 @@ export default function AdminProducts() {
                         <Label htmlFor="available">Produto disponível</Label>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="show-as-side"
-                          checked={productForm.show_as_side_dish}
-                          onCheckedChange={(checked) =>
-                            setProductForm({ ...productForm, show_as_side_dish: checked })
-                          }
-                        />
-                        <Label htmlFor="show-as-side">Mostrar também como Acompanhamento</Label>
-                      </div>
-
                       <div className="flex gap-2">
                         <Button
                           type="button"
@@ -699,14 +509,13 @@ export default function AdminProducts() {
                       <TableHead>Categoria</TableHead>
                       <TableHead>Preço</TableHead>
                       <TableHead>Disponível</TableHead>
-                      <TableHead>Acompanhamento</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {products.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground">
+                        <TableCell colSpan={6} className="text-center text-muted-foreground">
                           Nenhum produto cadastrado
                         </TableCell>
                       </TableRow>
@@ -732,16 +541,15 @@ export default function AdminProducts() {
                             <TableCell>{category?.name || "-"}</TableCell>
                             <TableCell>R$ {product.price.toFixed(2)}</TableCell>
                             <TableCell>
-                              <Switch
-                                checked={product.is_available}
-                                onCheckedChange={(checked) => toggleProductAvailability(product.id, checked)}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Switch
-                                checked={product.show_as_side_dish ?? false}
-                                onCheckedChange={(checked) => toggleShowAsSideDish(product.id, checked)}
-                              />
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs ${
+                                  product.is_available
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {product.is_available ? "Sim" : "Não"}
+                              </span>
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
@@ -890,174 +698,6 @@ export default function AdminProducts() {
                     )}
                   </TableBody>
                 </Table>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="sidedishes" className="space-y-4">
-              <div className="flex justify-end">
-                <Dialog open={sideDishDialogOpen} onOpenChange={setSideDishDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button onClick={resetSideDishForm}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Novo Acompanhamento
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>
-                        {editingSideDish ? "Editar Acompanhamento" : "Novo Acompanhamento"}
-                      </DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleSideDishSubmit} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="side-name">Nome do Acompanhamento *</Label>
-                        <Input
-                          id="side-name"
-                          value={sideDishForm.name}
-                          onChange={(e) =>
-                            setSideDishForm({ ...sideDishForm, name: e.target.value })
-                          }
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="side-price">Preço Adicional (R$)</Label>
-                        <Input
-                          id="side-price"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={sideDishForm.price}
-                          onChange={(e) =>
-                            setSideDishForm({ ...sideDishForm, price: e.target.value })
-                          }
-                          placeholder="0.00"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="side-order">Ordem de Exibição</Label>
-                        <Input
-                          id="side-order"
-                          type="number"
-                          value={sideDishForm.display_order}
-                          onChange={(e) =>
-                            setSideDishForm({ ...sideDishForm, display_order: e.target.value })
-                          }
-                        />
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="side-available"
-                          checked={sideDishForm.is_available}
-                          onCheckedChange={(checked) =>
-                            setSideDishForm({ ...sideDishForm, is_available: checked })
-                          }
-                        />
-                        <Label htmlFor="side-available">Disponível</Label>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="side-show-product"
-                          checked={sideDishForm.show_as_product}
-                          onCheckedChange={(checked) =>
-                            setSideDishForm({ ...sideDishForm, show_as_product: checked })
-                          }
-                        />
-                        <Label htmlFor="side-show-product">Mostrar também como Produto</Label>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            setSideDishDialogOpen(false);
-                            resetSideDishForm();
-                          }}
-                          className="flex-1"
-                        >
-                          Cancelar
-                        </Button>
-                        <Button type="submit" className="flex-1">
-                          {editingSideDish ? "Atualizar" : "Criar"}
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </div>
-
-              <div className="bg-card rounded-lg shadow">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Preço</TableHead>
-                      <TableHead>Ordem</TableHead>
-                      <TableHead>Disponível</TableHead>
-                      <TableHead>Mostrar como Produto</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sideDishes.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground">
-                          Nenhum acompanhamento cadastrado
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      sideDishes.map((sideDish) => (
-                        <TableRow key={sideDish.id}>
-                          <TableCell className="font-medium">{sideDish.name}</TableCell>
-                          <TableCell>
-                            {sideDish.price > 0 ? `+R$ ${sideDish.price.toFixed(2)}` : "Grátis"}
-                          </TableCell>
-                          <TableCell>{sideDish.display_order}</TableCell>
-                          <TableCell>
-                            <Switch
-                              checked={sideDish.is_available}
-                              onCheckedChange={(checked) => toggleSideDishAvailability(sideDish.id, checked)}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Switch
-                              checked={sideDish.show_as_product ?? false}
-                              onCheckedChange={(checked) => toggleShowAsProduct(sideDish.id, checked)}
-                            />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleEditSideDish(sideDish)}
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDeleteSideDish(sideDish.id)}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground space-y-2">
-                <p><strong>Nota:</strong> O cliente deve escolher no mínimo 3 acompanhamentos obrigatórios (grátis). Acompanhamentos adicionais serão cobrados.</p>
-                <p><strong>Mostrar como Produto:</strong> Ative esta opção para que o acompanhamento apareça também como um produto individual no cardápio.</p>
               </div>
             </TabsContent>
           </Tabs>

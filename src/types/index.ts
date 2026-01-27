@@ -13,7 +13,6 @@ export interface Product {
   image_url: string | null;
   category_id: string;
   is_available: boolean;
-  show_as_side_dish?: boolean;
 }
 
 export interface CartItem {
@@ -73,13 +72,4 @@ export interface Coupon {
   min_order_value: number;
   created_at: string;
   updated_at: string;
-}
-
-export interface SideDish {
-  id: string;
-  name: string;
-  price: number;
-  is_available: boolean;
-  display_order: number;
-  show_as_product: boolean;
 }
