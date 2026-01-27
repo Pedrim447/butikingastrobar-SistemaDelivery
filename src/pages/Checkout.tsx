@@ -10,6 +10,7 @@ import { ArrowLeft, Loader2, Pencil, MapPin, CreditCard, Wallet, DollarSign, QrC
 import { useNavigate } from 'react-router-dom';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseWithGuestToken } from '@/lib/supabaseWithGuest';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useGuestMode } from '@/hooks/useGuestMode';
@@ -421,8 +422,10 @@ const Checkout = () => {
         }
       }
 
-      // Create order
-      const { data: orderData, error: orderError } = await supabase
+      // Create order - usar cliente com guest token para passar RLS
+      const supabaseClient = guestToken ? getSupabaseWithGuestToken() : supabase;
+      
+      const { data: orderData, error: orderError } = await supabaseClient
         .from('orders')
         .insert({
           user_id: user?.id || null,
@@ -464,7 +467,7 @@ const Checkout = () => {
         notes: item.notes || null,
       }));
 
-      const { error: itemsError } = await supabase
+      const { error: itemsError } = await supabaseClient
         .from('order_items')
         .insert(orderItems);
 
