@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Product } from '@/types';
+import { SideDish } from '@/types/accompaniments';
 import { ShoppingBag, Minus, Plus } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { useAccompaniments } from '@/hooks/useAccompaniments';
+import { AccompanimentCard } from '@/components/accompaniments/AccompanimentCard';
+import { VariationSelector } from '@/components/accompaniments/VariationSelector';
 
 interface ProductDetailDialogProps {
   product: Product | null;
@@ -13,13 +16,11 @@ interface ProductDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-interface SideDish {
-  id: string;
-  name: string;
-  price: number;
-  display_order: number | null;
-  type: 'side_dish' | 'product';
-}
+type SelectionData = {
+  item: SideDish;
+  variationId?: string;
+  variationName?: string;
+};
 
 const MANDATORY_COUNT = 3;
 
@@ -29,80 +30,30 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   onOpenChange,
 }) => {
   const [quantity, setQuantity] = useState(1);
-  const [selectedAccompaniments, setSelectedAccompaniments] = useState<Set<string>>(new Set());
-  const [sideDishes, setSideDishes] = useState<SideDish[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedAccompaniments, setSelectedAccompaniments] = useState<Map<string, SelectionData>>(new Map());
+  const [step, setStep] = useState<'select' | 'variations'>('select');
   const { addToCart } = useCart();
+  const { sideDishes, loading, refetch } = useAccompaniments();
 
   useEffect(() => {
     if (open) {
-      fetchSideDishes();
+      refetch();
     }
-  }, [open]);
+  }, [open, refetch]);
 
   useEffect(() => {
     if (!open) {
-      // Reset form when dialog closes
       setQuantity(1);
-      setSelectedAccompaniments(new Set());
+      setSelectedAccompaniments(new Map());
+      setStep('select');
     }
   }, [open]);
-
-  const fetchSideDishes = async () => {
-    setLoading(true);
-    try {
-      // Fetch from side_dishes table
-      const { data: sideDishesData, error: sideDishesError } = await supabase
-        .from('side_dishes')
-        .select('*')
-        .eq('is_available', true)
-        .order('display_order');
-
-      if (sideDishesError) throw sideDishesError;
-
-      // Fetch products that are also side dishes
-      const { data: productSideDishesData, error: productsError } = await supabase
-        .from('products')
-        .select('*')
-        .eq('show_as_side_dish', true)
-        .eq('is_available', true);
-
-      if (productsError) throw productsError;
-
-      // Combine and format
-      const combined: SideDish[] = [
-        ...(sideDishesData || []).map(sd => ({
-          id: sd.id,
-          name: sd.name,
-          price: sd.price,
-          display_order: sd.display_order,
-          type: 'side_dish' as const,
-        })),
-        ...(productSideDishesData || []).map(p => ({
-          id: `product_${p.id}`,
-          name: p.name,
-          price: p.price,
-          display_order: 999, // Products come after side dishes
-          type: 'product' as const,
-        })),
-      ];
-
-      // Sort by display_order
-      combined.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-
-      setSideDishes(combined);
-    } catch (error) {
-      console.error('Error fetching side dishes:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (!product) return null;
 
   const getItemPrice = (id: string): number => {
-    const item = sideDishes.find(sd => sd.id === id);
-    return item?.price || 0;
+    const data = selectedAccompaniments.get(id);
+    return data?.item.price || 0;
   };
 
   const totalAccompaniments = selectedAccompaniments.size;
@@ -111,12 +62,11 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     let freeRemaining = MANDATORY_COUNT;
     let totalExtra = 0;
 
-    // Sort items by price (free items first to maximize savings for customer)
-    const sortedItems = Array.from(selectedAccompaniments)
-      .sort((a, b) => getItemPrice(a) - getItemPrice(b));
+    const sortedItems = Array.from(selectedAccompaniments.entries())
+      .sort((a, b) => (a[1].item.price || 0) - (b[1].item.price || 0));
 
-    for (const id of sortedItems) {
-      const price = getItemPrice(id);
+    for (const [_, data] of sortedItems) {
+      const price = data.item.price || 0;
       if (freeRemaining > 0) {
         freeRemaining--;
       } else {
@@ -132,15 +82,43 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     return (product.price + accompanimentsPrice) * quantity;
   };
 
-  const toggleAccompaniment = (id: string) => {
+  const toggleAccompaniment = (item: SideDish) => {
     setSelectedAccompaniments(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
+      const newMap = new Map(prev);
+      if (newMap.has(item.id)) {
+        newMap.delete(item.id);
       } else {
-        newSet.add(id);
+        newMap.set(item.id, { item });
       }
-      return newSet;
+      return newMap;
+    });
+  };
+
+  const hasItemsWithVariations = (): boolean => {
+    return Array.from(selectedAccompaniments.values()).some(data => data.item.has_variations);
+  };
+
+  const handleProceed = () => {
+    if (totalAccompaniments < MANDATORY_COUNT) {
+      toast.error('Selecione pelo menos 3 acompanhamentos!');
+      return;
+    }
+
+    if (hasItemsWithVariations()) {
+      setStep('variations');
+    } else {
+      handleAddToCart();
+    }
+  };
+
+  const handleSelectVariation = (sideDishId: string, variationId: string, variationName: string) => {
+    setSelectedAccompaniments(prev => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(sideDishId);
+      if (existing) {
+        newMap.set(sideDishId, { ...existing, variationId, variationName });
+      }
+      return newMap;
     });
   };
 
@@ -152,11 +130,12 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
       return;
     }
 
-    // Build notes with accompaniment details
-    const selectedItems = Array.from(selectedAccompaniments)
-      .map(id => {
-        const item = sideDishes.find(sd => sd.id === id);
-        return item?.name || '';
+    const selectedItems = Array.from(selectedAccompaniments.values())
+      .map(data => {
+        if (data.variationName) {
+          return `${data.item.name} (${data.variationName})`;
+        }
+        return data.item.name;
       })
       .filter(Boolean);
 
@@ -198,85 +177,91 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             )}
           </div>
 
-          {/* Accompaniments Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-sm">Escolha os Acompanhamentos</h3>
-              <span className={`text-sm font-medium ${totalAccompaniments >= MANDATORY_COUNT ? 'text-green-600' : 'text-destructive'}`}>
-                {totalAccompaniments}/{MANDATORY_COUNT} obrigatórios
-              </span>
-            </div>
+          {step === 'select' ? (
+            <>
+              {/* Accompaniments Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm">Escolha os Acompanhamentos</h3>
+                  <span className={`text-sm font-medium ${totalAccompaniments >= MANDATORY_COUNT ? 'text-green-600' : 'text-destructive'}`}>
+                    {totalAccompaniments}/{MANDATORY_COUNT} obrigatórios
+                  </span>
+                </div>
 
-            {loading ? (
-              <div className="text-center py-4 text-muted-foreground">Carregando...</div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {sideDishes.map(item => {
-                  const isSelected = selectedAccompaniments.has(item.id);
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => toggleAccompaniment(item.id)}
-                      className={`border rounded-lg p-3 flex flex-col items-center justify-center min-h-[70px] transition-all ${
-                        isSelected 
-                          ? 'border-primary bg-primary/10 ring-1 ring-primary' 
-                          : 'border-border hover:border-muted-foreground'
-                      }`}
-                    >
-                      <span className="font-medium text-sm text-center">{item.name}</span>
-                      {item.price > 0 && (
-                        <span className="text-xs text-muted-foreground mt-1">
-                          R$ {item.price.toFixed(2)}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                {loading ? (
+                  <div className="text-center py-4 text-muted-foreground">Carregando...</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {sideDishes.map(item => {
+                      const selectionData = selectedAccompaniments.get(item.id);
+                      const isSelected = !!selectionData;
+                      return (
+                        <AccompanimentCard
+                          key={item.id}
+                          item={item}
+                          isSelected={isSelected}
+                          hasVariation={item.has_variations}
+                          selectedVariationName={selectionData?.variationName}
+                          onToggle={() => toggleAccompaniment(item)}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+
+                <p className="text-xs text-destructive">
+                  * Obrigatório escolher 3 acompanhamentos (grátis)
+                </p>
               </div>
-            )}
-
-            <p className="text-xs text-destructive">
-              * Obrigatório escolher 3 acompanhamentos (grátis)
-            </p>
-          </div>
+            </>
+          ) : (
+            <VariationSelector
+              selectedItems={selectedAccompaniments}
+              sideDishes={sideDishes}
+              onSelectVariation={handleSelectVariation}
+              onBack={() => setStep('select')}
+              onContinue={handleAddToCart}
+            />
+          )}
         </div>
 
         {/* Footer with quantity and add button */}
-        <div className="sticky bottom-0 bg-card border-t p-3">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-lg font-bold">
-              R$ {calculateTotal().toFixed(2)}
-            </span>
-            <div className="flex items-center gap-2">
+        {step === 'select' && (
+          <div className="sticky bottom-0 bg-card border-t p-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-lg font-bold">
+                R$ {calculateTotal().toFixed(2)}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                >
+                  <Minus className="w-4 h-4" />
+                </Button>
+                <span className="font-bold w-6 text-center">{quantity}</span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setQuantity(quantity + 1)}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
               <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                onClick={handleProceed}
+                className="flex-1 max-w-[140px]"
+                disabled={!canAddToCart}
               >
-                <Minus className="w-4 h-4" />
-              </Button>
-              <span className="font-bold w-6 text-center">{quantity}</span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setQuantity(quantity + 1)}
-              >
-                <Plus className="w-4 h-4" />
+                <ShoppingBag className="w-4 h-4 mr-1" />
+                {hasItemsWithVariations() ? 'Continuar' : 'Adicionar'}
               </Button>
             </div>
-            <Button 
-              onClick={handleAddToCart} 
-              className="flex-1 max-w-[140px]"
-              disabled={!canAddToCart}
-            >
-              <ShoppingBag className="w-4 h-4 mr-1" />
-              Adicionar
-            </Button>
           </div>
-        </div>
+        )}
       </DialogContent>
     </Dialog>
   );
