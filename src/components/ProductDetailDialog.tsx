@@ -29,7 +29,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   onOpenChange,
 }) => {
   const [quantity, setQuantity] = useState(1);
-  const [accompanimentQuantities, setAccompanimentQuantities] = useState<Record<string, number>>({});
+  const [selectedAccompaniments, setSelectedAccompaniments] = useState<Set<string>>(new Set());
   const [sideDishes, setSideDishes] = useState<SideDish[]>([]);
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
@@ -44,7 +44,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     if (!open) {
       // Reset form when dialog closes
       setQuantity(1);
-      setAccompanimentQuantities({});
+      setSelectedAccompaniments(new Set());
     }
   }, [open]);
 
@@ -105,29 +105,22 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     return item?.price || 0;
   };
 
-  const totalAccompaniments = Object.values(accompanimentQuantities).reduce((a, b) => a + b, 0);
+  const totalAccompaniments = selectedAccompaniments.size;
 
   const calculateAccompanimentsPrice = (): number => {
     let freeRemaining = MANDATORY_COUNT;
     let totalExtra = 0;
 
     // Sort items by price (free items first to maximize savings for customer)
-    const sortedItems = Object.entries(accompanimentQuantities)
-      .filter(([_, qty]) => qty > 0)
-      .sort((a, b) => {
-        const priceA = getItemPrice(a[0]);
-        const priceB = getItemPrice(b[0]);
-        return priceA - priceB;
-      });
+    const sortedItems = Array.from(selectedAccompaniments)
+      .sort((a, b) => getItemPrice(a) - getItemPrice(b));
 
-    for (const [id, qty] of sortedItems) {
+    for (const id of sortedItems) {
       const price = getItemPrice(id);
-      for (let i = 0; i < qty; i++) {
-        if (freeRemaining > 0) {
-          freeRemaining--;
-        } else {
-          totalExtra += price;
-        }
+      if (freeRemaining > 0) {
+        freeRemaining--;
+      } else {
+        totalExtra += price;
       }
     }
 
@@ -139,11 +132,16 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     return (product.price + accompanimentsPrice) * quantity;
   };
 
-  const handleQuantityChange = (id: string, newQty: number) => {
-    setAccompanimentQuantities(prev => ({
-      ...prev,
-      [id]: Math.max(0, newQty),
-    }));
+  const toggleAccompaniment = (id: string) => {
+    setSelectedAccompaniments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
   };
 
   const canAddToCart = totalAccompaniments >= MANDATORY_COUNT;
@@ -155,12 +153,10 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     }
 
     // Build notes with accompaniment details
-    const selectedItems = Object.entries(accompanimentQuantities)
-      .filter(([_, qty]) => qty > 0)
-      .map(([id, qty]) => {
+    const selectedItems = Array.from(selectedAccompaniments)
+      .map(id => {
         const item = sideDishes.find(sd => sd.id === id);
-        if (!item) return '';
-        return qty > 1 ? `${qty}x ${item.name}` : item.name;
+        return item?.name || '';
       })
       .filter(Boolean);
 
@@ -191,14 +187,6 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               <span className="text-muted-foreground">Sem imagem</span>
             </div>
           )}
-          <Button
-            variant="secondary"
-            size="icon"
-            className="absolute top-4 left-4 rounded-full"
-            onClick={() => onOpenChange(false)}
-          >
-            ×
-          </Button>
         </div>
 
         <div className="p-4 space-y-4">
@@ -214,7 +202,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-sm">Escolha os Acompanhamentos</h3>
-              <span className={`text-sm font-medium ${totalAccompaniments >= MANDATORY_COUNT ? 'text-green-600' : 'text-orange-500'}`}>
+              <span className={`text-sm font-medium ${totalAccompaniments >= MANDATORY_COUNT ? 'text-green-600' : 'text-destructive'}`}>
                 {totalAccompaniments}/{MANDATORY_COUNT} obrigatórios
               </span>
             </div>
@@ -224,44 +212,31 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 {sideDishes.map(item => {
-                  const qty = accompanimentQuantities[item.id] || 0;
+                  const isSelected = selectedAccompaniments.has(item.id);
                   return (
-                    <div
+                    <button
                       key={item.id}
-                      className="border rounded-lg p-3 flex flex-col items-center"
+                      type="button"
+                      onClick={() => toggleAccompaniment(item.id)}
+                      className={`border rounded-lg p-3 flex flex-col items-center justify-center min-h-[70px] transition-all ${
+                        isSelected 
+                          ? 'border-primary bg-primary/10 ring-1 ring-primary' 
+                          : 'border-border hover:border-muted-foreground'
+                      }`}
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="h-7 w-7"
-                          onClick={() => handleQuantityChange(item.id, qty - 1)}
-                        >
-                          <Minus className="w-3 h-3" />
-                        </Button>
-                        <span className="w-6 text-center font-medium">{qty}</span>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="h-7 w-7"
-                          onClick={() => handleQuantityChange(item.id, qty + 1)}
-                        >
-                          <Plus className="w-3 h-3" />
-                        </Button>
-                      </div>
                       <span className="font-medium text-sm text-center">{item.name}</span>
                       {item.price > 0 && (
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground mt-1">
                           R$ {item.price.toFixed(2)}
                         </span>
                       )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
             )}
 
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-destructive">
               * Obrigatório escolher 3 acompanhamentos (grátis)
             </p>
           </div>
