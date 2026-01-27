@@ -320,6 +320,21 @@ export default function AdminSideDishes() {
     fetchSideDishes();
   };
 
+  const handleToggleVariationAvailable = async (variationId: string, currentValue: boolean) => {
+    const { error } = await supabase
+      .from("side_dish_variations")
+      .update({ is_available: !currentValue })
+      .eq("id", variationId);
+
+    if (error) {
+      toast.error("Erro ao atualizar disponibilidade da variação");
+      console.error(error);
+      return;
+    }
+
+    fetchSideDishes();
+  };
+
   const resetForm = () => {
     setEditingSideDish(null);
     setForm({
@@ -610,9 +625,10 @@ export default function AdminSideDishes() {
                                     <TableCell>{variation.name}</TableCell>
                                     <TableCell>{variation.display_order}</TableCell>
                                     <TableCell>
-                                      <span className={variation.is_available ? "text-green-600" : "text-muted-foreground"}>
-                                        {variation.is_available ? "Sim" : "Não"}
-                                      </span>
+                                      <Switch
+                                        checked={variation.is_available}
+                                        onCheckedChange={() => handleToggleVariationAvailable(variation.id, variation.is_available)}
+                                      />
                                     </TableCell>
                                     <TableCell className="text-right">
                                       <div className="flex justify-end gap-2">
