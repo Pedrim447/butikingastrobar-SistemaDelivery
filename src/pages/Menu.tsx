@@ -132,9 +132,10 @@ const Menu = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [categoriesRes, productsRes] = await Promise.all([
+      const [categoriesRes, productsRes, sideDishesRes] = await Promise.all([
         supabase.from("categories").select("*").order("display_order"),
         supabase.from("products").select("*").eq("is_available", true),
+        supabase.from("side_dishes").select("*").eq("is_available", true).eq("show_as_product", true),
       ]);
 
       if (categoriesRes.error) {
@@ -143,11 +144,34 @@ const Menu = () => {
         setCategories(categoriesRes.data);
       }
 
+      // Combine products with side dishes that should show as products
+      let allProducts: Product[] = [];
+      
       if (productsRes.error) {
         console.error("Error fetching products:", productsRes.error);
       } else if (productsRes.data) {
-        setProducts(productsRes.data);
+        allProducts = [...productsRes.data];
       }
+
+      // Add side dishes as products (with null category_id - they'll appear in a special section or need category assignment)
+      if (sideDishesRes.error) {
+        console.error("Error fetching side dishes as products:", sideDishesRes.error);
+      } else if (sideDishesRes.data) {
+        const sideDishProducts: Product[] = sideDishesRes.data.map(sd => ({
+          id: `sidedish_${sd.id}`,
+          name: sd.name,
+          description: null,
+          price: sd.price,
+          image_url: null,
+          category_id: null, // Will appear in "Outros" category or need to be assigned
+          is_available: sd.is_available,
+          created_at: sd.created_at,
+          updated_at: sd.updated_at,
+        }));
+        allProducts = [...allProducts, ...sideDishProducts];
+      }
+
+      setProducts(allProducts);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -165,9 +189,12 @@ const Menu = () => {
     }
   };
 
-  const getProductsByCategory = (categoryId: string) => {
+  const getProductsByCategory = (categoryId: string | null) => {
     return products.filter((p) => p.category_id === categoryId);
   };
+
+  // Get products without category (side dishes shown as products)
+  const uncategorizedProducts = products.filter((p) => p.category_id === null);
 
   const cartCount = getCartItemsCount();
   const cartTotal = getCartTotal();
@@ -473,6 +500,16 @@ const Menu = () => {
                 />
               </div>
             ))}
+            
+            {/* Uncategorized products (side dishes shown as products) */}
+            {uncategorizedProducts.length > 0 && (
+              <div id="category-outros">
+                <CategorySection
+                  category={{ id: 'outros', name: 'Outros', slug: 'outros', display_order: 999 }}
+                  products={uncategorizedProducts}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
