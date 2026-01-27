@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseWithGuestToken } from "@/lib/supabaseWithGuest";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Package, MapPin, Clock, CheckCircle, XCircle, Bike, ArrowLeft } from "lucide-react";
+import { Package, MapPin, Clock, CheckCircle, XCircle, Bike, ArrowLeft, RefreshCw } from "lucide-react";
 import { OrderTrackingMap } from "@/components/OrderTrackingMap";
 import { safeStorage } from "@/lib/safeStorage";
 
@@ -37,19 +38,17 @@ export default function OrderTracking() {
   const [trackingCode, setTrackingCode] = useState(searchParams.get("code") || "");
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isRealtime, setIsRealtime] = useState(false);
 
-  useEffect(() => {
-    const code = searchParams.get("code") || safeStorage.getItem("lastOrderCode");
-    if (code) {
-      setTrackingCode(code);
-      fetchOrder(code);
-    }
-  }, [searchParams]);
-
-  const fetchOrder = async (code: string) => {
+  const fetchOrder = useCallback(async (code: string) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Use guest token if available for RLS
+      const guestToken = safeStorage.getItem("guestToken");
+      const supabaseClient = guestToken ? getSupabaseWithGuestToken() : supabase;
+      
+      const { data, error } = await supabaseClient
         .from("orders")
         .select("*, order_items(*)")
         .eq("tracking_code", code.toUpperCase())
@@ -70,7 +69,71 @@ export default function OrderTracking() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Initial fetch
+  useEffect(() => {
+    const code = searchParams.get("code") || safeStorage.getItem("lastOrderCode");
+    if (code) {
+      setTrackingCode(code);
+      fetchOrder(code);
+    }
+  }, [searchParams, fetchOrder]);
+
+  // Realtime subscription for order updates
+  useEffect(() => {
+    if (!order?.id) return;
+
+    console.log("Setting up realtime subscription for order:", order.id);
+
+    const channel = supabase
+      .channel(`order-tracking-${order.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${order.id}`
+        },
+        (payload) => {
+          console.log("Order updated via realtime:", payload);
+          
+          // Update order with new data, preserving order_items
+          setOrder(prevOrder => {
+            if (!prevOrder) return null;
+            return {
+              ...prevOrder,
+              ...payload.new,
+              order_items: prevOrder.order_items // Keep existing items
+            } as Order;
+          });
+
+          // Show toast notification for status changes
+          if (payload.new.status !== payload.old?.status) {
+            const statusLabels: Record<string, string> = {
+              pending: "Pendente",
+              preparing: "Aguardando Entregador",
+              out_for_delivery: "Saiu para Entrega",
+              delivered: "Entregue",
+              cancelled: "Cancelado"
+            };
+            toast.success(`Status atualizado: ${statusLabels[payload.new.status as string] || payload.new.status}`);
+          }
+
+          setIsRealtime(true);
+          setTimeout(() => setIsRealtime(false), 2000);
+        }
+      )
+      .subscribe((status) => {
+        console.log("Realtime subscription status:", status);
+      });
+
+    return () => {
+      console.log("Cleaning up realtime subscription");
+      supabase.removeChannel(channel);
+    };
+  }, [order?.id]);
 
   const handleTrack = () => {
     if (!trackingCode.trim()) {
@@ -153,10 +216,18 @@ export default function OrderTracking() {
                       {new Date(order.created_at).toLocaleString("pt-BR")}
                     </p>
                   </div>
-                  <Badge className={statusInfo?.color}>
-                    {StatusIcon && <StatusIcon className="h-3.5 w-3.5 mr-1.5" />}
-                    {statusInfo?.label}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className={`${statusInfo?.color} ${isRealtime ? 'animate-pulse' : ''}`}>
+                      {StatusIcon && <StatusIcon className="h-3.5 w-3.5 mr-1.5" />}
+                      {statusInfo?.label}
+                    </Badge>
+                    {isRealtime && (
+                      <span className="text-xs text-primary flex items-center gap-1">
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                        Atualizado
+                      </span>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
