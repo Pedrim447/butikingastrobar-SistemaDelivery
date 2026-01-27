@@ -20,8 +20,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
@@ -33,15 +39,28 @@ interface SideDish {
   is_available: boolean;
   display_order: number;
   show_as_product: boolean;
+  has_variations: boolean;
+}
+
+interface Variation {
+  id: string;
+  side_dish_id: string;
+  name: string;
+  display_order: number;
+  is_available: boolean;
 }
 
 export default function AdminSideDishes() {
   const navigate = useNavigate();
   const { user, isAdmin, signOut, loading: authLoading, checkingRole } = useAuth();
   const [sideDishes, setSideDishes] = useState<SideDish[]>([]);
+  const [variations, setVariations] = useState<Record<string, Variation[]>>({});
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [variationDialogOpen, setVariationDialogOpen] = useState(false);
   const [editingSideDish, setEditingSideDish] = useState<SideDish | null>(null);
+  const [editingVariation, setEditingVariation] = useState<Variation | null>(null);
+  const [currentSideDishId, setCurrentSideDishId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -49,6 +68,13 @@ export default function AdminSideDishes() {
     display_order: "",
     is_available: true,
     show_as_product: false,
+    has_variations: false,
+  });
+
+  const [variationForm, setVariationForm] = useState({
+    name: "",
+    display_order: "",
+    is_available: true,
   });
 
   useEffect(() => {
@@ -76,6 +102,22 @@ export default function AdminSideDishes() {
     }
 
     setSideDishes(data as SideDish[]);
+    
+    // Fetch all variations
+    const { data: variationsData, error: variationsError } = await supabase
+      .from("side_dish_variations")
+      .select("*")
+      .order("display_order");
+
+    if (!variationsError && variationsData) {
+      const grouped = variationsData.reduce((acc, v) => {
+        if (!acc[v.side_dish_id]) acc[v.side_dish_id] = [];
+        acc[v.side_dish_id].push(v);
+        return acc;
+      }, {} as Record<string, Variation[]>);
+      setVariations(grouped);
+    }
+
     setLoading(false);
   };
 
@@ -88,6 +130,7 @@ export default function AdminSideDishes() {
       display_order: parseInt(form.display_order) || 0,
       is_available: form.is_available,
       show_as_product: form.show_as_product,
+      has_variations: form.has_variations,
     };
 
     if (editingSideDish) {
@@ -122,6 +165,50 @@ export default function AdminSideDishes() {
     resetForm();
   };
 
+  const handleVariationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!currentSideDishId) return;
+
+    const variationData = {
+      side_dish_id: currentSideDishId,
+      name: variationForm.name,
+      display_order: parseInt(variationForm.display_order) || 0,
+      is_available: variationForm.is_available,
+    };
+
+    if (editingVariation) {
+      const { error } = await supabase
+        .from("side_dish_variations")
+        .update(variationData)
+        .eq("id", editingVariation.id);
+
+      if (error) {
+        toast.error("Erro ao atualizar variação");
+        console.error(error);
+        return;
+      }
+
+      toast.success("Variação atualizada com sucesso!");
+    } else {
+      const { error } = await supabase
+        .from("side_dish_variations")
+        .insert(variationData);
+
+      if (error) {
+        toast.error("Erro ao criar variação");
+        console.error(error);
+        return;
+      }
+
+      toast.success("Variação criada com sucesso!");
+    }
+
+    setVariationDialogOpen(false);
+    fetchSideDishes();
+    resetVariationForm();
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este acompanhamento?")) return;
 
@@ -140,6 +227,24 @@ export default function AdminSideDishes() {
     fetchSideDishes();
   };
 
+  const handleDeleteVariation = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta variação?")) return;
+
+    const { error } = await supabase
+      .from("side_dish_variations")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Erro ao excluir variação");
+      console.error(error);
+      return;
+    }
+
+    toast.success("Variação excluída com sucesso!");
+    fetchSideDishes();
+  };
+
   const handleEdit = (sideDish: SideDish) => {
     setEditingSideDish(sideDish);
     setForm({
@@ -148,8 +253,26 @@ export default function AdminSideDishes() {
       display_order: sideDish.display_order.toString(),
       is_available: sideDish.is_available,
       show_as_product: sideDish.show_as_product,
+      has_variations: sideDish.has_variations,
     });
     setDialogOpen(true);
+  };
+
+  const handleEditVariation = (variation: Variation, sideDishId: string) => {
+    setEditingVariation(variation);
+    setCurrentSideDishId(sideDishId);
+    setVariationForm({
+      name: variation.name,
+      display_order: variation.display_order.toString(),
+      is_available: variation.is_available,
+    });
+    setVariationDialogOpen(true);
+  };
+
+  const handleAddVariation = (sideDishId: string) => {
+    setCurrentSideDishId(sideDishId);
+    resetVariationForm();
+    setVariationDialogOpen(true);
   };
 
   const handleToggleAvailable = async (id: string, currentValue: boolean) => {
@@ -182,6 +305,21 @@ export default function AdminSideDishes() {
     fetchSideDishes();
   };
 
+  const handleToggleHasVariations = async (id: string, currentValue: boolean) => {
+    const { error } = await supabase
+      .from("side_dishes")
+      .update({ has_variations: !currentValue })
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Erro ao atualizar configuração de variações");
+      console.error(error);
+      return;
+    }
+
+    fetchSideDishes();
+  };
+
   const resetForm = () => {
     setEditingSideDish(null);
     setForm({
@@ -190,6 +328,16 @@ export default function AdminSideDishes() {
       display_order: "",
       is_available: true,
       show_as_product: false,
+      has_variations: false,
+    });
+  };
+
+  const resetVariationForm = () => {
+    setEditingVariation(null);
+    setVariationForm({
+      name: "",
+      display_order: "",
+      is_available: true,
     });
   };
 
@@ -215,7 +363,7 @@ export default function AdminSideDishes() {
           <div className="mb-6">
             <h1 className="text-3xl font-bold">Gerenciar Acompanhamentos</h1>
             <p className="text-muted-foreground">
-              Adicione, edite ou remova acompanhamentos do cardápio
+              Adicione, edite ou remova acompanhamentos e suas variações
             </p>
           </div>
 
@@ -288,6 +436,15 @@ export default function AdminSideDishes() {
                     <Label htmlFor="show_as_product">Mostrar como Produto</Label>
                   </div>
 
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="has_variations"
+                      checked={form.has_variations}
+                      onCheckedChange={(checked) => setForm({ ...form, has_variations: checked })}
+                    />
+                    <Label htmlFor="has_variations">Possui Variações (tipos)</Label>
+                  </div>
+
                   <div className="flex gap-2">
                     <Button
                       type="button"
@@ -309,75 +466,189 @@ export default function AdminSideDishes() {
             </Dialog>
           </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Preço</TableHead>
-                  <TableHead>Ordem</TableHead>
-                  <TableHead>Disponível</TableHead>
-                  <TableHead>Mostrar como Produto</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sideDishes.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
-                      Nenhum acompanhamento cadastrado
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  sideDishes.map((sideDish) => (
-                    <TableRow key={sideDish.id}>
-                      <TableCell className="font-medium">{sideDish.name}</TableCell>
-                      <TableCell>
-                        {sideDish.price > 0
-                          ? `R$ ${sideDish.price.toFixed(2)}`
-                          : "Grátis"}
-                      </TableCell>
-                      <TableCell>{sideDish.display_order}</TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={sideDish.is_available}
-                          onCheckedChange={() =>
-                            handleToggleAvailable(sideDish.id, sideDish.is_available)
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={sideDish.show_as_product}
-                          onCheckedChange={() =>
-                            handleToggleShowAsProduct(sideDish.id, sideDish.show_as_product)
-                          }
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEdit(sideDish)}
-                          >
+          {/* Variation Dialog */}
+          <Dialog open={variationDialogOpen} onOpenChange={setVariationDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingVariation ? "Editar Variação" : "Nova Variação"}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleVariationSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="variation-name">Nome da Variação *</Label>
+                  <Input
+                    id="variation-name"
+                    value={variationForm.name}
+                    onChange={(e) => setVariationForm({ ...variationForm, name: e.target.value })}
+                    placeholder="Ex: Branco, Integral, À Grega..."
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="variation-order">Ordem de Exibição</Label>
+                  <Input
+                    id="variation-order"
+                    type="number"
+                    min="0"
+                    value={variationForm.display_order}
+                    onChange={(e) => setVariationForm({ ...variationForm, display_order: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="variation-available"
+                    checked={variationForm.is_available}
+                    onCheckedChange={(checked) => setVariationForm({ ...variationForm, is_available: checked })}
+                  />
+                  <Label htmlFor="variation-available">Disponível</Label>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setVariationDialogOpen(false);
+                      resetVariationForm();
+                    }}
+                    className="flex-1"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="flex-1">
+                    {editingVariation ? "Atualizar" : "Criar"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Accordion type="single" collapsible className="space-y-2">
+            {sideDishes.length === 0 ? (
+              <div className="text-center text-muted-foreground py-8 border rounded-lg">
+                Nenhum acompanhamento cadastrado
+              </div>
+            ) : (
+              sideDishes.map((sideDish) => (
+                <AccordionItem key={sideDish.id} value={sideDish.id} className="border rounded-lg px-4">
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center gap-4 flex-1 mr-4">
+                      <span className="font-medium">{sideDish.name}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {sideDish.price > 0 ? `R$ ${sideDish.price.toFixed(2)}` : "Grátis"}
+                      </span>
+                      {sideDish.has_variations && (
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                          {variations[sideDish.id]?.length || 0} variações
+                        </span>
+                      )}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="py-4 space-y-4">
+                      {/* Controls Row */}
+                      <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={sideDish.is_available}
+                            onCheckedChange={() => handleToggleAvailable(sideDish.id, sideDish.is_available)}
+                          />
+                          <Label className="text-sm">Disponível</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={sideDish.show_as_product}
+                            onCheckedChange={() => handleToggleShowAsProduct(sideDish.id, sideDish.show_as_product)}
+                          />
+                          <Label className="text-sm">Mostrar como Produto</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={sideDish.has_variations}
+                            onCheckedChange={() => handleToggleHasVariations(sideDish.id, sideDish.has_variations)}
+                          />
+                          <Label className="text-sm">Possui Variações</Label>
+                        </div>
+                        <div className="flex-1" />
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(sideDish)}>
                             <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDelete(sideDish.id)}
-                          >
+                          <Button size="sm" variant="destructive" onClick={() => handleDelete(sideDish.id)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                      </div>
+
+                      {/* Variations Section */}
+                      {sideDish.has_variations && (
+                        <div className="border-t pt-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-medium text-sm">Variações / Tipos</h4>
+                            <Button size="sm" variant="outline" onClick={() => handleAddVariation(sideDish.id)}>
+                              <Plus className="w-4 h-4 mr-1" />
+                              Adicionar
+                            </Button>
+                          </div>
+
+                          {variations[sideDish.id]?.length > 0 ? (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Nome</TableHead>
+                                  <TableHead>Ordem</TableHead>
+                                  <TableHead>Disponível</TableHead>
+                                  <TableHead className="text-right">Ações</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {variations[sideDish.id].map((variation) => (
+                                  <TableRow key={variation.id}>
+                                    <TableCell>{variation.name}</TableCell>
+                                    <TableCell>{variation.display_order}</TableCell>
+                                    <TableCell>
+                                      <span className={variation.is_available ? "text-green-600" : "text-muted-foreground"}>
+                                        {variation.is_available ? "Sim" : "Não"}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex justify-end gap-2">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleEditVariation(variation, sideDish.id)}
+                                        >
+                                          <Pencil className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          onClick={() => handleDeleteVariation(variation.id)}
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              Nenhuma variação cadastrada. Adicione tipos como "Branco", "Integral", etc.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))
+            )}
+          </Accordion>
         </main>
       </div>
     </SidebarProvider>

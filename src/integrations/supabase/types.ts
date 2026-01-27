@@ -413,10 +413,49 @@ export type Database = {
         }
         Relationships: []
       }
+      side_dish_variations: {
+        Row: {
+          created_at: string | null
+          display_order: number | null
+          id: string
+          is_available: boolean | null
+          name: string
+          side_dish_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_available?: boolean | null
+          name: string
+          side_dish_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_available?: boolean | null
+          name?: string
+          side_dish_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "side_dish_variations_side_dish_id_fkey"
+            columns: ["side_dish_id"]
+            isOneToOne: false
+            referencedRelation: "side_dishes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       side_dishes: {
         Row: {
           created_at: string | null
           display_order: number | null
+          has_variations: boolean | null
           id: string
           is_available: boolean | null
           name: string
@@ -427,6 +466,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           display_order?: number | null
+          has_variations?: boolean | null
           id?: string
           is_available?: boolean | null
           name: string
@@ -437,6 +477,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           display_order?: number | null
+          has_variations?: boolean | null
           id?: string
           is_available?: boolean | null
           name?: string
