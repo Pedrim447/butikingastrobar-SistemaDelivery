@@ -5,6 +5,7 @@ import { Product } from '@/types';
 import { AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProductDetailDialog } from './ProductDetailDialog';
+import { useCart } from '@/contexts/CartContext';
 
 interface ProductCardCompactProps {
   product: Product;
@@ -12,12 +13,24 @@ interface ProductCardCompactProps {
 
 export const ProductCardCompact: React.FC<ProductCardCompactProps> = ({ product }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { addToCart } = useCart();
+
+  // Check if this is a side dish shown as product (no accompaniment selection needed)
+  const isSideDishProduct = product.id.startsWith('sidedish_');
 
   const handleCardClick = () => {
     if (!product.is_available) {
       toast.error('Produto indisponível no momento');
       return;
     }
+    
+    // If it's a side dish shown as product, add directly to cart
+    if (isSideDishProduct) {
+      addToCart(product, 1);
+      toast.success(`${product.name} adicionado ao carrinho!`);
+      return;
+    }
+    
     setDialogOpen(true);
   };
 
@@ -59,11 +72,14 @@ export const ProductCardCompact: React.FC<ProductCardCompactProps> = ({ product 
         </div>
       </Card>
 
-      <ProductDetailDialog
-        product={product}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-      />
+      {/* Only render dialog for regular products */}
+      {!isSideDishProduct && (
+        <ProductDetailDialog
+          product={product}
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+        />
+      )}
     </>
   );
 };
