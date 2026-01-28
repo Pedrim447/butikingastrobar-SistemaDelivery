@@ -263,6 +263,24 @@ export default function AdminProducts() {
     fetchProducts();
   };
 
+  const handleToggleProductAvailable = async (productId: string, currentValue: boolean) => {
+    const { error } = await supabase
+      .from("products")
+      .update({ is_available: !currentValue })
+      .eq("id", productId);
+
+    if (error) {
+      toast.error("Erro ao atualizar disponibilidade");
+      console.error(error);
+      return;
+    }
+
+    setProducts(products.map(p => 
+      p.id === productId ? { ...p, is_available: !currentValue } : p
+    ));
+    toast.success(!currentValue ? "Produto ativado" : "Produto desativado");
+  };
+
   const handleDeleteCategory = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir esta categoria?")) return;
 
@@ -541,15 +559,10 @@ export default function AdminProducts() {
                             <TableCell>{category?.name || "-"}</TableCell>
                             <TableCell>R$ {product.price.toFixed(2)}</TableCell>
                             <TableCell>
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs ${
-                                  product.is_available
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-red-100 text-red-800"
-                                }`}
-                              >
-                                {product.is_available ? "Sim" : "Não"}
-                              </span>
+                              <Switch
+                                checked={product.is_available}
+                                onCheckedChange={() => handleToggleProductAvailable(product.id, product.is_available)}
+                              />
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
