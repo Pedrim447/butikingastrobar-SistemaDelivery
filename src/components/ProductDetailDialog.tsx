@@ -162,12 +162,20 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     });
   };
 
-  const canAddToCart = isSideDishProduct || totalAccompaniments >= MANDATORY_COUNT;
+  const hasVariations = isSideDishProduct && sideDishVariations.length > 0;
+  const canAddSideDishProduct = !hasVariations || selectedVariationId !== null;
 
   const handleAddToCart = () => {
-    // For side dish products, just add directly without accompaniments
+    // For side dish products
     if (isSideDishProduct) {
-      addToCart(product, quantity);
+      let notes = '';
+      if (hasVariations && selectedVariationId) {
+        const selectedVar = sideDishVariations.find(v => v.id === selectedVariationId);
+        if (selectedVar) {
+          notes = `Tipo: ${selectedVar.name}`;
+        }
+      }
+      addToCart(product, quantity, notes || undefined);
       toast.success(`${product.name} adicionado ao carrinho!`);
       onOpenChange(false);
       return;
