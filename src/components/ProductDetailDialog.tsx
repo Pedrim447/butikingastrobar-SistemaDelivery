@@ -234,6 +234,37 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             )}
           </div>
 
+          {/* Side dish product with variations - show variation selector */}
+          {isSideDishProduct && hasVariations && (
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm">Escolha o tipo</h3>
+              {loadingVariations ? (
+                <div className="text-center py-4 text-muted-foreground">Carregando...</div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {sideDishVariations.map(variation => (
+                    <button
+                      key={variation.id}
+                      type="button"
+                      onClick={() => setSelectedVariationId(variation.id)}
+                      className={cn(
+                        'border rounded-lg p-3 flex items-center justify-center transition-all relative min-h-[60px]',
+                        selectedVariationId === variation.id
+                          ? 'border-primary bg-primary/10 ring-1 ring-primary'
+                          : 'border-border hover:border-muted-foreground'
+                      )}
+                    >
+                      {selectedVariationId === variation.id && (
+                        <Check className="w-4 h-4 text-primary absolute top-1 right-1" />
+                      )}
+                      <span className="text-sm font-medium">{variation.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Only show accompaniments section for regular products */}
           {!isSideDishProduct && (
             step === 'select' ? (
