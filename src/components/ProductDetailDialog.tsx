@@ -34,11 +34,44 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   const [quantity, setQuantity] = useState(1);
   const [selectedAccompaniments, setSelectedAccompaniments] = useState<Map<string, SelectionData>>(new Map());
   const [step, setStep] = useState<'select' | 'variations'>('select');
+  const [sideDishVariations, setSideDishVariations] = useState<SideDishVariation[]>([]);
+  const [selectedVariationId, setSelectedVariationId] = useState<string | null>(null);
+  const [loadingVariations, setLoadingVariations] = useState(false);
   const { addToCart } = useCart();
   const { sideDishes, loading, refetch } = useAccompaniments();
 
   // Check if this is a side dish shown as product (no accompaniment selection needed)
   const isSideDishProduct = product?.id.startsWith('sidedish_') ?? false;
+  // Extract the real side dish ID from the prefixed product ID
+  const realSideDishId = isSideDishProduct ? product?.id.replace('sidedish_', '') : null;
+
+  // Fetch variations for sidedish products
+  useEffect(() => {
+    if (open && isSideDishProduct && realSideDishId) {
+      fetchSideDishVariations();
+    }
+  }, [open, isSideDishProduct, realSideDishId]);
+
+  const fetchSideDishVariations = async () => {
+    if (!realSideDishId) return;
+    
+    setLoadingVariations(true);
+    try {
+      const { data, error } = await supabase
+        .from('side_dish_variations')
+        .select('*')
+        .eq('side_dish_id', realSideDishId)
+        .eq('is_available', true)
+        .order('display_order');
+
+      if (error) throw error;
+      setSideDishVariations(data || []);
+    } catch (error) {
+      console.error('Error fetching side dish variations:', error);
+    } finally {
+      setLoadingVariations(false);
+    }
+  };
 
   useEffect(() => {
     if (open && !isSideDishProduct) {
@@ -51,6 +84,8 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
       setQuantity(1);
       setSelectedAccompaniments(new Map());
       setStep('select');
+      setSideDishVariations([]);
+      setSelectedVariationId(null);
     }
   }, [open]);
 
