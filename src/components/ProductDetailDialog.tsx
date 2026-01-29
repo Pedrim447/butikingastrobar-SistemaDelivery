@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Product } from '@/types';
-import { SideDish } from '@/types/accompaniments';
-import { ShoppingBag, Minus, Plus } from 'lucide-react';
+import { SideDish, SideDishVariation } from '@/types/accompaniments';
+import { ShoppingBag, Minus, Plus, Check } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { useAccompaniments } from '@/hooks/useAccompaniments';
 import { AccompanimentCard } from '@/components/accompaniments/AccompanimentCard';
 import { VariationSelector } from '@/components/accompaniments/VariationSelector';
+import { cn } from '@/lib/utils';
 
 interface ProductDetailDialogProps {
   product: Product | null;
@@ -32,11 +34,44 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   const [quantity, setQuantity] = useState(1);
   const [selectedAccompaniments, setSelectedAccompaniments] = useState<Map<string, SelectionData>>(new Map());
   const [step, setStep] = useState<'select' | 'variations'>('select');
+  const [sideDishVariations, setSideDishVariations] = useState<SideDishVariation[]>([]);
+  const [selectedVariationId, setSelectedVariationId] = useState<string | null>(null);
+  const [loadingVariations, setLoadingVariations] = useState(false);
   const { addToCart } = useCart();
   const { sideDishes, loading, refetch } = useAccompaniments();
 
   // Check if this is a side dish shown as product (no accompaniment selection needed)
   const isSideDishProduct = product?.id.startsWith('sidedish_') ?? false;
+  // Extract the real side dish ID from the prefixed product ID
+  const realSideDishId = isSideDishProduct ? product?.id.replace('sidedish_', '') : null;
+
+  // Fetch variations for sidedish products
+  useEffect(() => {
+    if (open && isSideDishProduct && realSideDishId) {
+      fetchSideDishVariations();
+    }
+  }, [open, isSideDishProduct, realSideDishId]);
+
+  const fetchSideDishVariations = async () => {
+    if (!realSideDishId) return;
+    
+    setLoadingVariations(true);
+    try {
+      const { data, error } = await supabase
+        .from('side_dish_variations')
+        .select('*')
+        .eq('side_dish_id', realSideDishId)
+        .eq('is_available', true)
+        .order('display_order');
+
+      if (error) throw error;
+      setSideDishVariations(data || []);
+    } catch (error) {
+      console.error('Error fetching side dish variations:', error);
+    } finally {
+      setLoadingVariations(false);
+    }
+  };
 
   useEffect(() => {
     if (open && !isSideDishProduct) {
@@ -49,6 +84,8 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
       setQuantity(1);
       setSelectedAccompaniments(new Map());
       setStep('select');
+      setSideDishVariations([]);
+      setSelectedVariationId(null);
     }
   }, [open]);
 
@@ -125,12 +162,21 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     });
   };
 
-  const canAddToCart = isSideDishProduct || totalAccompaniments >= MANDATORY_COUNT;
+  const hasVariations = isSideDishProduct && sideDishVariations.length > 0;
+  const canAddSideDishProduct = !hasVariations || selectedVariationId !== null;
+  const canAddToCart = isSideDishProduct ? canAddSideDishProduct : totalAccompaniments >= MANDATORY_COUNT;
 
   const handleAddToCart = () => {
-    // For side dish products, just add directly without accompaniments
+    // For side dish products
     if (isSideDishProduct) {
-      addToCart(product, quantity);
+      let notes = '';
+      if (hasVariations && selectedVariationId) {
+        const selectedVar = sideDishVariations.find(v => v.id === selectedVariationId);
+        if (selectedVar) {
+          notes = `Tipo: ${selectedVar.name}`;
+        }
+      }
+      addToCart(product, quantity, notes || undefined);
       toast.success(`${product.name} adicionado ao carrinho!`);
       onOpenChange(false);
       return;
@@ -187,6 +233,37 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
             )}
           </div>
+
+          {/* Side dish product with variations - show variation selector */}
+          {isSideDishProduct && hasVariations && (
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm">Escolha o tipo</h3>
+              {loadingVariations ? (
+                <div className="text-center py-4 text-muted-foreground">Carregando...</div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {sideDishVariations.map(variation => (
+                    <button
+                      key={variation.id}
+                      type="button"
+                      onClick={() => setSelectedVariationId(variation.id)}
+                      className={cn(
+                        'border rounded-lg p-3 flex items-center justify-center transition-all relative min-h-[60px]',
+                        selectedVariationId === variation.id
+                          ? 'border-primary bg-primary/10 ring-1 ring-primary'
+                          : 'border-border hover:border-muted-foreground'
+                      )}
+                    >
+                      {selectedVariationId === variation.id && (
+                        <Check className="w-4 h-4 text-primary absolute top-1 right-1" />
+                      )}
+                      <span className="text-sm font-medium">{variation.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Only show accompaniments section for regular products */}
           {!isSideDishProduct && (
