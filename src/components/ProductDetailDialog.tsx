@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Product } from '@/types';
-import { SideDish } from '@/types/accompaniments';
-import { ShoppingBag, Minus, Plus } from 'lucide-react';
+import { SideDish, SideDishVariation } from '@/types/accompaniments';
+import { ShoppingBag, Minus, Plus, Check } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { useAccompaniments } from '@/hooks/useAccompaniments';
 import { AccompanimentCard } from '@/components/accompaniments/AccompanimentCard';
 import { VariationSelector } from '@/components/accompaniments/VariationSelector';
+import { cn } from '@/lib/utils';
 
 interface ProductDetailDialogProps {
   product: Product | null;
