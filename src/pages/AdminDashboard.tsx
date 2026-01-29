@@ -669,9 +669,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                                 <Select 
                                   value={order.delivery_rider_id || ""} 
                                   onValueChange={(riderId) => {
-                                    setSelectedRiderId(riderId);
-                                    setSelectedOrderForRider(order.id);
-                                    assignRiderToOrder();
+                                    assignRiderToOrder(order.id, riderId);
                                   }}
                                 >
                                   <SelectTrigger className="w-[180px] h-9">
