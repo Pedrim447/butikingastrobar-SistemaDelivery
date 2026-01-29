@@ -223,8 +223,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const assignRiderToOrder = async () => {
-    if (!selectedOrderForRider || !selectedRiderId) {
+  const assignRiderToOrder = async (orderId: string, riderId: string) => {
+    if (!orderId || !riderId) {
       toast.error("Selecione um motoboy");
       return;
     }
@@ -233,16 +233,14 @@ export default function AdminDashboard() {
       const { error } = await supabase
         .from("orders")
         .update({ 
-          delivery_rider_id: selectedRiderId,
+          delivery_rider_id: riderId,
           status: "out_for_delivery"
         })
-        .eq("id", selectedOrderForRider);
+        .eq("id", orderId);
 
       if (error) throw error;
 
       toast.success("Motoboy atribuído!");
-      setSelectedOrderForRider(null);
-      setSelectedRiderId("");
       fetchOrders();
     } catch (error) {
       console.error("Erro ao atribuir motoboy:", error);
@@ -553,9 +551,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                               <Select 
                                 value={order.delivery_rider_id || ""} 
                                 onValueChange={(riderId) => {
-                                  setSelectedRiderId(riderId);
-                                  setSelectedOrderForRider(order.id);
-                                  assignRiderToOrder();
+                                  assignRiderToOrder(order.id, riderId);
                                 }}
                               >
                                 <SelectTrigger className="w-[180px] h-9">
@@ -673,9 +669,7 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                                 <Select 
                                   value={order.delivery_rider_id || ""} 
                                   onValueChange={(riderId) => {
-                                    setSelectedRiderId(riderId);
-                                    setSelectedOrderForRider(order.id);
-                                    assignRiderToOrder();
+                                    assignRiderToOrder(order.id, riderId);
                                   }}
                                 >
                                   <SelectTrigger className="w-[180px] h-9">
