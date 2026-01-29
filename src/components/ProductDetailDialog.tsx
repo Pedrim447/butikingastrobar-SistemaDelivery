@@ -164,6 +164,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   const hasVariations = isSideDishProduct && sideDishVariations.length > 0;
   const canAddSideDishProduct = !hasVariations || selectedVariationId !== null;
+  const canAddToCart = isSideDishProduct ? canAddSideDishProduct : totalAccompaniments >= MANDATORY_COUNT;
 
   const handleAddToCart = () => {
     // For side dish products
