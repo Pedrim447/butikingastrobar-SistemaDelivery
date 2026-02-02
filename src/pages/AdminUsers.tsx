@@ -32,12 +32,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Shield, Bike, User } from "lucide-react";
+import { Shield, Bike, User, Store } from "lucide-react";
 
 interface UserWithRole {
   id: string;
   email: string;
-  role: 'user' | 'admin' | 'delivery_rider';
+  role: 'user' | 'admin' | 'delivery_rider' | 'pdv';
   created_at: string;
   name?: string;
   phone?: string;
