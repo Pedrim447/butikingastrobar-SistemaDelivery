@@ -34,7 +34,10 @@ export default function OrderConfirmation() {
     const fetchOrderDetails = async () => {
       if (!trackingCode) return;
 
-      const { data: order, error: orderError } = await supabase
+      // Usar cliente com guest token para passar RLS
+      const supabaseClient = getSupabaseWithGuestToken();
+
+      const { data: order, error: orderError } = await supabaseClient
         .from("orders")
         .select("*")
         .eq("tracking_code", trackingCode)
@@ -45,7 +48,7 @@ export default function OrderConfirmation() {
         return;
       }
 
-      const { data: items, error: itemsError } = await supabase
+      const { data: items, error: itemsError } = await supabaseClient
         .from("order_items")
         .select("*")
         .eq("order_id", order.id);
