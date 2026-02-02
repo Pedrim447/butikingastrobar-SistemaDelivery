@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, MessageCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseWithGuestToken } from "@/lib/supabaseWithGuest";
+import { safeStorage } from "@/lib/safeStorage";
 
 const WHATSAPP_NUMBER = "5598987271187";
 
