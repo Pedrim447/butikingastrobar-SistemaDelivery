@@ -189,6 +189,8 @@ const AdminUsers = () => {
         return <Shield className="h-4 w-4" />;
       case 'delivery_rider':
         return <Bike className="h-4 w-4" />;
+      case 'pdv':
+        return <Store className="h-4 w-4" />;
       default:
         return <User className="h-4 w-4" />;
     }
@@ -200,6 +202,8 @@ const AdminUsers = () => {
         return 'Administrador';
       case 'delivery_rider':
         return 'Entregador';
+      case 'pdv':
+        return 'PDV';
       default:
         return 'Usuário';
     }
