@@ -32,12 +32,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Shield, Bike, User } from "lucide-react";
+import { Shield, Bike, User, Store } from "lucide-react";
 
 interface UserWithRole {
   id: string;
   email: string;
-  role: 'user' | 'admin' | 'delivery_rider';
+  role: 'user' | 'admin' | 'delivery_rider' | 'pdv';
   created_at: string;
   name?: string;
   phone?: string;
@@ -189,6 +189,8 @@ const AdminUsers = () => {
         return <Shield className="h-4 w-4" />;
       case 'delivery_rider':
         return <Bike className="h-4 w-4" />;
+      case 'pdv':
+        return <Store className="h-4 w-4" />;
       default:
         return <User className="h-4 w-4" />;
     }
@@ -200,6 +202,8 @@ const AdminUsers = () => {
         return 'Administrador';
       case 'delivery_rider':
         return 'Entregador';
+      case 'pdv':
+        return 'PDV';
       default:
         return 'Usuário';
     }
@@ -362,6 +366,7 @@ const AdminUsers = () => {
                                 <SelectContent>
                                   <SelectItem value="user">Usuário</SelectItem>
                                   <SelectItem value="delivery_rider">Entregador</SelectItem>
+                                  <SelectItem value="pdv">PDV</SelectItem>
                                   <SelectItem value="admin">Administrador</SelectItem>
                                 </SelectContent>
                               </Select>
