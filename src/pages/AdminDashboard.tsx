@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Printer, Search, ArrowLeft, AlertTriangle, CreditCard, DollarSign, Wallet, QrCode } from "lucide-react";
 import { OrderItemsGrouped } from "@/components/OrderItemsGrouped";
+import { ShareMenuButton } from "@/components/ShareMenuButton";
 
 interface Order {
   id: string;
@@ -444,9 +445,12 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
               <h1 className="text-3xl font-bold text-foreground">Pedidos</h1>
               <p className="text-muted-foreground">Gerencie todos os pedidos</p>
             </div>
-            <Button variant="outline" onClick={handleSignOut}>
-              Sair
-            </Button>
+            <div className="flex items-center gap-3">
+              <ShareMenuButton />
+              <Button variant="outline" onClick={handleSignOut}>
+                Sair
+              </Button>
+            </div>
           </div>
 
         <Tabs defaultValue="pending" className="w-full">
