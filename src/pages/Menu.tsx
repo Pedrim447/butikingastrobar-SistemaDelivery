@@ -5,7 +5,7 @@ import { HeroSection } from "@/components/HeroSection";
 import { CategoryNav } from "@/components/CategoryNav";
 import { CategorySection } from "@/components/CategorySection";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Menu as MenuIcon, Package, LogOut, Tag, Info, ChevronRight, Shield, User } from "lucide-react";
+import { ShoppingCart, Menu as MenuIcon, Package, LogOut, Tag, Info, ChevronRight, Shield, User, MessageCircle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +14,7 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { ShareMenuButton } from "@/components/ShareMenuButton";
 
 const Menu = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -408,6 +409,8 @@ const Menu = () => {
                       </Button>
 
                       <div className="border-t pt-4 mt-4 space-y-1">
+                        <ShareMenuButton />
+                        
                         <Button
                           variant="outline"
                           className="w-full justify-start h-12 text-base"
