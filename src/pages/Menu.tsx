@@ -408,8 +408,6 @@ const Menu = () => {
                       </Button>
 
                       <div className="border-t pt-4 mt-4 space-y-1">
-                        <ShareMenuButton />
-                        
                         <Button
                           variant="outline"
                           className="w-full justify-start h-12 text-base"
