@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Printer, Search, ArrowLeft, AlertTriangle, CreditCard, DollarSign, Wallet, QrCode } from "lucide-react";
 import { OrderItemsGrouped } from "@/components/OrderItemsGrouped";
+import { ShareMenuButton } from "@/components/ShareMenuButton";
 
 interface Order {
   id: string;
