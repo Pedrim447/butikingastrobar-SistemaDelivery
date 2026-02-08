@@ -136,7 +136,7 @@ export const ShareMenuButton = () => {
       onClick={handleShareMenu}
       disabled={loading}
       variant="outline"
-      className="gap-2 border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700"
+      className="w-full justify-start h-12 text-base gap-2 border-primary/50 text-primary hover:bg-primary/10"
     >
       {loading ? (
         <Loader2 className="w-5 h-5 animate-spin" />
