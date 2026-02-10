@@ -324,7 +324,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
           <div className="sticky bottom-0 bg-card border-t p-3">
             <div className="flex items-center justify-between gap-3">
               <span className="text-lg font-bold">
-                R$ {isSideDishProduct ? (product.price * quantity).toFixed(2) : calculateTotal().toFixed(2)}
+                R$ {skipAccompaniments ? (product.price * quantity).toFixed(2) : calculateTotal().toFixed(2)}
               </span>
               <div className="flex items-center gap-2">
                 <Button
