@@ -77,10 +77,10 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   };
 
   useEffect(() => {
-    if (open && !isSideDishProduct) {
+    if (open && !skipAccompaniments) {
       refetch();
     }
-  }, [open, refetch, isSideDishProduct]);
+  }, [open, refetch, skipAccompaniments]);
 
   useEffect(() => {
     if (!open) {
