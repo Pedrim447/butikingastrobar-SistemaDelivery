@@ -346,12 +346,12 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 </Button>
               </div>
               <Button
-                onClick={isSideDishProduct ? handleAddToCart : handleProceed}
+                onClick={skipAccompaniments ? handleAddToCart : handleProceed}
                 className="flex-1 max-w-[140px]"
                 disabled={!canAddToCart}
               >
                 <ShoppingBag className="w-4 h-4 mr-1" />
-                {isSideDishProduct ? 'Adicionar' : (hasItemsWithVariations() ? 'Continuar' : 'Adicionar')}
+                {skipAccompaniments ? 'Adicionar' : (hasItemsWithVariations() ? 'Continuar' : 'Adicionar')}
               </Button>
             </div>
           </div>
