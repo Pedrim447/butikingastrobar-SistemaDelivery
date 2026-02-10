@@ -3,13 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGuestMode } from '@/hooks/useGuestMode';
 import { GuestModePrompt } from '@/components/GuestModePrompt';
 import { useState, useEffect } from 'react';
+import { useStoreStatus } from '@/hooks/useStoreStatus';
 
 const Cart = () => {
   const {
@@ -24,6 +25,7 @@ const Cart = () => {
   const { user } = useAuth();
   const { guestToken, guestData, loading: guestLoading } = useGuestMode();
   const [showGuestPrompt, setShowGuestPrompt] = useState(false);
+  const { isOpen: storeOpen } = useStoreStatus();
 
   const subtotal = getCartTotal();
   const deliveryFee = 5.0;
@@ -166,10 +168,21 @@ const Cart = () => {
               <span>Total</span>
               <span className="text-primary">R$ {total.toFixed(2)}</span>
             </div>
+
+            {!storeOpen && (
+              <div className="flex items-center gap-3 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
+                <p className="text-sm font-medium text-destructive">
+                  Estamos fechados no momento. Não é possível finalizar o pedido.
+                </p>
+              </div>
+            )}
+
             <Button
               size="lg"
               className="w-full mt-4"
               onClick={handleCheckout}
+              disabled={!storeOpen}
             >
               Finalizar Pedido
             </Button>
