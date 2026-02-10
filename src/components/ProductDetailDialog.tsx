@@ -269,7 +269,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
           )}
 
           {/* Only show accompaniments section for regular products */}
-          {!isSideDishProduct && (
+          {!skipAccompaniments && (
             step === 'select' ? (
               <>
                 {/* Accompaniments Section */}
