@@ -5,7 +5,7 @@ import { HeroSection } from "@/components/HeroSection";
 import { CategoryNav } from "@/components/CategoryNav";
 import { CategorySection } from "@/components/CategorySection";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Menu as MenuIcon, Package, LogOut, Tag, Info, ChevronRight, Shield, User } from "lucide-react";
+import { ShoppingCart, Menu as MenuIcon, Package, LogOut, Tag, Info, ChevronRight, Shield, User, AlertTriangle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +14,7 @@ import { useGuestMode } from "@/hooks/useGuestMode";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStoreStatus } from "@/hooks/useStoreStatus";
 
 const Menu = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -29,6 +30,7 @@ const Menu = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
+  const { isOpen: storeOpen, reason: storeReason } = useStoreStatus();
 
   useEffect(() => {
     fetchData();
@@ -462,7 +464,28 @@ const Menu = () => {
       </header>
 
       {/* Hero Section */}
-      <HeroSection />
+      <HeroSection storeOpen={storeOpen} storeReason={storeReason} />
+
+      {/* Store Closed Banner */}
+      {!storeOpen && (
+        <div className="bg-destructive/10 border-b border-destructive/30 px-4 py-6">
+          <div className="container mx-auto flex items-center gap-4">
+            <AlertTriangle className="h-8 w-8 text-destructive flex-shrink-0" />
+            <div>
+              <h2 className="text-lg font-bold text-destructive">
+                {storeReason === 'manual_closed' 
+                  ? '⚠️ Estamos fechados temporariamente' 
+                  : '⚠️ Estamos fechados'}
+              </h2>
+              <p className="text-sm text-destructive/80">
+                {storeReason === 'manual_closed'
+                  ? 'O sistema de pedidos está desativado no momento. Tente novamente mais tarde.'
+                  : 'Nosso horário de funcionamento é de Segunda a Sexta, das 9h às 17h.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Category Navigation */}
       {!loading && (
@@ -541,7 +564,7 @@ const Menu = () => {
             Sabor autêntico em cada pedido
           </p>
           <div className="flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
-            <span>Segunda a Domingo: 11h às 23h</span>
+            <span>Segunda a Sexta: 9h às 17h</span>
             <span>•</span>
             <span>Entrega rápida</span>
             <span>•</span>

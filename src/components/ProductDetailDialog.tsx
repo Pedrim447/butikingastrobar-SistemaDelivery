@@ -3,7 +3,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Product } from '@/types';
 import { SideDish, SideDishVariation } from '@/types/accompaniments';
-import { ShoppingBag, Minus, Plus, Check } from 'lucide-react';
+import { ShoppingBag, Minus, Plus, Check, AlertTriangle } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +11,7 @@ import { useAccompaniments } from '@/hooks/useAccompaniments';
 import { AccompanimentCard } from '@/components/accompaniments/AccompanimentCard';
 import { VariationSelector } from '@/components/accompaniments/VariationSelector';
 import { cn } from '@/lib/utils';
+import { useStoreStatus } from '@/hooks/useStoreStatus';
 
 interface ProductDetailDialogProps {
   product: Product | null;
@@ -39,6 +40,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   const [loadingVariations, setLoadingVariations] = useState(false);
   const { addToCart } = useCart();
   const { sideDishes, loading, refetch } = useAccompaniments();
+  const { isOpen: storeOpen } = useStoreStatus();
 
   // Check if this is a side dish shown as product (no accompaniment selection needed)
   const isSideDishProduct = product?.id.startsWith('sidedish_') ?? false;
@@ -323,8 +325,20 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
           )}
         </div>
 
+        {/* Store Closed Warning */}
+        {!storeOpen && (
+          <div className="sticky bottom-0 bg-destructive/10 border-t border-destructive/30 p-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
+              <p className="text-sm font-medium text-destructive">
+                Estamos fechados no momento. Não é possível adicionar itens.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Footer with quantity and add button */}
-        {(skipAccompaniments || step === 'select') && (
+        {storeOpen && (skipAccompaniments || step === 'select') && (
           <div className="sticky bottom-0 bg-card border-t p-3">
             <div className="flex items-center justify-between gap-3">
               <span className="text-lg font-bold">

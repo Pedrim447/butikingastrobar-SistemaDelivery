@@ -15,9 +15,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { Printer, Search, ArrowLeft, AlertTriangle, CreditCard, DollarSign, Wallet, QrCode } from "lucide-react";
+import { Printer, Search, ArrowLeft, AlertTriangle, CreditCard, DollarSign, Wallet, QrCode, Power } from "lucide-react";
 import { OrderItemsGrouped } from "@/components/OrderItemsGrouped";
 import { ShareMenuButton } from "@/components/ShareMenuButton";
+import { useStoreStatus } from "@/hooks/useStoreStatus";
+import { Switch } from "@/components/ui/switch";
 
 interface Order {
   id: string;
@@ -67,7 +69,8 @@ export default function AdminDashboard() {
   const [selectedOrderForRider, setSelectedOrderForRider] = useState<string | null>(null);
   const [cancellationReason, setCancellationReason] = useState("");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-
+  const { isOpen: storeOpen, toggleOrdering, manualClosed } = useStoreStatus();
+  const [togglingStore, setTogglingStore] = useState(false);
   useEffect(() => {
     // Aguarda o carregamento completo da autenticação E verificação de role
     if (authLoading || checkingRole) return;
@@ -446,6 +449,28 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
               <p className="text-muted-foreground">Gerencie todos os pedidos</p>
             </div>
             <div className="flex items-center gap-3">
+              {/* Store Toggle */}
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${manualClosed ? 'bg-destructive/10 border-destructive/30' : 'bg-green-50 border-green-300 dark:bg-green-900/20 dark:border-green-700'}`}>
+                <Power className={`h-4 w-4 ${manualClosed ? 'text-destructive' : 'text-green-600'}`} />
+                <span className={`text-sm font-medium ${manualClosed ? 'text-destructive' : 'text-green-700 dark:text-green-400'}`}>
+                  {manualClosed ? 'Loja Fechada' : 'Loja Aberta'}
+                </span>
+                <Switch
+                  checked={!manualClosed}
+                  disabled={togglingStore}
+                  onCheckedChange={async () => {
+                    setTogglingStore(true);
+                    try {
+                      await toggleOrdering();
+                      toast.success(manualClosed ? 'Sistema de pedidos ativado!' : 'Sistema de pedidos desativado!');
+                    } catch {
+                      toast.error('Erro ao alterar status da loja');
+                    } finally {
+                      setTogglingStore(false);
+                    }
+                  }}
+                />
+              </div>
               <ShareMenuButton />
               <Button variant="outline" onClick={handleSignOut}>
                 Sair
