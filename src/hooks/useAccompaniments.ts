@@ -27,6 +27,19 @@ export const useAccompaniments = () => {
 
       if (productsError) throw productsError;
 
+      // Fetch all Marmitex products to show as accompaniments at half price
+      const MARMITEX_CATEGORY_ID = 'fe8a2cd7-171a-4c41-bd47-d46922d0182a';
+      const { data: marmitexProducts, error: marmitexError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('category_id', MARMITEX_CATEGORY_ID)
+        .eq('is_available', true);
+
+      if (marmitexError) throw marmitexError;
+
+      // Get IDs of products already added as side dishes to avoid duplicates
+      const sideDishProductIds = new Set((productSideDishesData || []).map(p => p.id));
+
       // Combine and format
       const combined: SideDish[] = [
         ...(sideDishesData || []).map(sd => ({
@@ -45,6 +58,17 @@ export const useAccompaniments = () => {
           type: 'product' as const,
           has_variations: false,
         })),
+        // Marmitex products as accompaniments at half price (avoid duplicates)
+        ...(marmitexProducts || [])
+          .filter(p => !sideDishProductIds.has(p.id))
+          .map(p => ({
+            id: `product_${p.id}`,
+            name: p.name,
+            price: Math.round((p.price / 2) * 100) / 100,
+            display_order: 998,
+            type: 'product' as const,
+            has_variations: false,
+          })),
       ];
 
       // Sort by display_order
