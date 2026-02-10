@@ -43,11 +43,11 @@ export const CookieConsent = () => {
                 salvamos seus dados (nome, telefone, endereço) no navegador de forma segura. 
                 Assim, você não precisa digitar tudo novamente nas próximas compras!
               </p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button onClick={handleAccept} size="lg" className="flex-1 sm:flex-initial">
-                  Aceitar e Continuar
+              <div className="flex flex-col sm:flex-row gap-3 mt-2">
+                <Button onClick={handleAccept} size="lg" className="h-12 px-8 text-base font-semibold flex-1 sm:flex-initial">
+                  ✅ Aceitar e Continuar
                 </Button>
-                <Button onClick={handleDecline} variant="outline" size="lg" className="flex-1 sm:flex-initial">
+                <Button onClick={handleDecline} variant="outline" size="lg" className="h-12 px-6 text-base flex-1 sm:flex-initial">
                   Recusar
                 </Button>
               </div>
