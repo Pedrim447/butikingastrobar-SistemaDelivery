@@ -170,10 +170,10 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   const canAddToCart = isSideDishProduct ? canAddSideDishProduct : (isBeverage ? true : totalAccompaniments >= MANDATORY_COUNT);
 
   const handleAddToCart = () => {
-    // For side dish products
-    if (isSideDishProduct) {
+    // For side dish products or beverages (no accompaniments)
+    if (isSideDishProduct || isBeverage) {
       let notes = '';
-      if (hasVariations && selectedVariationId) {
+      if (isSideDishProduct && hasVariations && selectedVariationId) {
         const selectedVar = sideDishVariations.find(v => v.id === selectedVariationId);
         if (selectedVar) {
           notes = `Tipo: ${selectedVar.name}`;
