@@ -42,6 +42,9 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   // Check if this is a side dish shown as product (no accompaniment selection needed)
   const isSideDishProduct = product?.id.startsWith('sidedish_') ?? false;
+  // Beverages don't have accompaniments
+  const isBeverage = product?.category_id === 'de203c52-82f8-4d40-ad9e-59b5726b05dc';
+  const skipAccompaniments = isSideDishProduct || isBeverage;
   // Extract the real side dish ID from the prefixed product ID
   const realSideDishId = isSideDishProduct ? product?.id.replace('sidedish_', '') : null;
 
