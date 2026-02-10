@@ -457,6 +457,7 @@ export type Database = {
           display_order: number | null
           has_variations: boolean | null
           id: string
+          image_url: string | null
           is_available: boolean | null
           name: string
           price: number
@@ -468,6 +469,7 @@ export type Database = {
           display_order?: number | null
           has_variations?: boolean | null
           id?: string
+          image_url?: string | null
           is_available?: boolean | null
           name: string
           price?: number
@@ -479,6 +481,7 @@ export type Database = {
           display_order?: number | null
           has_variations?: boolean | null
           id?: string
+          image_url?: string | null
           is_available?: boolean | null
           name?: string
           price?: number
