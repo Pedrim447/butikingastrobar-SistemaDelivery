@@ -42,9 +42,13 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   // Check if this is a side dish shown as product (no accompaniment selection needed)
   const isSideDishProduct = product?.id.startsWith('sidedish_') ?? false;
-  // Beverages don't have accompaniments
-  const isBeverage = product?.category_id === 'de203c52-82f8-4d40-ad9e-59b5726b05dc';
-  const skipAccompaniments = isSideDishProduct || isBeverage;
+  // Categories that don't have accompaniments
+  const noAccompanimentCategories = [
+    'de203c52-82f8-4d40-ad9e-59b5726b05dc', // Bebidas
+    '8b57636c-c9a3-42a5-9f7a-e077f43236b6', // Lanches
+    'c3072097-f4f0-4dae-ad63-5dc87cdf08ca', // Sobremesa
+  ];
+  const skipAccompaniments = isSideDishProduct || noAccompanimentCategories.includes(product?.category_id ?? '');
   // Extract the real side dish ID from the prefixed product ID
   const realSideDishId = isSideDishProduct ? product?.id.replace('sidedish_', '') : null;
 
@@ -167,11 +171,11 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   const hasVariations = isSideDishProduct && sideDishVariations.length > 0;
   const canAddSideDishProduct = !hasVariations || selectedVariationId !== null;
-  const canAddToCart = isSideDishProduct ? canAddSideDishProduct : (isBeverage ? true : totalAccompaniments >= MANDATORY_COUNT);
+  const canAddToCart = isSideDishProduct ? canAddSideDishProduct : (skipAccompaniments ? true : totalAccompaniments >= MANDATORY_COUNT);
 
   const handleAddToCart = () => {
     // For side dish products or beverages (no accompaniments)
-    if (isSideDishProduct || isBeverage) {
+    if (skipAccompaniments) {
       let notes = '';
       if (isSideDishProduct && hasVariations && selectedVariationId) {
         const selectedVar = sideDishVariations.find(v => v.id === selectedVariationId);
