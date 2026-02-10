@@ -320,7 +320,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
         </div>
 
         {/* Footer with quantity and add button */}
-        {(isSideDishProduct || step === 'select') && (
+        {(skipAccompaniments || step === 'select') && (
           <div className="sticky bottom-0 bg-card border-t p-3">
             <div className="flex items-center justify-between gap-3">
               <span className="text-lg font-bold">
