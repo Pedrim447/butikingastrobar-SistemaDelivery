@@ -27,7 +27,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronRight, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
@@ -40,6 +40,7 @@ interface SideDish {
   display_order: number;
   show_as_product: boolean;
   has_variations: boolean;
+  image_url: string | null;
 }
 
 interface Variation {
@@ -78,7 +79,11 @@ export default function AdminSideDishes() {
     is_available: true,
     show_as_product: false,
     has_variations: false,
+    image_url: "" as string,
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [variationForm, setVariationForm] = useState({
     name: "",
@@ -151,6 +156,30 @@ export default function AdminSideDishes() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Upload image if selected
+    let imageUrl = form.image_url || null;
+    if (imageFile) {
+      setUploadingImage(true);
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `side-dish-${Date.now()}.${fileExt}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(fileName, imageFile);
+
+      if (uploadError) {
+        toast.error("Erro ao enviar imagem");
+        console.error(uploadError);
+        setUploadingImage(false);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(fileName);
+      imageUrl = urlData.publicUrl;
+      setUploadingImage(false);
+    }
+
     const sideDishData = {
       name: form.name,
       price: parseFloat(form.price) || 0,
@@ -158,6 +187,7 @@ export default function AdminSideDishes() {
       is_available: form.is_available,
       show_as_product: form.show_as_product,
       has_variations: form.has_variations,
+      image_url: imageUrl,
     };
 
     if (editingSideDish) {
@@ -281,7 +311,10 @@ export default function AdminSideDishes() {
       is_available: sideDish.is_available,
       show_as_product: sideDish.show_as_product,
       has_variations: sideDish.has_variations,
+      image_url: sideDish.image_url || "",
     });
+    setImagePreview(sideDish.image_url || null);
+    setImageFile(null);
     setDialogOpen(true);
   };
 
@@ -364,6 +397,8 @@ export default function AdminSideDishes() {
 
   const resetForm = () => {
     setEditingSideDish(null);
+    setImageFile(null);
+    setImagePreview(null);
     setForm({
       name: "",
       price: "",
@@ -371,6 +406,7 @@ export default function AdminSideDishes() {
       is_available: true,
       show_as_product: false,
       has_variations: false,
+      image_url: "",
     });
   };
 
@@ -457,6 +493,38 @@ export default function AdminSideDishes() {
                         value={form.display_order}
                         onChange={(e) => setForm({ ...form, display_order: e.target.value })}
                       />
+                    </div>
+                  </div>
+
+                  {/* Image Upload */}
+                  <div className="space-y-2">
+                    <Label>Imagem</Label>
+                    <div className="flex items-center gap-4">
+                      {(imagePreview || form.image_url) && (
+                        <div className="w-20 h-20 rounded-lg overflow-hidden border bg-muted flex-shrink-0">
+                          <img
+                            src={imagePreview || form.image_url}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setImageFile(file);
+                              setImagePreview(URL.createObjectURL(file));
+                            }
+                          }}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          JPG, PNG ou WEBP. Recomendado: 400x400px
+                        </p>
+                      </div>
                     </div>
                   </div>
 
