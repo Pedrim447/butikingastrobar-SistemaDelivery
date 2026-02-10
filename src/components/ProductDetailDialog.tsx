@@ -42,6 +42,9 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   // Check if this is a side dish shown as product (no accompaniment selection needed)
   const isSideDishProduct = product?.id.startsWith('sidedish_') ?? false;
+  // Beverages don't have accompaniments
+  const isBeverage = product?.category_id === 'de203c52-82f8-4d40-ad9e-59b5726b05dc';
+  const skipAccompaniments = isSideDishProduct || isBeverage;
   // Extract the real side dish ID from the prefixed product ID
   const realSideDishId = isSideDishProduct ? product?.id.replace('sidedish_', '') : null;
 
@@ -74,10 +77,10 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   };
 
   useEffect(() => {
-    if (open && !isSideDishProduct) {
+    if (open && !skipAccompaniments) {
       refetch();
     }
-  }, [open, refetch, isSideDishProduct]);
+  }, [open, refetch, skipAccompaniments]);
 
   useEffect(() => {
     if (!open) {
@@ -164,13 +167,13 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   const hasVariations = isSideDishProduct && sideDishVariations.length > 0;
   const canAddSideDishProduct = !hasVariations || selectedVariationId !== null;
-  const canAddToCart = isSideDishProduct ? canAddSideDishProduct : totalAccompaniments >= MANDATORY_COUNT;
+  const canAddToCart = isSideDishProduct ? canAddSideDishProduct : (isBeverage ? true : totalAccompaniments >= MANDATORY_COUNT);
 
   const handleAddToCart = () => {
-    // For side dish products
-    if (isSideDishProduct) {
+    // For side dish products or beverages (no accompaniments)
+    if (isSideDishProduct || isBeverage) {
       let notes = '';
-      if (hasVariations && selectedVariationId) {
+      if (isSideDishProduct && hasVariations && selectedVariationId) {
         const selectedVar = sideDishVariations.find(v => v.id === selectedVariationId);
         if (selectedVar) {
           notes = `Tipo: ${selectedVar.name}`;
@@ -266,7 +269,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
           )}
 
           {/* Only show accompaniments section for regular products */}
-          {!isSideDishProduct && (
+          {!skipAccompaniments && (
             step === 'select' ? (
               <>
                 {/* Accompaniments Section */}
@@ -317,11 +320,11 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
         </div>
 
         {/* Footer with quantity and add button */}
-        {(isSideDishProduct || step === 'select') && (
+        {(skipAccompaniments || step === 'select') && (
           <div className="sticky bottom-0 bg-card border-t p-3">
             <div className="flex items-center justify-between gap-3">
               <span className="text-lg font-bold">
-                R$ {isSideDishProduct ? (product.price * quantity).toFixed(2) : calculateTotal().toFixed(2)}
+                R$ {skipAccompaniments ? (product.price * quantity).toFixed(2) : calculateTotal().toFixed(2)}
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -343,12 +346,12 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 </Button>
               </div>
               <Button
-                onClick={isSideDishProduct ? handleAddToCart : handleProceed}
+                onClick={skipAccompaniments ? handleAddToCart : handleProceed}
                 className="flex-1 max-w-[140px]"
                 disabled={!canAddToCart}
               >
                 <ShoppingBag className="w-4 h-4 mr-1" />
-                {isSideDishProduct ? 'Adicionar' : (hasItemsWithVariations() ? 'Continuar' : 'Adicionar')}
+                {skipAccompaniments ? 'Adicionar' : (hasItemsWithVariations() ? 'Continuar' : 'Adicionar')}
               </Button>
             </div>
           </div>
