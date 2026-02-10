@@ -50,10 +50,19 @@ interface Variation {
   is_available: boolean;
 }
 
+interface MarmitexProduct {
+  id: string;
+  name: string;
+  price: number;
+  is_available: boolean;
+  half_price: number;
+}
+
 export default function AdminSideDishes() {
   const navigate = useNavigate();
   const { user, isAdmin, signOut, loading: authLoading, checkingRole } = useAuth();
   const [sideDishes, setSideDishes] = useState<SideDish[]>([]);
+  const [marmitexProducts, setMarmitexProducts] = useState<MarmitexProduct[]>([]);
   const [variations, setVariations] = useState<Record<string, Variation[]>>({});
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -116,6 +125,24 @@ export default function AdminSideDishes() {
         return acc;
       }, {} as Record<string, Variation[]>);
       setVariations(grouped);
+    }
+
+    // Fetch Marmitex products (shown as accompaniments at half price)
+    const MARMITEX_CATEGORY_ID = 'fe8a2cd7-171a-4c41-bd47-d46922d0182a';
+    const { data: marmitexData, error: marmitexError } = await supabase
+      .from("products")
+      .select("id, name, price, is_available")
+      .eq("category_id", MARMITEX_CATEGORY_ID)
+      .order("name");
+
+    if (!marmitexError && marmitexData) {
+      setMarmitexProducts(
+        marmitexData.map(p => ({
+          ...p,
+          is_available: p.is_available ?? true,
+          half_price: Math.round((p.price / 2) * 100) / 100,
+        }))
+      );
     }
 
     setLoading(false);
@@ -665,6 +692,69 @@ export default function AdminSideDishes() {
               ))
             )}
           </Accordion>
+
+          {/* Marmitex Products as Accompaniments Section */}
+          {marmitexProducts.length > 0 && (
+            <div className="mt-8">
+              <div className="mb-4">
+                <h2 className="text-xl font-bold">Marmitex como Acompanhamento</h2>
+                <p className="text-sm text-muted-foreground">
+                  Produtos da categoria Marmitex aparecem automaticamente como acompanhamento pela metade do preço.
+                  Edite o preço ou disponibilidade na página de Produtos.
+                </p>
+              </div>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Preço Original</TableHead>
+                      <TableHead>Preço como Acomp.</TableHead>
+                      <TableHead>Disponível</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {marmitexProducts.map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell className="font-medium">{product.name}</TableCell>
+                        <TableCell>R$ {product.price.toFixed(2)}</TableCell>
+                        <TableCell className="text-primary font-semibold">
+                          R$ {product.half_price.toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={product.is_available}
+                            onCheckedChange={async () => {
+                              const { error } = await supabase
+                                .from("products")
+                                .update({ is_available: !product.is_available })
+                                .eq("id", product.id);
+                              if (error) {
+                                toast.error("Erro ao atualizar disponibilidade");
+                              } else {
+                                fetchSideDishes();
+                              }
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => navigate("/admin/products")}
+                          >
+                            <Pencil className="w-4 h-4 mr-1" />
+                            Editar Produto
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </SidebarProvider>
