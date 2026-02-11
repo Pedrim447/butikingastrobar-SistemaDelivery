@@ -11,6 +11,7 @@ import { useGuestMode } from '@/hooks/useGuestMode';
 import { GuestModePrompt } from '@/components/GuestModePrompt';
 import { useState, useEffect } from 'react';
 import { useStoreStatus } from '@/hooks/useStoreStatus';
+import { useDeliveryFee } from '@/hooks/useDeliveryFee';
 
 const Cart = () => {
   const {
