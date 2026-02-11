@@ -830,6 +830,31 @@ _Pedido realizado via app_`;
                   </Label>
                 </div>
               </RadioGroup>
+
+              {paymentMethod === 'dinheiro' && (
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="change-for">Troco para quanto? (opcional)</Label>
+                  <Input
+                    id="change-for"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder={`Deixe vazio se não precisar de troco`}
+                    value={changeFor}
+                    onChange={(e) => setChangeFor(e.target.value)}
+                  />
+                  {changeFor && parseFloat(changeFor) > 0 && parseFloat(changeFor) < total && (
+                    <p className="text-sm text-destructive">
+                      O valor deve ser maior que o total de R$ {total.toFixed(2)}
+                    </p>
+                  )}
+                  {changeFor && parseFloat(changeFor) >= total && (
+                    <p className="text-sm text-muted-foreground">
+                      Troco: R$ {(parseFloat(changeFor) - total).toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
