@@ -450,7 +450,7 @@ const Checkout = () => {
           subtotal: subtotal,
           total: total,
           status: paymentMethod === 'pix' ? 'awaiting_payment' : 'pending',
-          notes: formData.notes || null,
+          notes: (formData.notes || '') + (paymentMethod === 'dinheiro' && changeFor && parseFloat(changeFor) > 0 ? ` | Troco para: R$ ${parseFloat(changeFor).toFixed(2)}` : '') || null,
           tracking_code: trackingCode,
           payment_method: paymentMethod,
           payment_status: paymentMethod === 'pix' ? 'pending' : 'paid',
