@@ -440,7 +440,7 @@ const Checkout = () => {
           delivery_fee: deliveryFee,
           subtotal: subtotal,
           total: total,
-          status: 'pending',
+          status: paymentMethod === 'pix' ? 'awaiting_payment' : 'pending',
           notes: formData.notes || null,
           tracking_code: trackingCode,
           payment_method: paymentMethod,
