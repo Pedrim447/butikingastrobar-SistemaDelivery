@@ -45,6 +45,7 @@ const Checkout = () => {
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [changeFor, setChangeFor] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'dinheiro' | 'cartao_debito' | 'cartao_credito'>('dinheiro');
   const [showPixPayment, setShowPixPayment] = useState(false);
   const [pixData, setPixData] = useState<{
