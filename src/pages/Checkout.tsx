@@ -38,6 +38,7 @@ const checkoutSchema = z.object({
 
 const Checkout = () => {
   const { cart, getCartTotal, clearCart } = useCart();
+  const { deliveryFee } = useDeliveryFee();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { guestToken, guestData, updateGuestCustomer, clearGuestData, loading: guestLoading } = useGuestMode();
