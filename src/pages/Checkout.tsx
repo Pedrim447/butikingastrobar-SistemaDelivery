@@ -51,7 +51,13 @@ const Checkout = () => {
     qrCodeBase64: string;
     expiresAt: string;
     paymentId: string;
-  } | null>(null);
+  } | null>(() => {
+    try {
+      const saved = safeStorage.getItem('pending_pix_data');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  });
   
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
@@ -494,13 +500,15 @@ const Checkout = () => {
 
         if (pixError) throw pixError;
 
-        setPixData({
+        const newPixData = {
           orderId: orderData.id,
           qrCode: pixResponse.qrCode,
           qrCodeBase64: pixResponse.qrCodeBase64,
           expiresAt: pixResponse.expiresAt,
           paymentId: pixResponse.paymentId,
-        });
+        };
+        setPixData(newPixData);
+        safeStorage.setItem('pending_pix_data', JSON.stringify(newPixData));
         setShowPixPayment(true);
         setLoading(false);
       } else {
@@ -567,6 +575,7 @@ _Pedido realizado via app_`;
   const handlePixPaymentConfirmed = () => {
     safeStorage.removeItem('checkout_form');
     safeStorage.removeItem('checkout_address');
+    safeStorage.removeItem('pending_pix_data');
     clearCart();
     if (pixData) {
       const trackingCode = safeStorage.getItem("lastOrderCode");
@@ -587,8 +596,15 @@ _Pedido realizado via app_`;
     }
     setShowPixPayment(false);
     setPixData(null);
+    safeStorage.removeItem('pending_pix_data');
     setLoading(false);
     toast.info('Pedido cancelado');
+  };
+
+  const handleResumePixPayment = () => {
+    if (pixData) {
+      setShowPixPayment(true);
+    }
   };
 
   if (cart.length === 0) {
@@ -894,21 +910,34 @@ _Pedido realizado via app_`;
                 <span>Total</span>
                 <span className="text-primary">R$ {total.toFixed(2)}</span>
               </div>
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full mt-4"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Finalizando...
-                  </>
-                ) : (
-                  'Confirmar Pedido'
-                )}
-              </Button>
+              {pixData && !showPixPayment && (
+                <Button
+                  type="button"
+                  size="lg"
+                  className="w-full mt-4"
+                  onClick={handleResumePixPayment}
+                >
+                  <QrCode className="w-4 h-4 mr-2" />
+                  Concluir Pagamento PIX
+                </Button>
+              )}
+              {!pixData && (
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full mt-4"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Finalizando...
+                    </>
+                  ) : (
+                    'Confirmar Pedido'
+                  )}
+                </Button>
+              )}
             </CardContent>
           </Card>
         </form>
