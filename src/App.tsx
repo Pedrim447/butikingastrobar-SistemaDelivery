@@ -56,6 +56,7 @@ const App = () => (
               <Route path="/admin/delivery-riders" element={<AdminDeliveryRiders />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/coupons" element={<AdminCoupons />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/entregas" element={<DeliveryDashboard />} />
               <Route path="/entregas/navegacao/:orderId" element={<DeliveryNavigation />} />
               <Route path="/painel-pdv" element={<PDV />} />
