@@ -204,7 +204,7 @@ const Checkout = () => {
   }, [user, guestToken, guestData, guestLoading, navigate]);
 
   const subtotal = getCartTotal();
-  const deliveryFee = 5.0;
+  
   
   // Calcula o desconto do cupom
   const couponDiscount = appliedCoupon 
