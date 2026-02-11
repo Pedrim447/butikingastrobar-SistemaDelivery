@@ -45,6 +45,7 @@ const Checkout = () => {
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [changeFor, setChangeFor] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'dinheiro' | 'cartao_debito' | 'cartao_credito'>('dinheiro');
   const [showPixPayment, setShowPixPayment] = useState(false);
   const [pixData, setPixData] = useState<{
@@ -449,7 +450,7 @@ const Checkout = () => {
           subtotal: subtotal,
           total: total,
           status: paymentMethod === 'pix' ? 'awaiting_payment' : 'pending',
-          notes: formData.notes || null,
+          notes: (formData.notes || '') + (paymentMethod === 'dinheiro' && changeFor && parseFloat(changeFor) > 0 ? ` | Troco para: R$ ${parseFloat(changeFor).toFixed(2)}` : '') || null,
           tracking_code: trackingCode,
           payment_method: paymentMethod,
           payment_status: paymentMethod === 'pix' ? 'pending' : 'paid',
@@ -829,6 +830,31 @@ _Pedido realizado via app_`;
                   </Label>
                 </div>
               </RadioGroup>
+
+              {paymentMethod === 'dinheiro' && (
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="change-for">Troco para quanto? (opcional)</Label>
+                  <Input
+                    id="change-for"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder={`Deixe vazio se não precisar de troco`}
+                    value={changeFor}
+                    onChange={(e) => setChangeFor(e.target.value)}
+                  />
+                  {changeFor && parseFloat(changeFor) > 0 && parseFloat(changeFor) < total && (
+                    <p className="text-sm text-destructive">
+                      O valor deve ser maior que o total de R$ {total.toFixed(2)}
+                    </p>
+                  )}
+                  {changeFor && parseFloat(changeFor) >= total && (
+                    <p className="text-sm text-muted-foreground">
+                      Troco: R$ {(parseFloat(changeFor) - total).toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
