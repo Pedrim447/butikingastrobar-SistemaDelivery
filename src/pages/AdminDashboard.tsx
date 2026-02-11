@@ -410,22 +410,18 @@ export default function AdminDashboard() {
 
     const content = lines.join('\n');
 
-    // Open print dialog directly
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    if (printWindow) {
-      printWindow.document.write(`<html><head><title>Pedido #${orderNumber}</title>
-        <style>
-          body { margin: 0; padding: 8px; }
-          pre { font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; margin: 0; }
-          @media print { body { margin: 0; padding: 0; } }
-        </style>
-      </head><body><pre>${content}</pre>
-      <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}</script>
-      </body></html>`);
-      printWindow.document.close();
-    }
+    // Download as .txt file
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pedido-${orderNumber}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
-    toast.success("Impressão iniciada!");
+    toast.success("Etiqueta baixada!");
   };
 
   const getStatusBadge = (status: string) => {
