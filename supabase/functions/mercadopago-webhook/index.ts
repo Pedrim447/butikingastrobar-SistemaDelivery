@@ -41,11 +41,15 @@ Deno.serve(async (req) => {
                            paymentData.status === 'rejected' ? 'failed' : 
                            paymentData.status === 'cancelled' ? 'cancelled' : 'pending';
 
+      // Only move order to 'pending' (visible to admin) when payment is confirmed
+      const orderStatus = paymentData.status === 'approved' ? 'pending' : 
+                          paymentData.status === 'cancelled' || paymentData.status === 'rejected' ? 'cancelled' : 'awaiting_payment';
+
       const { error } = await supabase
         .from('orders')
         .update({
           payment_status: paymentStatus,
-          status: paymentData.status === 'approved' ? 'confirmed' : 'pending',
+          status: orderStatus,
         })
         .eq('payment_id', paymentId);
 

@@ -108,6 +108,9 @@ export default function AdminDashboard() {
         async (payload) => {
           console.log('Novo pedido recebido:', payload);
           
+          // Ignorar pedidos aguardando pagamento PIX
+          if (payload.new.status === 'awaiting_payment') return;
+          
           // Buscar os dados completos do pedido incluindo order_items
           const { data: newOrder, error } = await supabase
             .from('orders')
@@ -140,6 +143,34 @@ export default function AdminDashboard() {
         async (payload) => {
           console.log('Pedido atualizado:', payload);
           
+          // Se pedido saiu de awaiting_payment para pending (PIX pago), adicionar à lista e notificar
+          if (payload.old?.status === 'awaiting_payment' && payload.new.status === 'pending') {
+            const { data: newOrder, error } = await supabase
+              .from('orders')
+              .select('*, order_items(*)')
+              .eq('id', payload.new.id)
+              .single();
+
+            if (!error && newOrder) {
+              setOrders(prevOrders => {
+                const exists = prevOrders.some(o => o.id === newOrder.id);
+                if (exists) {
+                  return prevOrders.map(o => o.id === newOrder.id ? newOrder as Order : o);
+                }
+                return [newOrder as Order, ...prevOrders];
+              });
+              
+              toast.success('Pagamento PIX confirmado!', {
+                description: `Pedido de ${newOrder.customer_name}`,
+                duration: 5000,
+              });
+              
+              const audio = new Audio('/notification.mp3');
+              audio.play().catch(e => console.log('Could not play notification sound'));
+            }
+            return;
+          }
+          
           // Buscar os dados completos do pedido atualizado
           const { data: updatedOrder, error } = await supabase
             .from('orders')
@@ -148,6 +179,9 @@ export default function AdminDashboard() {
             .single();
 
           if (!error && updatedOrder) {
+            // Não adicionar pedidos awaiting_payment
+            if (updatedOrder.status === 'awaiting_payment') return;
+            
             setOrders(prevOrders => 
               prevOrders.map(order => 
                 order.id === updatedOrder.id ? updatedOrder as Order : order
@@ -169,6 +203,7 @@ export default function AdminDashboard() {
       const { data: ordersData, error } = await supabase
         .from("orders")
         .select("*, order_items(*)")
+        .neq("status", "awaiting_payment")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
