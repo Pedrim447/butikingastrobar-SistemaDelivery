@@ -20,6 +20,7 @@ import AdminUsers from "./pages/AdminUsers";
 import AdminCoupons from "./pages/AdminCoupons";
 import AdminProducts from "./pages/AdminProducts";
 import AdminSideDishes from "./pages/AdminSideDishes";
+import AdminSettings from "./pages/AdminSettings";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
 import DeliveryNavigation from "./pages/DeliveryNavigation";
 import OrderTracking from "./pages/OrderTracking";
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/admin/delivery-riders" element={<AdminDeliveryRiders />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/coupons" element={<AdminCoupons />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/entregas" element={<DeliveryDashboard />} />
               <Route path="/entregas/navegacao/:orderId" element={<DeliveryNavigation />} />
               <Route path="/painel-pdv" element={<PDV />} />

@@ -11,6 +11,7 @@ import { useGuestMode } from '@/hooks/useGuestMode';
 import { GuestModePrompt } from '@/components/GuestModePrompt';
 import { useState, useEffect } from 'react';
 import { useStoreStatus } from '@/hooks/useStoreStatus';
+import { useDeliveryFee } from '@/hooks/useDeliveryFee';
 
 const Cart = () => {
   const {
@@ -26,9 +27,9 @@ const Cart = () => {
   const { guestToken, guestData, loading: guestLoading } = useGuestMode();
   const [showGuestPrompt, setShowGuestPrompt] = useState(false);
   const { isOpen: storeOpen } = useStoreStatus();
+  const { deliveryFee } = useDeliveryFee();
 
   const subtotal = getCartTotal();
-  const deliveryFee = 5.0;
   const total = subtotal + deliveryFee;
 
   const handleCheckout = () => {

@@ -19,6 +19,7 @@ import { safeStorage } from '@/lib/safeStorage';
 import PixPayment from '@/components/PixPayment';
 import { Coupon } from '@/types';
 import { isDeliveryAllowed, DELIVERY_RESTRICTION_MESSAGE } from '@/lib/deliveryValidation';
+import { useDeliveryFee } from '@/hooks/useDeliveryFee';
 
 const checkoutSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100),
@@ -37,6 +38,7 @@ const checkoutSchema = z.object({
 
 const Checkout = () => {
   const { cart, getCartTotal, clearCart } = useCart();
+  const { deliveryFee } = useDeliveryFee();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { guestToken, guestData, updateGuestCustomer, clearGuestData, loading: guestLoading } = useGuestMode();
@@ -202,7 +204,7 @@ const Checkout = () => {
   }, [user, guestToken, guestData, guestLoading, navigate]);
 
   const subtotal = getCartTotal();
-  const deliveryFee = 5.0;
+  
   
   // Calcula o desconto do cupom
   const couponDiscount = appliedCoupon 
