@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShoppingBag, BarChart3, Home, LogOut, Bike, Users, Ticket, UtensilsCrossed, Salad, ChevronDown, ChevronRight } from "lucide-react";
+import { ShoppingBag, BarChart3, Home, LogOut, Bike, Users, Ticket, UtensilsCrossed, Salad, ChevronDown, ChevronRight, Settings } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
