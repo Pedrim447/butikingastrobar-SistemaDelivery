@@ -27,9 +27,9 @@ const Cart = () => {
   const { guestToken, guestData, loading: guestLoading } = useGuestMode();
   const [showGuestPrompt, setShowGuestPrompt] = useState(false);
   const { isOpen: storeOpen } = useStoreStatus();
+  const { deliveryFee } = useDeliveryFee();
 
   const subtotal = getCartTotal();
-  const deliveryFee = 5.0;
   const total = subtotal + deliveryFee;
 
   const handleCheckout = () => {

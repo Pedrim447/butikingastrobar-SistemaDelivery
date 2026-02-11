@@ -19,6 +19,7 @@ import { safeStorage } from '@/lib/safeStorage';
 import PixPayment from '@/components/PixPayment';
 import { Coupon } from '@/types';
 import { isDeliveryAllowed, DELIVERY_RESTRICTION_MESSAGE } from '@/lib/deliveryValidation';
+import { useDeliveryFee } from '@/hooks/useDeliveryFee';
 
 const checkoutSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100),
