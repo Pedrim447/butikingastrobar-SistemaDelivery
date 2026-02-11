@@ -32,6 +32,7 @@ const menuItems = [
   { title: "Motoboys", url: "/admin/delivery-riders", icon: Bike },
   { title: "Cupons", url: "/admin/coupons", icon: Ticket },
   { title: "Estatísticas", url: "/admin/stats", icon: BarChart3 },
+  { title: "Configurações", url: "/admin/settings", icon: Settings },
 ];
 
 interface AdminSidebarProps {
