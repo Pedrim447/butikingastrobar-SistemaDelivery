@@ -704,10 +704,15 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                         <TableCell className="font-medium">{order.customer_name}</TableCell>
                         <TableCell>{order.customer_phone}</TableCell>
                         <TableCell>
-                          <div className="text-sm">
+                          <div className="text-sm space-y-1">
                             {order.order_items.map((item, idx) => (
                               <div key={idx}>
-                                {item.quantity}x {item.product_name}
+                                <div>{item.quantity}x {item.product_name}</div>
+                                {item.notes && (
+                                  <div className="text-xs text-muted-foreground ml-2">
+                                    {item.notes}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
