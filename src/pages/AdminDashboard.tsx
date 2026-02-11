@@ -315,54 +315,117 @@ export default function AdminDashboard() {
     }
   };
 
+  const wrapText = (text: string, maxWidth: number): string[] => {
+    const lines: string[] = [];
+    const words = text.split(' ');
+    let currentLine = '';
+    for (const word of words) {
+      if (currentLine.length + word.length + 1 <= maxWidth) {
+        currentLine += (currentLine ? ' ' : '') + word;
+      } else {
+        if (currentLine) lines.push(currentLine);
+        currentLine = word.length > maxWidth ? word.substring(0, maxWidth) : word;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  };
+
   const printLabel = (order: Order) => {
+    const W = 32; // NFC printer width
+    const sep = '-'.repeat(W);
     const orderNumber = order.tracking_code || order.id.substring(0, 8).toUpperCase();
-    const labelContent = `
-=================================
-        ETIQUETA DE ENTREGA
-=================================
+    const lines: string[] = [];
 
-Pedido: #${orderNumber}
-Data: ${new Date(order.created_at).toLocaleString("pt-BR")}
+    lines.push(sep);
+    lines.push('   ETIQUETA DE ENTREGA');
+    lines.push(sep);
+    lines.push(`Pedido: #${orderNumber}`);
+    lines.push(`Data: ${new Date(order.created_at).toLocaleString("pt-BR")}`);
+    lines.push('');
+    lines.push(sep);
+    lines.push('CLIENTE');
+    lines.push(sep);
+    lines.push(...wrapText(order.customer_name, W));
+    lines.push(`Tel: ${order.customer_phone}`);
+    lines.push('');
+    lines.push(sep);
+    lines.push('ENDERECO');
+    lines.push(sep);
+    lines.push(...wrapText(order.customer_address, W));
+    if (order.customer_neighborhood) {
+      lines.push(...wrapText(`Bairro: ${order.customer_neighborhood}`, W));
+    }
+    if (order.customer_city) {
+      lines.push(...wrapText(`${order.customer_city}-${order.customer_state}`, W));
+    }
+    lines.push(`CEP: ${order.customer_cep}`);
+    lines.push('');
+    lines.push(sep);
+    lines.push('ITENS');
+    lines.push(sep);
 
----------------------------------
-CLIENTE
----------------------------------
-Nome: ${order.customer_name}
-Telefone: ${order.customer_phone}
+    order.order_items.forEach(item => {
+      const itemLine = `${item.quantity}x ${item.product_name}`;
+      const priceLine = `R$${(item.product_price * item.quantity).toFixed(2)}`;
+      // Fit item name and price on same line if possible
+      if (itemLine.length + priceLine.length + 1 <= W) {
+        const spaces = W - itemLine.length - priceLine.length;
+        lines.push(itemLine + ' '.repeat(spaces) + priceLine);
+      } else {
+        lines.push(...wrapText(itemLine, W));
+        lines.push(`  ${priceLine}`);
+      }
+      // Show accompaniments/notes for each item
+      if (item.notes) {
+        const noteParts = item.notes.split(' | ');
+        noteParts.forEach(part => {
+          lines.push(...wrapText(`  > ${part}`, W));
+        });
+      }
+    });
 
----------------------------------
-ENDEREÇO DE ENTREGA
----------------------------------
-${order.customer_address}
-Bairro: ${order.customer_neighborhood}
-Cidade: ${order.customer_city} - ${order.customer_state}
-CEP: ${order.customer_cep}
+    lines.push('');
+    lines.push(sep);
+    if (order.delivery_fee > 0) {
+      const feeLabel = 'Entrega:';
+      const feeVal = `R$${order.delivery_fee.toFixed(2)}`;
+      const sp = W - feeLabel.length - feeVal.length;
+      lines.push(feeLabel + ' '.repeat(Math.max(1, sp)) + feeVal);
+    }
+    const totalLabel = 'TOTAL:';
+    const totalVal = `R$${order.total.toFixed(2)}`;
+    const sp = W - totalLabel.length - totalVal.length;
+    lines.push(totalLabel + ' '.repeat(Math.max(1, sp)) + totalVal);
+    lines.push(sep);
 
----------------------------------
-ITENS DO PEDIDO
----------------------------------
-${order.order_items.map(item => `${item.quantity}x ${item.product_name} - R$ ${item.product_price.toFixed(2)}`).join("\n")}
+    if (order.notes) {
+      lines.push('');
+      lines.push('OBS:');
+      lines.push(...wrapText(order.notes, W));
+    }
 
----------------------------------
-TOTAL: R$ ${order.total.toFixed(2)}
-Taxa de Entrega: R$ ${order.delivery_fee.toFixed(2)}
----------------------------------
+    lines.push('');
+    lines.push(sep);
 
-${order.notes ? `Observações: ${order.notes}` : ""}
+    const content = lines.join('\n');
 
-=================================
-    `;
+    // Open print dialog directly
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (printWindow) {
+      printWindow.document.write(`<html><head><title>Pedido #${orderNumber}</title>
+        <style>
+          body { margin: 0; padding: 8px; }
+          pre { font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; margin: 0; }
+          @media print { body { margin: 0; padding: 0; } }
+        </style>
+      </head><body><pre>${content}</pre>
+      <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}</script>
+      </body></html>`);
+      printWindow.document.close();
+    }
 
-    const blob = new Blob([labelContent], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `etiqueta-pedido-${orderNumber}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
-
-    toast.success("Etiqueta gerada com sucesso!");
+    toast.success("Impressão iniciada!");
   };
 
   const getStatusBadge = (status: string) => {
@@ -704,10 +767,15 @@ ${order.notes ? `Observações: ${order.notes}` : ""}
                         <TableCell className="font-medium">{order.customer_name}</TableCell>
                         <TableCell>{order.customer_phone}</TableCell>
                         <TableCell>
-                          <div className="text-sm">
+                          <div className="text-sm space-y-1">
                             {order.order_items.map((item, idx) => (
                               <div key={idx}>
-                                {item.quantity}x {item.product_name}
+                                <div>{item.quantity}x {item.product_name}</div>
+                                {item.notes && (
+                                  <div className="text-xs text-muted-foreground ml-2">
+                                    {item.notes}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
