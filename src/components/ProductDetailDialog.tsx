@@ -211,7 +211,12 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
       notes += ` | Adicionais: +R$ ${extraCost.toFixed(2)}`;
     }
 
-    addToCart(product, quantity, notes);
+    // Include extra accompaniment cost in the product price
+    const productWithExtras = extraCost > 0
+      ? { ...product, price: product.price + extraCost }
+      : product;
+
+    addToCart(productWithExtras, quantity, notes);
     toast.success(`${product.name} adicionado ao carrinho!`);
     onOpenChange(false);
   };
