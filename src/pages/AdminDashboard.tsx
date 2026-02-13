@@ -397,6 +397,12 @@ export default function AdminDashboard() {
     const totalVal = `R$${order.total.toFixed(2)}`;
     const sp = W - totalLabel.length - totalVal.length;
     lines.push(totalLabel + ' '.repeat(Math.max(1, sp)) + totalVal);
+
+    const formatPayment = (m: string | null) => {
+      const map: Record<string, string> = { pix: 'PIX', dinheiro: 'Dinheiro', cartao_debito: 'Cartao Debito', cartao_credito: 'Cartao Credito' };
+      return map[m || ''] || m || 'N/A';
+    };
+    lines.push(`Pagamento: ${formatPayment(order.payment_method)}`);
     lines.push(sep);
 
     if (order.notes) {
