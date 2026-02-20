@@ -49,6 +49,7 @@ export const useAccompaniments = () => {
           display_order: sd.display_order,
           type: 'side_dish' as const,
           has_variations: sd.has_variations || false,
+          image_url: sd.image_url || null,
         })),
         ...(productSideDishesData || []).map(p => ({
           id: `product_${p.id}`,
@@ -57,6 +58,7 @@ export const useAccompaniments = () => {
           display_order: 999,
           type: 'product' as const,
           has_variations: false,
+          image_url: p.image_url || null,
         })),
         // Marmitex products as accompaniments at half price (avoid duplicates)
         ...(marmitexProducts || [])
@@ -68,6 +70,7 @@ export const useAccompaniments = () => {
             display_order: 998,
             type: 'product' as const,
             has_variations: false,
+            image_url: p.image_url || null,
           })),
       ];
 

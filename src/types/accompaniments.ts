@@ -5,6 +5,7 @@ export interface SideDish {
   display_order: number | null;
   type: 'side_dish' | 'product';
   has_variations?: boolean;
+  image_url?: string | null;
 }
 
 export interface SideDishVariation {
