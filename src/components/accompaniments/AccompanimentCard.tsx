@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { SideDish } from '@/types/accompaniments';
 import { ChevronRight, Check } from 'lucide-react';
@@ -17,6 +18,8 @@ export const AccompanimentCard = ({
   selectedVariationName,
   onToggle,
 }: AccompanimentCardProps) => {
+  const [imgError, setImgError] = useState(false);
+
   return (
     <button
       type="button"
@@ -34,15 +37,17 @@ export const AccompanimentCard = ({
         </div>
       )}
       {/* Image area */}
-      <div className="w-full h-16 bg-muted flex items-center justify-center flex-shrink-0">
-        {item.image_url ? (
+      <div className="w-full h-20 bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+        {item.image_url && !imgError ? (
           <img
             src={item.image_url}
             alt={item.name}
             className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+            loading="lazy"
           />
         ) : (
-          <span className="text-xs text-muted-foreground">Sem imagem</span>
+          <span className="text-xs text-muted-foreground px-1 text-center">{item.name[0]}</span>
         )}
       </div>
       {/* Info area */}
