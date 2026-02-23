@@ -482,40 +482,83 @@ const Menu = () => {
             </div>
           </div>
         </div>
-      </header>
 
-      {/* Hero Section */}
-      <HeroSection storeOpen={storeOpen} storeReason={storeReason} />
-
-      {/* Store Closed Banner */}
-      {!storeOpen && (
-        <div className="bg-destructive/10 border-b border-destructive/30 px-4 py-6">
-          <div className="container mx-auto flex items-center gap-4">
-            <AlertTriangle className="h-8 w-8 text-destructive flex-shrink-0" />
-            <div>
-              <h2 className="text-lg font-bold text-destructive">
-                {storeReason === 'manual_closed' 
-                  ? '⚠️ Estamos fechados temporariamente' 
-                  : '⚠️ Estamos fechados'}
-              </h2>
-              <p className="text-sm text-destructive/80">
-                {storeReason === 'manual_closed'
-                  ? 'O sistema de pedidos está desativado no momento. Tente novamente mais tarde.'
-                  : 'Nosso horário de funcionamento é de Segunda a Sexta, das 9h às 17h.'}
-              </p>
+        {/* Search Bar */}
+        {searchOpen && (
+          <div className="px-4 md:px-6 pb-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar prato..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-11"
+                autoFocus
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </header>
 
-      {/* Category Navigation */}
-      {!loading && (
-        <CategoryNav 
-          categories={categories} 
-          activeCategory={activeCategory}
-          onCategoryClick={scrollToCategory}
-        />
-      )}
+      {/* Search Results */}
+      {filteredProducts ? (
+        <div className="container mx-auto px-4 py-6">
+          <p className="text-sm text-muted-foreground mb-4">
+            {filteredProducts.length} resultado{filteredProducts.length !== 1 ? 's' : ''} para "{searchQuery}"
+          </p>
+          {filteredProducts.length > 0 ? (
+            <CategorySection
+              category={{ id: 'search', name: `Resultados`, slug: 'search', display_order: 0 }}
+              products={filteredProducts}
+            />
+          ) : (
+            <p className="text-center text-muted-foreground py-12">Nenhum prato encontrado.</p>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Hero Section */}
+          <HeroSection storeOpen={storeOpen} storeReason={storeReason} />
+
+          {/* Store Closed Banner */}
+          {!storeOpen && (
+            <div className="bg-destructive/10 border-b border-destructive/30 px-4 py-6">
+              <div className="container mx-auto flex items-center gap-4">
+                <AlertTriangle className="h-8 w-8 text-destructive flex-shrink-0" />
+                <div>
+                  <h2 className="text-lg font-bold text-destructive">
+                    {storeReason === 'manual_closed' 
+                      ? '⚠️ Estamos fechados temporariamente' 
+                      : '⚠️ Estamos fechados'}
+                  </h2>
+                  <p className="text-sm text-destructive/80">
+                    {storeReason === 'manual_closed'
+                      ? 'O sistema de pedidos está desativado no momento. Tente novamente mais tarde.'
+                      : 'Nosso horário de funcionamento é de Segunda a Sexta, das 9h às 17h.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Category Navigation */}
+          {!loading && (
+            <CategoryNav 
+              categories={categories} 
+              activeCategory={activeCategory}
+              onCategoryClick={scrollToCategory}
+            />
+          )}
 
       {/* Menu Sections */}
       <div ref={menuRef}>
