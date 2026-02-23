@@ -5,7 +5,8 @@ import { HeroSection } from "@/components/HeroSection";
 import { CategoryNav } from "@/components/CategoryNav";
 import { CategorySection } from "@/components/CategorySection";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Menu as MenuIcon, Package, LogOut, Tag, Info, ChevronRight, Shield, User, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ShoppingCart, Menu as MenuIcon, Package, LogOut, Tag, Info, ChevronRight, Shield, User, AlertTriangle, Search, X } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +22,8 @@ const Menu = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -190,6 +193,13 @@ const Menu = () => {
       window.scrollTo({ top: elementPosition - offset, behavior: 'smooth' });
     }
   };
+
+  const filteredProducts = searchQuery.trim()
+    ? products.filter((p) =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : null;
 
   const getProductsByCategory = (categoryId: string | null) => {
     return products.filter((p) => p.category_id === categoryId);
@@ -435,7 +445,18 @@ const Menu = () => {
             </h1>
 
             {/* Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11"
+                onClick={() => {
+                  setSearchOpen(!searchOpen);
+                  if (searchOpen) setSearchQuery("");
+                }}
+              >
+                {searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -461,40 +482,83 @@ const Menu = () => {
             </div>
           </div>
         </div>
-      </header>
 
-      {/* Hero Section */}
-      <HeroSection storeOpen={storeOpen} storeReason={storeReason} />
-
-      {/* Store Closed Banner */}
-      {!storeOpen && (
-        <div className="bg-destructive/10 border-b border-destructive/30 px-4 py-6">
-          <div className="container mx-auto flex items-center gap-4">
-            <AlertTriangle className="h-8 w-8 text-destructive flex-shrink-0" />
-            <div>
-              <h2 className="text-lg font-bold text-destructive">
-                {storeReason === 'manual_closed' 
-                  ? '⚠️ Estamos fechados temporariamente' 
-                  : '⚠️ Estamos fechados'}
-              </h2>
-              <p className="text-sm text-destructive/80">
-                {storeReason === 'manual_closed'
-                  ? 'O sistema de pedidos está desativado no momento. Tente novamente mais tarde.'
-                  : 'Nosso horário de funcionamento é de Segunda a Sexta, das 9h às 17h.'}
-              </p>
+        {/* Search Bar */}
+        {searchOpen && (
+          <div className="px-4 md:px-6 pb-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar prato..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-11"
+                autoFocus
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </header>
 
-      {/* Category Navigation */}
-      {!loading && (
-        <CategoryNav 
-          categories={categories} 
-          activeCategory={activeCategory}
-          onCategoryClick={scrollToCategory}
-        />
-      )}
+      {/* Search Results */}
+      {filteredProducts ? (
+        <div className="container mx-auto px-4 py-6">
+          <p className="text-sm text-muted-foreground mb-4">
+            {filteredProducts.length} resultado{filteredProducts.length !== 1 ? 's' : ''} para "{searchQuery}"
+          </p>
+          {filteredProducts.length > 0 ? (
+            <CategorySection
+              category={{ id: 'search', name: `Resultados`, slug: 'search', display_order: 0 }}
+              products={filteredProducts}
+            />
+          ) : (
+            <p className="text-center text-muted-foreground py-12">Nenhum prato encontrado.</p>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Hero Section */}
+          <HeroSection storeOpen={storeOpen} storeReason={storeReason} />
+
+          {/* Store Closed Banner */}
+          {!storeOpen && (
+            <div className="bg-destructive/10 border-b border-destructive/30 px-4 py-6">
+              <div className="container mx-auto flex items-center gap-4">
+                <AlertTriangle className="h-8 w-8 text-destructive flex-shrink-0" />
+                <div>
+                  <h2 className="text-lg font-bold text-destructive">
+                    {storeReason === 'manual_closed' 
+                      ? '⚠️ Estamos fechados temporariamente' 
+                      : '⚠️ Estamos fechados'}
+                  </h2>
+                  <p className="text-sm text-destructive/80">
+                    {storeReason === 'manual_closed'
+                      ? 'O sistema de pedidos está desativado no momento. Tente novamente mais tarde.'
+                      : 'Nosso horário de funcionamento é de Segunda a Sexta, das 9h às 17h.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Category Navigation */}
+          {!loading && (
+            <CategoryNav 
+              categories={categories} 
+              activeCategory={activeCategory}
+              onCategoryClick={scrollToCategory}
+            />
+          )}
 
       {/* Menu Sections */}
       <div ref={menuRef}>
@@ -572,6 +636,8 @@ const Menu = () => {
           </div>
         </div>
       </footer>
+        </>
+      )}
     </div>
   );
 };
