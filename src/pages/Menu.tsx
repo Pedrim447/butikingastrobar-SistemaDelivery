@@ -194,6 +194,13 @@ const Menu = () => {
     }
   };
 
+  const filteredProducts = searchQuery.trim()
+    ? products.filter((p) =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : null;
+
   const getProductsByCategory = (categoryId: string | null) => {
     return products.filter((p) => p.category_id === categoryId);
   };
