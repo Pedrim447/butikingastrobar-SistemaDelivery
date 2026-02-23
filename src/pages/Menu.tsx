@@ -636,6 +636,8 @@ const Menu = () => {
           </div>
         </div>
       </footer>
+        </>
+      )}
     </div>
   );
 };
