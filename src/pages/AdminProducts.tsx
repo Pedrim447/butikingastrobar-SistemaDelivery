@@ -29,7 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, Upload, Image as ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Image as ImageIcon, Search, X } from "lucide-react";
 import { Product, Category } from "@/types";
 import { toast } from "sonner";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -49,6 +49,7 @@ export default function AdminProducts() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
 
   const [productForm, setProductForm] = useState({
     name: "",
@@ -375,7 +376,26 @@ export default function AdminProducts() {
             </TabsList>
 
             <TabsContent value="products" className="space-y-4">
-              <div className="flex justify-end">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar produto pelo nome..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                  {productSearch && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                      onClick={() => setProductSearch("")}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
                 <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
                   <DialogTrigger asChild>
                     <Button onClick={resetProductForm}>
@@ -538,7 +558,13 @@ export default function AdminProducts() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      products.map((product) => {
+                      products
+                        .filter((p) =>
+                          productSearch.trim()
+                            ? p.name.toLowerCase().includes(productSearch.toLowerCase())
+                            : true
+                        )
+                        .map((product) => {
                         const category = categories.find(c => c.id === product.category_id);
                         return (
                           <TableRow key={product.id}>
