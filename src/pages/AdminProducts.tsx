@@ -558,7 +558,13 @@ export default function AdminProducts() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      products.map((product) => {
+                      products
+                        .filter((p) =>
+                          productSearch.trim()
+                            ? p.name.toLowerCase().includes(productSearch.toLowerCase())
+                            : true
+                        )
+                        .map((product) => {
                         const category = categories.find(c => c.id === product.category_id);
                         return (
                           <TableRow key={product.id}>
