@@ -29,7 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, Upload, Image as ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Image as ImageIcon, Search, X } from "lucide-react";
 import { Product, Category } from "@/types";
 import { toast } from "sonner";
 import { SidebarProvider } from "@/components/ui/sidebar";
