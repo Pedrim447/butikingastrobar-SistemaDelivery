@@ -49,6 +49,7 @@ export default function AdminProducts() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
 
   const [productForm, setProductForm] = useState({
     name: "",
