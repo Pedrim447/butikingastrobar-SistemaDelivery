@@ -446,17 +446,7 @@ const Menu = () => {
 
             {/* Actions */}
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-11 w-11"
-                onClick={() => {
-                  setSearchOpen(!searchOpen);
-                  if (searchOpen) setSearchQuery("");
-                }}
-              >
-                {searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
-              </Button>
+              
               <Button
                 variant="ghost"
                 size="icon"
