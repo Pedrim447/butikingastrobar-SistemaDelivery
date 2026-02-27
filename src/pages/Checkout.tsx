@@ -25,9 +25,11 @@ const checkoutSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100),
   phone: z.string().min(10, 'Telefone inválido').max(15),
   cep: z.string()
-    .min(8, 'CEP deve ter 8 dígitos')
-    .max(9, 'CEP inválido')
-    .regex(/^\d{5}-?\d{3}$|^\d{8}$/, 'CEP deve conter apenas números (com ou sem hífen)'),
+    .refine((val) => {
+      if (!val || val.length === 0) return true; // CEP opcional
+      const clean = val.replace(/\D/g, '');
+      return clean.length === 8;
+    }, 'CEP deve ter 8 dígitos'),
   address: z.string().min(5, 'Endereço obrigatório').max(200),
   number: z.string().min(1, 'Número obrigatório').max(10),
   reference: z.string().max(200).optional(),
