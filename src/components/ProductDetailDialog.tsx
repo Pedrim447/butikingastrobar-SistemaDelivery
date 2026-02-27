@@ -141,24 +141,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     });
   };
 
-  const hasItemsWithVariations = (): boolean => {
-    return Array.from(selectedAccompaniments.values()).some(data => data.item.has_variations);
-  };
-
-  const handleProceed = () => {
-    if (totalAccompaniments < MANDATORY_COUNT) {
-      toast.error('Selecione pelo menos 3 acompanhamentos!');
-      return;
-    }
-
-    if (hasItemsWithVariations()) {
-      setStep('variations');
-    } else {
-      handleAddToCart();
-    }
-  };
-
-  const handleSelectVariation = (sideDishId: string, variationId: string, variationName: string) => {
+  const handleSelectVariationInline = (sideDishId: string, variationId: string, variationName: string) => {
     setSelectedAccompaniments(prev => {
       const newMap = new Map(prev);
       const existing = newMap.get(sideDishId);
@@ -171,7 +154,12 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   const hasVariations = isSideDishProduct && sideDishVariations.length > 0;
   const canAddSideDishProduct = !hasVariations || selectedVariationId !== null;
-  const canAddToCart = isSideDishProduct ? canAddSideDishProduct : (skipAccompaniments ? true : totalAccompaniments >= MANDATORY_COUNT);
+  
+  // Check all selected items with variations have a variation chosen
+  const allVariationsChosen = Array.from(selectedAccompaniments.values()).every(
+    data => !data.item.has_variations || data.variationId
+  );
+  const canAddToCart = isSideDishProduct ? canAddSideDishProduct : (skipAccompaniments ? true : totalAccompaniments >= MANDATORY_COUNT && allVariationsChosen);
 
   const handleAddToCart = () => {
     // For side dish products or beverages (no accompaniments)
