@@ -30,7 +30,7 @@ export const GuestCheckoutForm = ({ onComplete }: GuestCheckoutFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name || !phone || !street || !number || !neighborhood || !city || !state || !cep) {
+    if (!name || !phone || !street || !number || !neighborhood || !city || !state) {
       toast.error('Por favor, preencha todos os campos obrigatórios');
       return;
     }
