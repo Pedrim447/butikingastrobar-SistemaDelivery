@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAccompaniments } from '@/hooks/useAccompaniments';
 import { AccompanimentCard } from '@/components/accompaniments/AccompanimentCard';
-import { VariationSelector } from '@/components/accompaniments/VariationSelector';
+
 import { cn } from '@/lib/utils';
 import { useStoreStatus } from '@/hooks/useStoreStatus';
 
