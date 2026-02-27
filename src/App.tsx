@@ -40,6 +40,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <CookieConsent />
+            <WhatsAppSupport />
             <Routes>
               <Route path="/" element={<Menu />} />
               <Route path="/cart" element={<Cart />} />
