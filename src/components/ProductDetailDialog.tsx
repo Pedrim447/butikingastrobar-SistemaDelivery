@@ -91,7 +91,6 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     if (!open) {
       setQuantity(1);
       setSelectedAccompaniments(new Map());
-      setStep('select');
       setSideDishVariations([]);
       setSelectedVariationId(null);
     }
