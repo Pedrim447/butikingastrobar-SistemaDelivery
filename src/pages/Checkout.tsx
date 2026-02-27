@@ -412,13 +412,13 @@ const Checkout = () => {
           formData.name,
           formData.phone,
           {
-            street: formData.address,
+415:             street: formData.address,
             number: formData.number,
             complement: formData.reference,
             neighborhood: formData.neighborhood,
-            city: addressData.city,
-            state: addressData.state,
-            cep: formData.cep,
+            city,
+            state,
+            cep: formData.cep || '',
           }
         );
 
