@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAccompaniments } from '@/hooks/useAccompaniments';
 import { AccompanimentCard } from '@/components/accompaniments/AccompanimentCard';
-import { VariationSelector } from '@/components/accompaniments/VariationSelector';
+
 import { cn } from '@/lib/utils';
 import { useStoreStatus } from '@/hooks/useStoreStatus';
 
@@ -34,7 +34,6 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 }) => {
   const [quantity, setQuantity] = useState(1);
   const [selectedAccompaniments, setSelectedAccompaniments] = useState<Map<string, SelectionData>>(new Map());
-  const [step, setStep] = useState<'select' | 'variations'>('select');
   const [sideDishVariations, setSideDishVariations] = useState<SideDishVariation[]>([]);
   const [selectedVariationId, setSelectedVariationId] = useState<string | null>(null);
   const [loadingVariations, setLoadingVariations] = useState(false);
@@ -92,7 +91,6 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     if (!open) {
       setQuantity(1);
       setSelectedAccompaniments(new Map());
-      setStep('select');
       setSideDishVariations([]);
       setSelectedVariationId(null);
     }
@@ -143,24 +141,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
     });
   };
 
-  const hasItemsWithVariations = (): boolean => {
-    return Array.from(selectedAccompaniments.values()).some(data => data.item.has_variations);
-  };
-
-  const handleProceed = () => {
-    if (totalAccompaniments < MANDATORY_COUNT) {
-      toast.error('Selecione pelo menos 3 acompanhamentos!');
-      return;
-    }
-
-    if (hasItemsWithVariations()) {
-      setStep('variations');
-    } else {
-      handleAddToCart();
-    }
-  };
-
-  const handleSelectVariation = (sideDishId: string, variationId: string, variationName: string) => {
+  const handleSelectVariationInline = (sideDishId: string, variationId: string, variationName: string) => {
     setSelectedAccompaniments(prev => {
       const newMap = new Map(prev);
       const existing = newMap.get(sideDishId);
@@ -173,7 +154,12 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   const hasVariations = isSideDishProduct && sideDishVariations.length > 0;
   const canAddSideDishProduct = !hasVariations || selectedVariationId !== null;
-  const canAddToCart = isSideDishProduct ? canAddSideDishProduct : (skipAccompaniments ? true : totalAccompaniments >= MANDATORY_COUNT);
+  
+  // Check all selected items with variations have a variation chosen
+  const allVariationsChosen = Array.from(selectedAccompaniments.values()).every(
+    data => !data.item.has_variations || data.variationId
+  );
+  const canAddToCart = isSideDishProduct ? canAddSideDishProduct : (skipAccompaniments ? true : totalAccompaniments >= MANDATORY_COUNT && allVariationsChosen);
 
   const handleAddToCart = () => {
     // For side dish products or beverages (no accompaniments)
@@ -281,52 +267,43 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
           {/* Only show accompaniments section for regular products */}
           {!skipAccompaniments && (
-            step === 'select' ? (
-              <>
-                {/* Accompaniments Section */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-sm">Escolha os Acompanhamentos</h3>
-                    <span className={`text-sm font-medium ${totalAccompaniments >= MANDATORY_COUNT ? 'text-green-600' : 'text-destructive'}`}>
-                      {totalAccompaniments}/{MANDATORY_COUNT} obrigatórios
-                    </span>
-                  </div>
-
-                  {loading ? (
-                    <div className="text-center py-4 text-muted-foreground">Carregando...</div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      {sideDishes.map(item => {
-                        const selectionData = selectedAccompaniments.get(item.id);
-                        const isSelected = !!selectionData;
-                        return (
-                          <AccompanimentCard
-                            key={item.id}
-                            item={item}
-                            isSelected={isSelected}
-                            hasVariation={item.has_variations}
-                            selectedVariationName={selectionData?.variationName}
-                            onToggle={() => toggleAccompaniment(item)}
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  <p className="text-xs text-destructive">
-                    * Obrigatório escolher 3 acompanhamentos (grátis)
-                  </p>
+            <>
+              {/* Accompaniments Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm">Escolha os Acompanhamentos</h3>
+                  <span className={`text-sm font-medium ${totalAccompaniments >= MANDATORY_COUNT ? 'text-green-600' : 'text-destructive'}`}>
+                    {totalAccompaniments}/{MANDATORY_COUNT} obrigatórios
+                  </span>
                 </div>
-              </>
-            ) : (
-              <VariationSelector
-                selectedItems={selectedAccompaniments}
-                sideDishes={sideDishes}
-                onSelectVariation={handleSelectVariation}
-                onBack={() => setStep('select')}
-                onContinue={handleAddToCart}
-              />
-            )
+
+                {loading ? (
+                  <div className="text-center py-4 text-muted-foreground">Carregando...</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {sideDishes.map(item => {
+                      const selectionData = selectedAccompaniments.get(item.id);
+                      const isSelected = !!selectionData;
+                      return (
+                        <AccompanimentCard
+                          key={item.id}
+                          item={item}
+                          isSelected={isSelected}
+                          hasVariation={item.has_variations}
+                          selectedVariationName={selectionData?.variationName}
+                          onToggle={() => toggleAccompaniment(item)}
+                          onSelectVariation={(vId, vName) => handleSelectVariationInline(item.id, vId, vName)}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+
+                <p className="text-xs text-destructive">
+                  * Obrigatório escolher 3 acompanhamentos (grátis)
+                </p>
+              </div>
+            </>
           )}
         </div>
 
@@ -343,7 +320,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
         )}
 
         {/* Footer with quantity and add button */}
-        {storeOpen && (skipAccompaniments || step === 'select') && (
+        {storeOpen && (
           <div className="sticky bottom-0 bg-card border-t p-3">
             <div className="flex items-center justify-between gap-3">
               <span className="text-lg font-bold">
@@ -369,12 +346,12 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 </Button>
               </div>
               <Button
-                onClick={skipAccompaniments ? handleAddToCart : handleProceed}
+                onClick={handleAddToCart}
                 className="flex-1 max-w-[140px]"
                 disabled={!canAddToCart}
               >
                 <ShoppingBag className="w-4 h-4 mr-1" />
-                {skipAccompaniments ? 'Adicionar' : (hasItemsWithVariations() ? 'Continuar' : 'Adicionar')}
+                Adicionar
               </Button>
             </div>
           </div>
