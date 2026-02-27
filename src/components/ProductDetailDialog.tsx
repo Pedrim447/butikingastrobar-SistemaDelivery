@@ -267,52 +267,43 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
           {/* Only show accompaniments section for regular products */}
           {!skipAccompaniments && (
-            step === 'select' ? (
-              <>
-                {/* Accompaniments Section */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-sm">Escolha os Acompanhamentos</h3>
-                    <span className={`text-sm font-medium ${totalAccompaniments >= MANDATORY_COUNT ? 'text-green-600' : 'text-destructive'}`}>
-                      {totalAccompaniments}/{MANDATORY_COUNT} obrigatórios
-                    </span>
-                  </div>
-
-                  {loading ? (
-                    <div className="text-center py-4 text-muted-foreground">Carregando...</div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      {sideDishes.map(item => {
-                        const selectionData = selectedAccompaniments.get(item.id);
-                        const isSelected = !!selectionData;
-                        return (
-                          <AccompanimentCard
-                            key={item.id}
-                            item={item}
-                            isSelected={isSelected}
-                            hasVariation={item.has_variations}
-                            selectedVariationName={selectionData?.variationName}
-                            onToggle={() => toggleAccompaniment(item)}
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  <p className="text-xs text-destructive">
-                    * Obrigatório escolher 3 acompanhamentos (grátis)
-                  </p>
+            <>
+              {/* Accompaniments Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm">Escolha os Acompanhamentos</h3>
+                  <span className={`text-sm font-medium ${totalAccompaniments >= MANDATORY_COUNT ? 'text-green-600' : 'text-destructive'}`}>
+                    {totalAccompaniments}/{MANDATORY_COUNT} obrigatórios
+                  </span>
                 </div>
-              </>
-            ) : (
-              <VariationSelector
-                selectedItems={selectedAccompaniments}
-                sideDishes={sideDishes}
-                onSelectVariation={handleSelectVariation}
-                onBack={() => setStep('select')}
-                onContinue={handleAddToCart}
-              />
-            )
+
+                {loading ? (
+                  <div className="text-center py-4 text-muted-foreground">Carregando...</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {sideDishes.map(item => {
+                      const selectionData = selectedAccompaniments.get(item.id);
+                      const isSelected = !!selectionData;
+                      return (
+                        <AccompanimentCard
+                          key={item.id}
+                          item={item}
+                          isSelected={isSelected}
+                          hasVariation={item.has_variations}
+                          selectedVariationName={selectionData?.variationName}
+                          onToggle={() => toggleAccompaniment(item)}
+                          onSelectVariation={(vId, vName) => handleSelectVariationInline(item.id, vId, vName)}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+
+                <p className="text-xs text-destructive">
+                  * Obrigatório escolher 3 acompanhamentos (grátis)
+                </p>
+              </div>
+            </>
           )}
         </div>
 
