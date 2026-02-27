@@ -42,8 +42,9 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   const { sideDishes, loading, refetch } = useAccompaniments();
   const { isOpen: storeOpen } = useStoreStatus();
 
-  // Check if this is a side dish shown as product (no accompaniment selection needed)
+  // Check if this is a side dish or marmitex shown as product (no accompaniment selection needed)
   const isSideDishProduct = product?.id.startsWith('sidedish_') ?? false;
+  const isMarmitexProduct = product?.id.startsWith('marmitex_') ?? false;
   // Categories that don't have accompaniments
   const noAccompanimentCategories = [
     'de203c52-82f8-4d40-ad9e-59b5726b05dc', // Bebidas
