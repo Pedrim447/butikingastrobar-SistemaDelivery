@@ -320,7 +320,7 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
         )}
 
         {/* Footer with quantity and add button */}
-        {storeOpen && (skipAccompaniments || step === 'select') && (
+        {storeOpen && (
           <div className="sticky bottom-0 bg-card border-t p-3">
             <div className="flex items-center justify-between gap-3">
               <span className="text-lg font-bold">
@@ -346,12 +346,12 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 </Button>
               </div>
               <Button
-                onClick={skipAccompaniments ? handleAddToCart : handleProceed}
+                onClick={handleAddToCart}
                 className="flex-1 max-w-[140px]"
                 disabled={!canAddToCart}
               >
                 <ShoppingBag className="w-4 h-4 mr-1" />
-                {skipAccompaniments ? 'Adicionar' : (hasItemsWithVariations() ? 'Continuar' : 'Adicionar')}
+                Adicionar
               </Button>
             </div>
           </div>
