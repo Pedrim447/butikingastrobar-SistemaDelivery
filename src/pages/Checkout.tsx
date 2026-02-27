@@ -386,14 +386,12 @@ const Checkout = () => {
         return;
       }
 
-      // Validação: cidade e estado são obrigatórios
-      if (!addressData.city || !addressData.state) {
-        toast.error('Por favor, preencha o CEP para obter cidade e estado');
-        return;
-      }
+      // Validação: cidade e estado - se não preenchidos pelo CEP, usar fallback
+      const city = addressData.city || 'São Luís';
+      const state = addressData.state || 'MA';
 
-      // Validação: entrega apenas para São Luís - MA
-      if (!isDeliveryAllowed(addressData.city, addressData.state)) {
+      // Validação: entrega apenas para São Luís - MA (só verifica se city/state foram definidos pelo CEP)
+      if (addressData.city && addressData.state && !isDeliveryAllowed(addressData.city, addressData.state)) {
         toast.error(DELIVERY_RESTRICTION_MESSAGE);
         return;
       }
