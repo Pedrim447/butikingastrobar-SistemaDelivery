@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "./contexts/CartContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { CookieConsent } from "./components/CookieConsent";
+import { WhatsAppSupport } from "./components/WhatsAppSupport";
 import Menu from "./pages/Menu";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
@@ -39,6 +40,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <CookieConsent />
+            <WhatsAppSupport />
             <Routes>
               <Route path="/" element={<Menu />} />
               <Route path="/cart" element={<Cart />} />
