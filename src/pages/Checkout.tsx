@@ -412,7 +412,7 @@ const Checkout = () => {
           formData.name,
           formData.phone,
           {
-415:             street: formData.address,
+street: formData.address,
             number: formData.number,
             complement: formData.reference,
             neighborhood: formData.neighborhood,
