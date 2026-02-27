@@ -137,10 +137,12 @@ const Menu = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [categoriesRes, productsRes, sideDishesRes] = await Promise.all([
+      const MARMITEX_CATEGORY_ID = 'fe8a2cd7-171a-4c41-bd47-d46922d0182a';
+      const [categoriesRes, productsRes, sideDishesRes, marmitexRes] = await Promise.all([
         supabase.from("categories").select("*").order("display_order"),
         supabase.from("products").select("*").eq("is_available", true),
         supabase.from("side_dishes").select("*").eq("is_available", true).eq("show_as_product", true),
+        supabase.from("products").select("*").eq("is_available", true).eq("category_id", MARMITEX_CATEGORY_ID),
       ]);
 
       if (categoriesRes.error) {
