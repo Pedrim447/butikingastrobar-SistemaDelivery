@@ -111,7 +111,7 @@ export const GuestCheckoutForm = ({ onComplete }: GuestCheckoutFormProps) => {
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="cep">CEP *</Label>
+              <Label htmlFor="cep">CEP</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -122,7 +122,6 @@ export const GuestCheckoutForm = ({ onComplete }: GuestCheckoutFormProps) => {
                   onChange={(e) => setCep(e.target.value)}
                   disabled={loading}
                   className="pl-10"
-                  required
                 />
               </div>
             </div>
