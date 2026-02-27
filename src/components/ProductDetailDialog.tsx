@@ -34,7 +34,6 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 }) => {
   const [quantity, setQuantity] = useState(1);
   const [selectedAccompaniments, setSelectedAccompaniments] = useState<Map<string, SelectionData>>(new Map());
-  const [step, setStep] = useState<'select' | 'variations'>('select');
   const [sideDishVariations, setSideDishVariations] = useState<SideDishVariation[]>([]);
   const [selectedVariationId, setSelectedVariationId] = useState<string | null>(null);
   const [loadingVariations, setLoadingVariations] = useState(false);
