@@ -137,10 +137,12 @@ const Menu = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [categoriesRes, productsRes, sideDishesRes] = await Promise.all([
+      const MARMITEX_CATEGORY_ID = 'fe8a2cd7-171a-4c41-bd47-d46922d0182a';
+      const [categoriesRes, productsRes, sideDishesRes, marmitexRes] = await Promise.all([
         supabase.from("categories").select("*").order("display_order"),
         supabase.from("products").select("*").eq("is_available", true),
         supabase.from("side_dishes").select("*").eq("is_available", true).eq("show_as_product", true),
+        supabase.from("products").select("*").eq("is_available", true).eq("category_id", MARMITEX_CATEGORY_ID),
       ]);
 
       if (categoriesRes.error) {
@@ -158,7 +160,7 @@ const Menu = () => {
         allProducts = [...productsRes.data];
       }
 
-      // Add side dishes as products (with null category_id - they'll appear in a special section or need category assignment)
+      // Add side dishes as products
       if (sideDishesRes.error) {
         console.error("Error fetching side dishes as products:", sideDishesRes.error);
       } else if (sideDishesRes.data) {
@@ -168,12 +170,36 @@ const Menu = () => {
           description: null,
           price: sd.price,
           image_url: null,
-          category_id: null, // Will appear in "Outros" category or need to be assigned
+          category_id: null,
           is_available: sd.is_available,
           created_at: sd.created_at,
           updated_at: sd.updated_at,
         }));
         allProducts = [...allProducts, ...sideDishProducts];
+      }
+
+      // Add Marmitex products as solo accompaniments at half price
+      if (marmitexRes.error) {
+        console.error("Error fetching marmitex products:", marmitexRes.error);
+      } else if (marmitexRes.data) {
+        // Get IDs of side dishes already added to avoid duplicates
+        const existingSideDishIds = new Set(
+          (sideDishesRes.data || []).map(sd => sd.id)
+        );
+        const marmitexAsAccompaniments: Product[] = marmitexRes.data
+          .filter(p => !existingSideDishIds.has(p.id))
+          .map(p => ({
+            id: `marmitex_${p.id}`,
+            name: p.name,
+            description: p.description,
+            price: Math.round((p.price / 2) * 100) / 100,
+            image_url: p.image_url,
+            category_id: null,
+            is_available: true,
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+          }));
+        allProducts = [...allProducts, ...marmitexAsAccompaniments];
       }
 
       setProducts(allProducts);
