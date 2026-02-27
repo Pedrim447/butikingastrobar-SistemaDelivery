@@ -569,7 +569,8 @@ _Pedido realizado via app_`;
         });
       } else {
         console.error('Error creating order:', error);
-        toast.error('Erro ao criar pedido');
+        const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+        toast.error(`Erro ao criar pedido: ${errorMsg}`);
       }
       setLoading(false);
     }
