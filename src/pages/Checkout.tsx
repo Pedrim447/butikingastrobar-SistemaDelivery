@@ -25,9 +25,11 @@ const checkoutSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100),
   phone: z.string().min(10, 'Telefone inválido').max(15),
   cep: z.string()
-    .min(8, 'CEP deve ter 8 dígitos')
-    .max(9, 'CEP inválido')
-    .regex(/^\d{5}-?\d{3}$|^\d{8}$/, 'CEP deve conter apenas números (com ou sem hífen)'),
+    .refine((val) => {
+      if (!val || val.length === 0) return true; // CEP opcional
+      const clean = val.replace(/\D/g, '');
+      return clean.length === 8;
+    }, 'CEP deve ter 8 dígitos'),
   address: z.string().min(5, 'Endereço obrigatório').max(200),
   number: z.string().min(1, 'Número obrigatório').max(10),
   reference: z.string().max(200).optional(),
@@ -384,14 +386,12 @@ const Checkout = () => {
         return;
       }
 
-      // Validação: cidade e estado são obrigatórios
-      if (!addressData.city || !addressData.state) {
-        toast.error('Por favor, preencha o CEP para obter cidade e estado');
-        return;
-      }
+      // Validação: cidade e estado - se não preenchidos pelo CEP, usar fallback
+      const city = addressData.city || 'São Luís';
+      const state = addressData.state || 'MA';
 
-      // Validação: entrega apenas para São Luís - MA
-      if (!isDeliveryAllowed(addressData.city, addressData.state)) {
+      // Validação: entrega apenas para São Luís - MA (só verifica se city/state foram definidos pelo CEP)
+      if (addressData.city && addressData.state && !isDeliveryAllowed(addressData.city, addressData.state)) {
         toast.error(DELIVERY_RESTRICTION_MESSAGE);
         return;
       }
@@ -412,13 +412,13 @@ const Checkout = () => {
           formData.name,
           formData.phone,
           {
-            street: formData.address,
+street: formData.address,
             number: formData.number,
             complement: formData.reference,
             neighborhood: formData.neighborhood,
-            city: addressData.city,
-            state: addressData.state,
-            cep: formData.cep,
+            city,
+            state,
+            cep: formData.cep || '',
           }
         );
 
@@ -441,11 +441,11 @@ const Checkout = () => {
           guest_token: guestToken || null,
           customer_name: formData.name,
           customer_phone: formData.phone,
-          customer_cep: formData.cep.replace(/\D/g, ''),
+          customer_cep: formData.cep ? formData.cep.replace(/\D/g, '') : '',
           customer_address: `${formData.address}, ${formData.number}${formData.reference ? ' - ' + formData.reference : ''}`,
           customer_neighborhood: formData.neighborhood,
-          customer_city: addressData.city,
-          customer_state: addressData.state,
+          customer_city: city,
+          customer_state: state,
           delivery_fee: deliveryFee,
           subtotal: subtotal,
           total: total,
@@ -541,7 +541,7 @@ const Checkout = () => {
 
 📍 *Endereço de Entrega:*
 ${formData.address}, ${formData.number}
-${formData.neighborhood} - ${addressData.city}
+${formData.neighborhood} - ${city}
 
 📝 *Itens do Pedido:*
 ${itemsList}
@@ -569,7 +569,8 @@ _Pedido realizado via app_`;
         });
       } else {
         console.error('Error creating order:', error);
-        toast.error('Erro ao criar pedido');
+        const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+        toast.error(`Erro ao criar pedido: ${errorMsg}`);
       }
       setLoading(false);
     }
