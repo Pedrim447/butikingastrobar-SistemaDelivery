@@ -541,7 +541,7 @@ street: formData.address,
 
 📍 *Endereço de Entrega:*
 ${formData.address}, ${formData.number}
-${formData.neighborhood} - ${addressData.city}
+${formData.neighborhood} - ${city}
 
 📝 *Itens do Pedido:*
 ${itemsList}
