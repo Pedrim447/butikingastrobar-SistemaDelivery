@@ -199,6 +199,9 @@ export const useGuestMode = () => {
 
   const clearGuestData = () => {
     safeStorage.removeItem(GUEST_TOKEN_KEY);
+    safeStorage.removeItem('checkout_form');
+    safeStorage.removeItem('checkout_address');
+    safeStorage.removeItem('pending_pix_data');
     setGuestToken(null);
     setGuestData(null);
   };
