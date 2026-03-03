@@ -43,6 +43,17 @@ const Menu = () => {
     }
   }, [user]);
 
+  // Refetch data when user returns to the app (prevents stale/cached data on mobile)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   // Buscar pedidos ativos quando o usuário ou guest token mudar
   useEffect(() => {
     if (user || guestToken) {
