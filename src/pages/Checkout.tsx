@@ -466,15 +466,26 @@ street: formData.address,
       safeStorage.setItem("lastOrderCode", trackingCode);
 
       // Create order items
-      const orderItems = cart.map(item => ({
-        order_id: orderData.id,
-        product_id: item.product.id,
-        product_name: item.product.name,
-        product_price: item.product.price,
-        quantity: item.quantity,
-        subtotal: item.product.price * item.quantity,
-        notes: item.notes || null,
-      }));
+      const orderItems = cart.map(item => {
+        // Extract real product ID for synthetic IDs (marmitex_, sidedish_)
+        let productId: string | null = item.product.id;
+        if (productId.startsWith('marmitex_')) {
+          productId = productId.replace('marmitex_', '');
+        } else if (productId.startsWith('sidedish_')) {
+          // Side dishes are not in the products table, set to null
+          productId = null;
+        }
+        
+        return {
+          order_id: orderData.id,
+          product_id: productId,
+          product_name: item.product.name,
+          product_price: item.product.price,
+          quantity: item.quantity,
+          subtotal: item.product.price * item.quantity,
+          notes: item.notes || null,
+        };
+      });
 
       const { error: itemsError } = await supabaseClient
         .from('order_items')
