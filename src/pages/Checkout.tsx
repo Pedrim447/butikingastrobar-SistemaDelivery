@@ -526,51 +526,11 @@ street: formData.address,
         setShowPixPayment(true);
         setLoading(false);
       } else {
-        // Para outros métodos (dinheiro, cartão), redirecionar para WhatsApp automaticamente
-        const WHATSAPP_NUMBER = "5598987271187";
-        
-        const itemsList = cart
-          .map((item) => {
-            let itemText = `• ${item.quantity}x ${item.product.name} - R$ ${(item.product.price * item.quantity).toFixed(2)}`;
-            if (item.notes) {
-              itemText += `\n   _Obs: ${item.notes}_`;
-            }
-            return itemText;
-          })
-          .join("\n");
-
-        const paymentMethodText: Record<string, string> = {
-          dinheiro: "Dinheiro",
-          cartao_debito: "Cartão de Débito",
-          cartao_credito: "Cartão de Crédito",
-        };
-
-        const message = `🍽️ *NOVO PEDIDO - ${trackingCode}*
-
-👤 *Cliente:* ${formData.name}
-📞 *Telefone:* ${formData.phone}
-
-📍 *Endereço de Entrega:*
-${formData.address}, ${formData.number}
-${formData.neighborhood} - ${city}
-
-📝 *Itens do Pedido:*
-${itemsList}
-
-💰 *Total:* R$ ${total.toFixed(2)}
-💳 *Forma de Pagamento:* ${paymentMethodText[paymentMethod] || paymentMethod}
-
-_Pedido realizado via app_`;
-
-        const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-        
+        // Para outros métodos (dinheiro, cartão), redirecionar para confirmação
         safeStorage.removeItem('checkout_form');
         safeStorage.removeItem('checkout_address');
         clearCart();
         toast.success('Pedido realizado com sucesso!');
-        
-        // Abre WhatsApp em nova aba e depois redireciona
-        window.open(whatsappUrl, "_blank");
         navigate(`/confirmacao?tracking=${trackingCode}`);
       }
     } catch (error) {
