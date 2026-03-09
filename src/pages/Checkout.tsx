@@ -507,7 +507,7 @@ street: formData.address,
           body: {
             orderId: orderData.id,
             amount: total,
-            customerEmail: user?.email || `${formData.phone}@cliente.com`,
+            customerEmail: user?.email || `${formData.phone.replace(/\D/g, '')}@cliente.com`,
             customerName: formData.name,
           },
         });
