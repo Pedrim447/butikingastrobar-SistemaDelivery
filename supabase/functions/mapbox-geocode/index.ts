@@ -77,8 +77,9 @@ function optimizeAddressForBrazil(address: string): string {
   // Remove complement info that confuses geocoding
   let optimized = removeComplement(address);
   
-  // Remove "CEP" prefix as it can confuse geocoding
+  // Remove "CEP" prefix and CEP numbers (8 digits) as they confuse Mapbox
   optimized = optimized.replace(/,?\s*CEP\s*/gi, ', ');
+  optimized = optimized.replace(/,?\s*\d{5}-?\d{3}\s*/g, ' ');
   
   // Remove "Brasil" as country is already set in API call
   optimized = optimized.replace(/,?\s*Brasil\s*$/i, '');
