@@ -128,7 +128,7 @@ export default function DeliveryNavigation() {
     if (!order) return;
     const address = `${order.customer_address}, ${order.customer_neighborhood}, ${order.customer_city} - ${order.customer_state}`;
     const query = encodeURIComponent(address);
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}`, "_blank");
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank");
   };
 
   const completeDelivery = async () => {
