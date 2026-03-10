@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Package, MapPin, Clock, CheckCircle, XCircle, Bike, ArrowLeft, RefreshCw } from "lucide-react";
-import { OrderTrackingMap } from "@/components/OrderTrackingMap";
+
 import { safeStorage } from "@/lib/safeStorage";
 
 interface Order {
