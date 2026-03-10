@@ -275,15 +275,16 @@ export default function OrderTracking() {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Bike className="h-5 w-5" />
-                    Localização em Tempo Real
+                    Entrega em andamento
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <OrderTrackingMap 
-                    orderId={order.id} 
-                    deliveryRiderId={order.delivery_rider_id}
-                    destinationAddress={`${order.customer_address}, ${order.customer_neighborhood}, ${order.customer_city} - ${order.customer_state}`}
-                  />
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    <p className="text-sm text-muted-foreground">
+                      O entregador está a caminho do seu endereço.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             )}
