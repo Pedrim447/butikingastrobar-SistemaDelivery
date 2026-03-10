@@ -118,7 +118,7 @@ serve(async (req) => {
     console.log('Optimized address:', optimizedAddress);
 
     // First attempt with optimized address
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(optimizedAddress)}.json?access_token=${MAPBOX_TOKEN}&country=BR&types=address,poi&limit=5`;
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(optimizedAddress)}.json?access_token=${MAPBOX_TOKEN}&country=BR&types=address,poi,neighborhood&limit=5`;
     console.log('Mapbox URL:', url.replace(MAPBOX_TOKEN || '', 'TOKEN_HIDDEN'));
     
     const response = await fetch(url);
