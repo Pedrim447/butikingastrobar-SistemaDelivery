@@ -126,7 +126,7 @@ export default function DeliveryNavigation() {
 
   const openInGoogleMaps = () => {
     if (!order) return;
-    const address = `${order.customer_address}, ${order.customer_neighborhood}, ${order.customer_city} - ${order.customer_state}, ${order.customer_cep}`;
+    const address = `${order.customer_address}, ${order.customer_neighborhood}, ${order.customer_city} - ${order.customer_state}`;
     const query = encodeURIComponent(address);
     window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}`, "_blank");
   };
