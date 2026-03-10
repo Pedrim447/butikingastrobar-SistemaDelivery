@@ -62,15 +62,31 @@ function extractState(address: string): string | null {
   return null;
 }
 
+function removeComplement(address: string): string {
+  // Remove complement patterns like "apto 202", "apt 10", "bloco B", "casa 3", "sala 5"
+  let cleaned = address.replace(/,?\s*(apto?\.?\s*\d+\w*|apartamento\s*\d+\w*|bloco\s*\w+|casa\s*\d+\w*|sala\s*\d+\w*|lote\s*\d+\w*|qd\s*\d+\w*|quadra\s*\d+\w*)/gi, '');
+  
+  // Remove reference/landmark after " - " in the number part (e.g., "32 - Katia Santos")
+  // Pattern: number followed by " - " and text before a comma
+  cleaned = cleaned.replace(/(\d+)\s*-\s*[^,]+/g, '$1');
+  
+  return cleaned;
+}
+
 function optimizeAddressForBrazil(address: string): string {
+  // Remove complement info that confuses geocoding
+  let optimized = removeComplement(address);
+  
   // Remove "CEP" prefix as it can confuse geocoding
-  let optimized = address.replace(/,?\s*CEP\s*/gi, ', ');
+  optimized = optimized.replace(/,?\s*CEP\s*/gi, ', ');
   
   // Remove "Brasil" as country is already set in API call
   optimized = optimized.replace(/,?\s*Brasil\s*$/i, '');
   
   // Clean up multiple commas and spaces
   optimized = optimized.replace(/,\s*,/g, ',').replace(/\s+/g, ' ').trim();
+  // Remove trailing/leading commas
+  optimized = optimized.replace(/^,\s*/, '').replace(/,\s*$/, '');
   
   return optimized;
 }
