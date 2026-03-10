@@ -127,6 +127,66 @@ serve(async (req) => {
     const data = await response.json();
     console.log('Mapbox features count:', data.features?.length || 0);
 
+    const runFallbackSearch = async (addr: string) => {
+      // Fallback: search with just neighborhood + city + state
+      const optimizedParts = optimizedAddress.split(',').map((p: string) => p.trim());
+      const streetPart = optimizedParts[0] || '';
+      const neighborhoodPart = optimizedParts[1] || '';
+      
+      const cityMatch = addr.match(/([^,]+)\s-\s[A-Z]{2}/i);
+      const cityName = cityMatch ? cityMatch[1].trim() : '';
+      
+      // Try street + neighborhood + city
+      const fallbackAddress = `${streetPart}, ${neighborhoodPart}, ${cityName}, ${expectedState}`;
+      console.log('Fallback address:', fallbackAddress);
+      
+      const fallbackUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fallbackAddress)}.json?access_token=${MAPBOX_TOKEN}&country=BR&types=address,poi,neighborhood&limit=5`;
+      const fallbackResponse = await fetch(fallbackUrl);
+      const fallbackData = await fallbackResponse.json();
+      
+      if (fallbackData.features && fallbackData.features.length > 0) {
+        const validFallback = expectedState ? fallbackData.features.filter((feature: any) => {
+          const [lng, lat] = feature.center;
+          return isCoordinateInState(lat, lng, expectedState);
+        }) : fallbackData.features;
+        
+        if (validFallback.length > 0) {
+          console.log('Fallback found valid features:', validFallback.length);
+          return validFallback;
+        }
+      }
+      
+      // Last resort: just neighborhood + city
+      const lastResort = `${neighborhoodPart}, ${cityName}, ${expectedState}`;
+      console.log('Last resort address:', lastResort);
+      const lastResortUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(lastResort)}.json?access_token=${MAPBOX_TOKEN}&country=BR&types=neighborhood,locality,place&limit=3`;
+      const lastResortResponse = await fetch(lastResortUrl);
+      const lastResortData = await lastResortResponse.json();
+      
+      if (lastResortData.features && lastResortData.features.length > 0) {
+        const validLast = expectedState ? lastResortData.features.filter((feature: any) => {
+          const [lng, lat] = feature.center;
+          return isCoordinateInState(lat, lng, expectedState);
+        }) : lastResortData.features;
+        
+        if (validLast.length > 0) {
+          console.log('Last resort found valid features:', validLast.length);
+          return validLast;
+        }
+      }
+      
+      return null;
+    };
+
+    // If no results at all, try fallback
+    if (!data.features || data.features.length === 0) {
+      console.log('No features found, trying fallback search...');
+      const fallbackFeatures = await runFallbackSearch(address);
+      if (fallbackFeatures) {
+        data.features = fallbackFeatures;
+      }
+    }
+
     // Validate and filter results by state if we know the expected state
     if (data.features && data.features.length > 0 && expectedState) {
       const validFeatures = data.features.filter((feature: any) => {
@@ -141,34 +201,9 @@ serve(async (req) => {
         data.features = validFeatures;
       } else {
         console.log('No features matched state validation, trying fallback search...');
-        
-        // Fallback: search with just street + city + state
-        const parts = address.split(',').map((p: string) => p.trim());
-        const streetPart = parts[0] || '';
-        const neighborhoodPart = parts[1] || '';
-        
-        // Try to find city in the address
-        const cityMatch = address.match(/([^,]+)\s-\s[A-Z]{2}/i);
-        const cityName = cityMatch ? cityMatch[1].trim() : '';
-        
-        const fallbackAddress = `${streetPart}, ${neighborhoodPart}, ${cityName}, ${expectedState}`;
-        console.log('Fallback address:', fallbackAddress);
-        
-        const fallbackUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fallbackAddress)}.json?access_token=${MAPBOX_TOKEN}&country=BR&types=address,poi,neighborhood&limit=5`;
-        
-        const fallbackResponse = await fetch(fallbackUrl);
-        const fallbackData = await fallbackResponse.json();
-        
-        if (fallbackData.features && fallbackData.features.length > 0) {
-          const validFallback = fallbackData.features.filter((feature: any) => {
-            const [lng, lat] = feature.center;
-            return isCoordinateInState(lat, lng, expectedState);
-          });
-          
-          if (validFallback.length > 0) {
-            console.log('Fallback found valid features:', validFallback.length);
-            data.features = validFallback;
-          }
+        const fallbackFeatures = await runFallbackSearch(address);
+        if (fallbackFeatures) {
+          data.features = fallbackFeatures;
         }
       }
     }
