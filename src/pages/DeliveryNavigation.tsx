@@ -1,14 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ArrowLeft, Navigation, CheckCircle, XCircle, Phone } from "lucide-react";
+import { ArrowLeft, Navigation, CheckCircle, XCircle, Phone, MapPin, ExternalLink } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useAuth } from "@/contexts/AuthContext";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -28,58 +26,28 @@ export default function DeliveryNavigation() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading, checkingRole } = useAuth();
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const riderMarker = useRef<mapboxgl.Marker | null>(null);
-  const destinationMarker = useRef<mapboxgl.Marker | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [riderId, setRiderId] = useState<string | null>(null);
-  const [destinationCoords, setDestinationCoords] = useState<[number, number] | null>(null);
-  const [isMapReady, setIsMapReady] = useState(false);
   const { position } = useGeolocation(true);
   const [cancellationReason, setCancellationReason] = useState("");
-  const [fullAddress, setFullAddress] = useState<string>("");
-  const isInitialized = useRef(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
-  // Função para calcular o ângulo (bearing) entre dois pontos
-  const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const toRadians = (degrees: number) => degrees * (Math.PI / 180);
-    const toDegrees = (radians: number) => radians * (180 / Math.PI);
-
-    const dLon = toRadians(lon2 - lon1);
-    const lat1Rad = toRadians(lat1);
-    const lat2Rad = toRadians(lat2);
-
-    const y = Math.sin(dLon) * Math.cos(lat2Rad);
-    const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) -
-              Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
-
-    const bearing = toDegrees(Math.atan2(y, x));
-    return (bearing + 360) % 360;
-  };
-
-  // Wait for auth to be ready before doing anything
   useEffect(() => {
     if (!authLoading && !checkingRole) {
       setIsAuthReady(true);
     }
   }, [authLoading, checkingRole]);
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (isAuthReady && !user) {
-      console.log("❌ [Entregador] Usuário não autenticado, redirecionando");
       navigate("/auth");
     }
   }, [isAuthReady, user, navigate]);
 
-  // Fetch order details - only when auth is ready
+  // Fetch order details
   useEffect(() => {
     if (!isAuthReady || !user || !orderId) return;
 
-    console.log("🔄 [Entregador] Fetch order effect - orderId:", orderId);
-    
     let mounted = true;
 
     const fetchOrder = async () => {
@@ -102,192 +70,23 @@ export default function DeliveryNavigation() {
         }
 
         setOrder(orderData);
-        
-        const completeAddress = `${orderData.customer_address}, ${orderData.customer_neighborhood}, ${orderData.customer_city} - ${orderData.customer_state}, CEP ${orderData.customer_cep}, Brasil`;
-        setFullAddress(completeAddress);
-        
-        console.log("✅ [Entregador] Pedido carregado:", orderData.id);
       } catch (error) {
-        console.error("❌ [Entregador] Erro ao buscar pedido:", error);
+        console.error("Erro ao buscar pedido:", error);
         toast.error("Erro ao carregar pedido");
       }
     };
 
-    // Reset ALL states when orderId changes
-    console.log("🔄 [Entregador] Resetando estados para nova entrega");
     setOrder(null);
     setRiderId(null);
-    setDestinationCoords(null);
-    setFullAddress("");
-    setIsMapReady(false);
-    
-    if (isInitialized.current) {
-      console.log("🗺️ [Entregador] Forçando limpeza do mapa anterior");
-      isInitialized.current = false;
-    }
-
     fetchOrder();
 
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [orderId, navigate, isAuthReady, user]);
 
-  // Geocode destination
+  // Update rider location in database
   useEffect(() => {
-    if (!fullAddress) return;
+    if (!position || !riderId || !orderId) return;
 
-    console.log("🗺️ [Entregador] Geocoding endereço:", fullAddress);
-
-    const geocodeDestination = async () => {
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mapbox-geocode`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ address: fullAddress }),
-          }
-        );
-        const data = await response.json();
-        
-        if (data.features && data.features.length > 0) {
-          const [lng, lat] = data.features[0].center;
-          setDestinationCoords([lng, lat]);
-          console.log("✅ [Entregador] Coordenadas do destino:", { lng, lat });
-        }
-      } catch (error) {
-        console.error("❌ [Entregador] Erro ao geocodificar endereço:", error);
-      }
-    };
-
-    geocodeDestination();
-  }, [fullAddress]);
-
-  // Initialize map - only when auth is ready, order is loaded, and orderId is present
-  useEffect(() => {
-    if (!isAuthReady || !order || !orderId) {
-      console.log("⏳ [Entregador] Aguardando condições para mapa - authReady:", isAuthReady, "hasOrder:", !!order, "orderId:", orderId);
-      return;
-    }
-
-    console.log("🗺️ [Entregador] Map effect triggered - orderId:", orderId, "initialized:", isInitialized.current, "hasContainer:", !!mapContainer.current);
-    
-    if (!mapContainer.current) {
-      console.log("⚠️ [Entregador] Map container não está pronto ainda");
-      return;
-    }
-    
-    if (isInitialized.current) {
-      console.log("⚠️ [Entregador] Mapa já está inicializado, pulando");
-      return;
-    }
-
-    const mapboxToken = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
-    
-    console.log("🗺️ [Entregador] Inicializando mapa para ordem:", orderId);
-    
-    if (!mapboxToken) {
-      console.error("❌ [Entregador] Token do Mapbox não configurado");
-      return;
-    }
-
-    mapboxgl.accessToken = mapboxToken;
-
-    try {
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: "mapbox://styles/mapbox/streets-v12",
-        center: [-44.3028, -2.5307],
-        zoom: 17,
-        pitch: 60,
-        bearing: 0,
-      });
-
-      map.current.addControl(
-        new mapboxgl.NavigationControl({
-          visualizePitch: true,
-        }),
-        "top-right"
-      );
-
-      map.current.on('load', () => {
-        console.log("✅ [Entregador] Mapa carregado");
-        setIsMapReady(true);
-      });
-
-      map.current.on('error', (e) => {
-        console.error("❌ [Entregador] Erro no mapa:", e);
-      });
-
-      isInitialized.current = true;
-      console.log("✅ [Entregador] Mapa inicializado");
-
-    } catch (error) {
-      console.error("❌ [Entregador] Erro ao criar mapa:", error);
-    }
-
-    return () => {
-      console.log("🗺️ [Entregador] Cleanup do mapa para ordem:", orderId);
-      if (riderMarker.current) {
-        riderMarker.current.remove();
-        riderMarker.current = null;
-      }
-      if (destinationMarker.current) {
-        destinationMarker.current.remove();
-        destinationMarker.current = null;
-      }
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
-      }
-      setIsMapReady(false);
-      isInitialized.current = false;
-      console.log("✅ [Entregador] Cleanup do mapa completo");
-    };
-  }, [orderId, isAuthReady, order]); // Depends on orderId, auth, and order
-
-  // Add destination marker
-  useEffect(() => {
-    if (!isMapReady || !map.current || !destinationCoords) {
-      return;
-    }
-
-    console.log("📍 [Entregador] Adicionando marcador de destino");
-
-    if (destinationMarker.current) {
-      destinationMarker.current.remove();
-    }
-
-    const destEl = document.createElement("div");
-    destEl.innerHTML = `
-      <svg width="40" height="50" viewBox="0 0 40 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M20 0C12.268 0 6 6.268 6 14C6 23.993 19.5 50 20 50C20.5 50 34 23.993 34 14C34 6.268 27.732 0 20 0Z" fill="#EF4444"/>
-        <path d="M20 8L13 13V22H17V17H23V22H27V13L20 8Z" fill="white"/>
-      </svg>
-    `;
-    destEl.style.width = "40px";
-    destEl.style.height = "50px";
-
-    destinationMarker.current = new mapboxgl.Marker(destEl)
-      .setLngLat(destinationCoords)
-      .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`<strong>Destino</strong><br>${order?.customer_address}`))
-      .addTo(map.current);
-    
-    console.log("✅ [Entregador] Marcador de destino adicionado");
-  }, [isMapReady, destinationCoords, order]);
-
-  // Update rider marker and draw route
-  useEffect(() => {
-    if (!isMapReady || !map.current || !position || !destinationCoords || !riderId || !orderId) {
-      return;
-    }
-
-    console.log("📍 [Entregador] Atualizando posição do entregador");
-
-    // Update location in database
     const updateLocation = async () => {
       try {
         const { data: existingData } = await supabase
@@ -318,210 +117,19 @@ export default function DeliveryNavigation() {
             });
         }
       } catch (error) {
-        console.error("❌ [Entregador] Erro ao atualizar localização:", error);
+        console.error("Erro ao atualizar localização:", error);
       }
     };
 
     updateLocation();
+  }, [position, riderId, orderId]);
 
-    // Update rider marker with smooth animation
-    if (riderMarker.current) {
-      // Smooth transition to new position
-      const currentLngLat = riderMarker.current.getLngLat();
-      const newLngLat: [number, number] = [position.longitude, position.latitude];
-      
-      // Calculate bearing for rotation
-      const bearing = calculateBearing(
-        currentLngLat.lat,
-        currentLngLat.lng,
-        newLngLat[1],
-        newLngLat[0]
-      );
-      
-      // Update marker position
-      riderMarker.current.setLngLat(newLngLat);
-      
-      // Rotate the motorcycle icon without affecting position
-      const markerEl = riderMarker.current.getElement();
-      const svgEl = markerEl?.querySelector('svg');
-      if (svgEl) {
-        svgEl.style.transform = `rotate(${bearing}deg)`;
-        svgEl.style.transition = 'transform 0.5s ease-out';
-      }
-    } else {
-      const riderEl = document.createElement("div");
-      riderEl.style.width = "60px";
-      riderEl.style.height = "60px";
-      riderEl.style.display = "flex";
-      riderEl.style.alignItems = "center";
-      riderEl.style.justifyContent = "center";
-      riderEl.style.pointerEvents = "none";
-      
-      riderEl.innerHTML = `
-        <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg" style="transform-origin: center center; transition: transform 0.5s ease-out; filter: drop-shadow(0 4px 6px rgba(139, 92, 246, 0.3));">
-          <!-- Subtle shadow/glow effect -->
-          <circle cx="30" cy="30" r="28" fill="#8B5CF6" opacity="0.15"/>
-          
-          <!-- Main motorcycle icon -->
-          <g transform="translate(15, 18)">
-            <!-- Motorcycle body -->
-            <path d="M25 8L22 8L20 3L14 3L14 5.5L18 5.5L19.5 8L15 8L12 14L17 14L19.5 18L22 18L25 8Z" fill="#8B5CF6" stroke="#8B5CF6" stroke-width="0.5"/>
-            
-            <!-- Back wheel -->
-            <circle cx="13" cy="20" r="4" fill="white" stroke="#8B5CF6" stroke-width="1.5"/>
-            <circle cx="13" cy="20" r="2" fill="#8B5CF6"/>
-            
-            <!-- Front wheel -->
-            <circle cx="23" cy="20" r="4" fill="white" stroke="#8B5CF6" stroke-width="1.5"/>
-            <circle cx="23" cy="20" r="2" fill="#8B5CF6"/>
-            
-            <!-- Handlebar -->
-            <path d="M19 8L22 8" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round"/>
-            
-            <!-- Rider (simplified) -->
-            <circle cx="16" cy="6" r="2.5" fill="#8B5CF6"/>
-          </g>
-        </svg>
-      `;
-
-      riderMarker.current = new mapboxgl.Marker({ 
-        element: riderEl,
-        anchor: 'center',
-        rotationAlignment: 'map',
-        pitchAlignment: 'map'
-      })
-        .setLngLat([position.longitude, position.latitude])
-        .addTo(map.current);
-    }
-
-    // Draw route
-    const drawRoute = async () => {
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mapbox-directions`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              startLng: position.longitude,
-              startLat: position.latitude,
-              endLng: destinationCoords[0],
-              endLat: destinationCoords[1],
-            }),
-          }
-        );
-        const data = await response.json();
-
-        if (data.routes && data.routes.length > 0) {
-          const route = data.routes[0].geometry;
-          const routeCoords = route.coordinates;
-
-          if (map.current!.getSource("route")) {
-            (map.current!.getSource("route") as mapboxgl.GeoJSONSource).setData({
-              type: "Feature",
-              properties: {},
-              geometry: route,
-            });
-          } else {
-            map.current!.addSource("route", {
-              type: "geojson",
-              data: {
-                type: "Feature",
-                properties: {},
-                geometry: route,
-              },
-            });
-
-            // Add outline for better visibility
-            map.current!.addLayer({
-              id: "route-outline",
-              type: "line",
-              source: "route",
-              layout: {
-                "line-join": "round",
-                "line-cap": "round",
-              },
-              paint: {
-                "line-color": "#FFFFFF",
-                "line-width": 8,
-                "line-opacity": 0.5,
-              },
-            });
-
-            map.current!.addLayer({
-              id: "route",
-              type: "line",
-              source: "route",
-              layout: {
-                "line-join": "round",
-                "line-cap": "round",
-              },
-              paint: {
-                "line-color": "#8B5CF6",
-                "line-width": 6,
-                "line-opacity": 0.9,
-              },
-            });
-          }
-
-          // Find next point on route to calculate bearing
-          let nextPoint = routeCoords[0];
-          const currentPos = [position.longitude, position.latitude];
-          
-          // Find closest point on route to current position
-          let minDist = Infinity;
-          let closestIndex = 0;
-          
-          for (let i = 0; i < routeCoords.length; i++) {
-            const dist = Math.sqrt(
-              Math.pow(routeCoords[i][0] - currentPos[0], 2) + 
-              Math.pow(routeCoords[i][1] - currentPos[1], 2)
-            );
-            if (dist < minDist) {
-              minDist = dist;
-              closestIndex = i;
-            }
-          }
-          
-          // Get next point ahead on route for bearing calculation
-          const lookAheadIndex = Math.min(closestIndex + 5, routeCoords.length - 1);
-          nextPoint = routeCoords[lookAheadIndex];
-
-          // Calculate bearing to next point on route
-          const bearing = calculateBearing(
-            position.latitude,
-            position.longitude,
-            nextPoint[1],
-            nextPoint[0]
-          );
-
-          // Rotate motorcycle icon to face direction of travel
-          const markerEl = riderMarker.current?.getElement();
-          const svgEl = markerEl?.querySelector('svg');
-          if (svgEl) {
-            svgEl.style.transform = `rotate(${bearing}deg)`;
-            svgEl.style.transition = 'transform 0.5s ease-out';
-          }
-
-          // Rotate map to keep direction of travel pointing up (like Google Maps navigation)
-          map.current!.easeTo({
-            center: [position.longitude, position.latitude],
-            zoom: 18,
-            pitch: 60,
-            bearing: bearing,
-            duration: 1000,
-            essential: true,
-          });
-        }
-      } catch (error) {
-        console.error("❌ [Entregador] Erro ao desenhar rota:", error);
-      }
-    };
-
-    drawRoute();
-  }, [position, destinationCoords, isMapReady, riderId, orderId, calculateBearing]);
+  const openInGoogleMaps = () => {
+    if (!order) return;
+    const address = `${order.customer_address}, ${order.customer_neighborhood}, ${order.customer_city} - ${order.customer_state}, ${order.customer_cep}`;
+    const query = encodeURIComponent(address);
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}`, "_blank");
+  };
 
   const completeDelivery = async () => {
     try {
@@ -549,9 +157,9 @@ export default function DeliveryNavigation() {
     try {
       const { error } = await supabase
         .from("orders")
-        .update({ 
+        .update({
           status: "cancelled",
-          cancellation_reason: cancellationReason
+          cancellation_reason: cancellationReason,
         })
         .eq("id", orderId);
 
@@ -565,7 +173,6 @@ export default function DeliveryNavigation() {
     }
   };
 
-  // Show loading while auth or order is loading
   if (authLoading || checkingRole || !isAuthReady || !order) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -587,7 +194,7 @@ export default function DeliveryNavigation() {
             Voltar
           </Button>
           <div className="text-center flex-1">
-            <h1 className="font-bold text-lg">Navegação em Tempo Real</h1>
+            <h1 className="font-bold text-lg">Navegação</h1>
             <p className="text-sm text-muted-foreground">{order.customer_name}</p>
           </div>
           <a href={`tel:${order.customer_phone}`}>
@@ -598,53 +205,46 @@ export default function DeliveryNavigation() {
         </div>
       </div>
 
-      {/* Map Container */}
-      <div className="flex-1 relative" style={{ minHeight: '400px' }}>
-        <div ref={mapContainer} className="absolute inset-0" />
-        
-        {!isMapReady && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-sm text-muted-foreground font-medium">
-                🗺️ Carregando mapa de navegação...
+      {/* Content */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
+        {/* Address Card */}
+        <Card className="w-full max-w-md p-6 space-y-4">
+          <div className="flex items-start gap-3">
+            <MapPin className="w-5 h-5 text-primary mt-1 shrink-0" />
+            <div>
+              <p className="font-medium">{order.customer_address}</p>
+              <p className="text-sm text-muted-foreground">
+                {order.customer_neighborhood}, {order.customer_city} - {order.customer_state}
               </p>
+              <p className="text-sm text-muted-foreground">CEP: {order.customer_cep}</p>
             </div>
           </div>
+
+          <Button onClick={openInGoogleMaps} className="w-full gap-2" size="lg">
+            <Navigation className="h-5 w-5" />
+            Navegar com Google Maps
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+        </Card>
+
+        {/* Status indicator */}
+        {position && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span>Sua localização está sendo compartilhada</span>
+          </div>
         )}
-        
-        {/* Info Card */}
-        <div className="absolute top-4 left-4 right-4 z-10">
-          <Card className="p-4 shadow-lg">
-            <div className="flex items-start gap-3">
-              <Navigation className="w-5 h-5 text-primary mt-1" />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm">{order.customer_address}</p>
-                <p className="text-xs text-muted-foreground">
-                  {order.customer_neighborhood}, {order.customer_city} - {order.customer_state}
-                </p>
-                <p className="text-xs text-muted-foreground">CEP: {order.customer_cep}</p>
-              </div>
-            </div>
-          </Card>
-        </div>
 
         {/* Action Buttons */}
-        <div className="absolute bottom-4 left-4 right-4 z-10 flex gap-2">
-          <Button 
-            className="flex-1 h-12"
-            onClick={completeDelivery}
-          >
+        <div className="w-full max-w-md flex gap-2">
+          <Button className="flex-1 h-12" onClick={completeDelivery}>
             <CheckCircle className="w-4 h-4 mr-2" />
             Concluir Entrega
           </Button>
-          
+
           <Dialog>
             <DialogTrigger asChild>
-              <Button 
-                variant="destructive" 
-                className="flex-1 h-12"
-              >
+              <Button variant="destructive" className="flex-1 h-12">
                 <XCircle className="w-4 h-4 mr-2" />
                 Cancelar
               </Button>
@@ -660,11 +260,7 @@ export default function DeliveryNavigation() {
                   onChange={(e) => setCancellationReason(e.target.value)}
                   rows={4}
                 />
-                <Button
-                  variant="destructive"
-                  onClick={cancelDelivery}
-                  className="w-full"
-                >
+                <Button variant="destructive" onClick={cancelDelivery} className="w-full">
                   Confirmar Cancelamento
                 </Button>
               </div>
