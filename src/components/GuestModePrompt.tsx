@@ -116,18 +116,23 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
     // Remove hífen e espaços do CEP
     const cleanCep = cep.replace(/\D/g, '');
 
-    if (!name || !phone || !street || !number || !neighborhood || !city || !state || !cleanCep) {
+    if (!name || !phone || !street || !number || !neighborhood) {
       toast.error('Por favor, preencha todos os campos obrigatórios');
       return;
     }
 
-    if (cleanCep.length !== 8) {
+    // Validar CEP apenas se preenchido
+    if (cleanCep && cleanCep.length !== 8) {
       toast.error('CEP deve ter 8 dígitos');
       return;
     }
 
-    // Validação final de entrega
-    if (!isDeliveryAllowed(city, state)) {
+    // Usar fallback para cidade/estado se não preenchidos
+    const finalCity = city || 'São Luís';
+    const finalState = state || 'MA';
+
+    // Validação de entrega apenas se cidade/estado foram informados pelo CEP
+    if (city && state && !isDeliveryAllowed(city, state)) {
       toast.error(DELIVERY_RESTRICTION_MESSAGE);
       return;
     }
@@ -139,9 +144,9 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
       number,
       complement: complement || undefined,
       neighborhood,
-      city,
-      state,
-      cep: cleanCep,
+      city: finalCity,
+      state: finalState,
+      cep: cleanCep || '00000000',
     };
 
     const { token, error } = await createGuestCustomer(name, phone, address);
@@ -206,7 +211,7 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="cep">CEP *</Label>
+              <Label htmlFor="cep">CEP (opcional)</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -218,14 +223,13 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
                   disabled={loading || loadingCep}
                   className="pl-10"
                   maxLength={9}
-                  required
                 />
                 {loadingCep && (
                   <Loader2 className="w-4 h-4 animate-spin absolute right-3 top-3 text-muted-foreground" />
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Digite o CEP (com ou sem hífen). Ex: 65000-000 ou 65000000
+                Digite o CEP para preenchimento automático do endereço
               </p>
             </div>
 
@@ -285,29 +289,27 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="city">Cidade *</Label>
+              <Label htmlFor="city">Cidade</Label>
               <Input
                 id="city"
                 type="text"
-                placeholder="Nome da cidade"
+                placeholder="São Luís"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 disabled={loading || loadingCep}
-                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="state">Estado *</Label>
+              <Label htmlFor="state">Estado</Label>
               <Input
                 id="state"
                 type="text"
-                placeholder="UF"
+                placeholder="MA"
                 value={state}
                 onChange={(e) => setState(e.target.value.toUpperCase())}
                 disabled={loading || loadingCep}
                 maxLength={2}
-                required
               />
             </div>
           </div>
