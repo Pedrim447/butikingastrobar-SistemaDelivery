@@ -211,7 +211,7 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="cep">CEP *</Label>
+              <Label htmlFor="cep">CEP (opcional)</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -223,14 +223,13 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
                   disabled={loading || loadingCep}
                   className="pl-10"
                   maxLength={9}
-                  required
                 />
                 {loadingCep && (
                   <Loader2 className="w-4 h-4 animate-spin absolute right-3 top-3 text-muted-foreground" />
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Digite o CEP (com ou sem hífen). Ex: 65000-000 ou 65000000
+                Digite o CEP para preenchimento automático do endereço
               </p>
             </div>
 
