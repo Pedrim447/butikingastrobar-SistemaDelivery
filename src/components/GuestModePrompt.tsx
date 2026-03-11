@@ -116,18 +116,23 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
     // Remove hífen e espaços do CEP
     const cleanCep = cep.replace(/\D/g, '');
 
-    if (!name || !phone || !street || !number || !neighborhood || !city || !state || !cleanCep) {
+    if (!name || !phone || !street || !number || !neighborhood) {
       toast.error('Por favor, preencha todos os campos obrigatórios');
       return;
     }
 
-    if (cleanCep.length !== 8) {
+    // Validar CEP apenas se preenchido
+    if (cleanCep && cleanCep.length !== 8) {
       toast.error('CEP deve ter 8 dígitos');
       return;
     }
 
-    // Validação final de entrega
-    if (!isDeliveryAllowed(city, state)) {
+    // Usar fallback para cidade/estado se não preenchidos
+    const finalCity = city || 'São Luís';
+    const finalState = state || 'MA';
+
+    // Validação de entrega apenas se cidade/estado foram informados pelo CEP
+    if (city && state && !isDeliveryAllowed(city, state)) {
       toast.error(DELIVERY_RESTRICTION_MESSAGE);
       return;
     }
