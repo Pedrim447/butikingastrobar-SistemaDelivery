@@ -664,17 +664,16 @@ street: formData.address,
                 ) : (
                   <div className="space-y-3 p-3 bg-muted/20 rounded-md border">
                      <div>
-                       <Label htmlFor="cep" className="text-xs">CEP *</Label>
+                       <Label htmlFor="cep" className="text-xs">CEP</Label>
                        <div className="relative">
                          <Input
-                           id="cep"
-                           value={formData.cep}
-                           onChange={(e) => handleCepChange(e.target.value)}
-                           placeholder="00000-000"
-                           maxLength={9}
-                           className="h-9 text-sm"
-                           required
-                         />
+                            id="cep"
+                            value={formData.cep}
+                            onChange={(e) => handleCepChange(e.target.value)}
+                            placeholder="00000-000"
+                            maxLength={9}
+                            className="h-9 text-sm"
+                          />
                          {loadingCep && (
                            <Loader2 className="w-3.5 h-3.5 animate-spin absolute right-2.5 top-2.5 text-muted-foreground" />
                          )}
