@@ -582,8 +582,13 @@ street: formData.address,
     }
   };
 
-  if (cart.length === 0) {
-    navigate('/');
+  useEffect(() => {
+    if (cart.length === 0 && !loading && !showPixPayment) {
+      navigate('/');
+    }
+  }, [cart.length, loading, showPixPayment, navigate]);
+
+  if (cart.length === 0 && !showPixPayment) {
     return null;
   }
 

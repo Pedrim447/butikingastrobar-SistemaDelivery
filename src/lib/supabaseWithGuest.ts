@@ -13,9 +13,16 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 export const getSupabaseWithGuestToken = () => {
   const guestToken = safeStorage.getItem('guest_token');
   
+  // Use safeStorage for auth persistence to avoid crashes on Safari private mode
+  const authStorage = {
+    getItem: (key: string) => safeStorage.getItem(key),
+    setItem: (key: string, value: string) => { safeStorage.setItem(key, value); },
+    removeItem: (key: string) => { safeStorage.removeItem(key); },
+  };
+
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: {
-      storage: localStorage,
+      storage: authStorage,
       persistSession: true,
       autoRefreshToken: true,
     },

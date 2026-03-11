@@ -225,7 +225,8 @@ export const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0" aria-describedby={undefined}>
+        <VisuallyHidden><DialogTitle>{product.name}</DialogTitle></VisuallyHidden>
         {/* Product Image */}
         <div className="relative w-full h-48 bg-muted">
           {product.image_url ? (
