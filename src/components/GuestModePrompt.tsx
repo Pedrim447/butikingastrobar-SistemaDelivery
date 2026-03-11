@@ -144,9 +144,9 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
       number,
       complement: complement || undefined,
       neighborhood,
-      city,
-      state,
-      cep: cleanCep,
+      city: finalCity,
+      state: finalState,
+      cep: cleanCep || '00000000',
     };
 
     const { token, error } = await createGuestCustomer(name, phone, address);
