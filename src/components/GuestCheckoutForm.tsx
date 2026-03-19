@@ -182,29 +182,27 @@ export const GuestCheckoutForm = ({ onComplete }: GuestCheckoutFormProps) => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="city">Cidade *</Label>
+              <Label htmlFor="city">Cidade</Label>
               <Input
                 id="city"
                 type="text"
-                placeholder="Nome da cidade"
+                placeholder="São Luís"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 disabled={loading}
-                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="state">Estado *</Label>
+              <Label htmlFor="state">Estado</Label>
               <Input
                 id="state"
                 type="text"
-                placeholder="UF"
+                placeholder="MA"
                 value={state}
-                onChange={(e) => setState(e.target.value)}
+                onChange={(e) => setState(e.target.value.toUpperCase())}
                 disabled={loading}
                 maxLength={2}
-                required
               />
             </div>
           </div>

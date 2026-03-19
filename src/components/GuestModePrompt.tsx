@@ -114,16 +114,10 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
     e.preventDefault();
 
     // Remove hífen e espaços do CEP
-    const cleanCep = cep.replace(/\D/g, '');
+    const cleanCep = cep ? cep.replace(/\D/g, '') : '';
 
     if (!name || !phone || !street || !number || !neighborhood) {
       toast.error('Por favor, preencha todos os campos obrigatórios');
-      return;
-    }
-
-    // Validar CEP apenas se preenchido
-    if (cleanCep && cleanCep.length !== 8) {
-      toast.error('CEP deve ter 8 dígitos');
       return;
     }
 
@@ -141,7 +135,7 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
 
     const address: GuestAddress = {
       street,
-      number,
+      number: String(number),
       complement: complement || undefined,
       neighborhood,
       city: finalCity,
