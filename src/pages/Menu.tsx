@@ -16,6 +16,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStoreStatus } from "@/hooks/useStoreStatus";
+import { getSupabaseWithGuestToken } from "@/lib/supabaseWithGuest";
+import { reconcileAwaitingPixOrders } from "@/lib/reconcilePixOrders";
 
 const Menu = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -114,10 +116,11 @@ const Menu = () => {
 
   const fetchActiveOrders = async () => {
     try {
-      let query = supabase
+      const client = guestToken ? getSupabaseWithGuestToken() : supabase;
+      let query = client
         .from("orders")
         .select("*")
-        .in("status", ["pending", "preparing", "out_for_delivery"])
+        .in("status", ["pending", "preparing", "out_for_delivery", "awaiting_payment"])
         .order("created_at", { ascending: false });
 
       // Se usuário está logado, busca por user_id
@@ -138,7 +141,11 @@ const Menu = () => {
       if (error) {
         console.error("Error fetching active orders:", error);
       } else if (data) {
-        setActiveOrders(data);
+        const changed = await reconcileAwaitingPixOrders(data);
+        if (changed) {
+          return fetchActiveOrders();
+        }
+        setActiveOrders(data.filter(order => order.status !== 'awaiting_payment'));
       }
     } catch (error) {
       console.error("Error fetching active orders:", error);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseWithGuestToken } from '@/lib/supabaseWithGuest';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,7 @@ import { ptBR } from 'date-fns/locale';
 import { useGuestMode } from '@/hooks/useGuestMode';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { reconcileAwaitingPixOrders } from '@/lib/reconcilePixOrders';
 
 interface Order {
   id: string;
@@ -60,6 +62,8 @@ export default function MyOrders() {
   // Automatically load user's orders on mount
   useEffect(() => {
     const loadMyOrders = async () => {
+      const client = guestToken ? getSupabaseWithGuestToken() : supabase;
+
       // Se é usuário logado, busca por user_id
       if (user) {
         setLoadingMyOrders(true);
@@ -72,6 +76,7 @@ export default function MyOrders() {
 
           if (error) throw error;
           setMyOrders(data || []);
+          await reconcileAwaitingPixOrders(data || []);
         } catch (error) {
           console.error('Erro ao buscar pedidos do usuário:', error);
         } finally {
@@ -82,7 +87,7 @@ export default function MyOrders() {
       else if (guestToken) {
         setLoadingMyOrders(true);
         try {
-          const { data, error } = await supabase
+          const { data, error } = await client
             .from('orders')
             .select('*, order_items(*)')
             .eq('guest_token', guestToken)
@@ -90,6 +95,16 @@ export default function MyOrders() {
 
           if (error) throw error;
           setMyOrders(data || []);
+          const changed = await reconcileAwaitingPixOrders(data || []);
+          if (changed) {
+            const { data: refreshedData, error: refreshError } = await client
+              .from('orders')
+              .select('*, order_items(*)')
+              .eq('guest_token', guestToken)
+              .order('created_at', { ascending: false });
+
+            if (!refreshError) setMyOrders(refreshedData || []);
+          }
         } catch (error) {
           console.error('Erro ao buscar pedidos do convidado:', error);
         } finally {

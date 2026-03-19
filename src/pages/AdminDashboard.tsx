@@ -20,6 +20,7 @@ import { OrderItemsGrouped } from "@/components/OrderItemsGrouped";
 import { ShareMenuButton } from "@/components/ShareMenuButton";
 import { useStoreStatus } from "@/hooks/useStoreStatus";
 import { Switch } from "@/components/ui/switch";
+import { reconcileAwaitingPixOrders } from "@/lib/reconcilePixOrders";
 
 interface Order {
   id: string;
@@ -200,7 +201,8 @@ export default function AdminDashboard() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const { data: ordersData, error } = await supabase
+
+      const { data: visibleOrders, error } = await supabase
         .from("orders")
         .select("*, order_items(*)")
         .neq("status", "awaiting_payment")
@@ -208,7 +210,30 @@ export default function AdminDashboard() {
 
       if (error) throw error;
 
-      setOrders((ordersData as Order[]) || []);
+      setOrders((visibleOrders as Order[]) || []);
+
+      const { data: hiddenPixOrders, error: hiddenError } = await supabase
+        .from("orders")
+        .select("id, payment_id, payment_method, payment_status, status")
+        .eq("payment_method", "pix")
+        .eq("status", "awaiting_payment")
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (!hiddenError && hiddenPixOrders?.length) {
+        const changed = await reconcileAwaitingPixOrders(hiddenPixOrders);
+        if (changed) {
+          const { data: refreshedOrders, error: refreshError } = await supabase
+            .from("orders")
+            .select("*, order_items(*)")
+            .neq("status", "awaiting_payment")
+            .order("created_at", { ascending: false });
+
+          if (!refreshError) {
+            setOrders((refreshedOrders as Order[]) || []);
+          }
+        }
+      }
     } catch (error) {
       console.error("Erro ao buscar pedidos:", error);
       toast.error("Erro ao carregar pedidos");
