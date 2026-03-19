@@ -541,7 +541,18 @@ street: formData.address,
       } else {
         console.error('Error creating order:', error);
         const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-        toast.error(`Erro ao criar pedido: ${errorMsg}`);
+        // Mensagens amigáveis para erros comuns
+        if (errorMsg.includes('row-level security') || errorMsg.includes('RLS')) {
+          toast.error('Erro de permissão. Tente limpar o cache do navegador e refazer o pedido.');
+        } else if (errorMsg.includes('refresh_token') || errorMsg.includes('JWT')) {
+          toast.error('Sua sessão expirou. Por favor, faça login novamente.');
+          // Limpar sessão expirada
+          try { supabase.auth.signOut(); } catch {}
+        } else if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
+          toast.error('Erro de conexão. Verifique sua internet e tente novamente.');
+        } else {
+          toast.error(`Erro ao criar pedido: ${errorMsg}`);
+        }
       }
       setLoading(false);
     }
