@@ -30,7 +30,7 @@ export const GuestCheckoutForm = ({ onComplete }: GuestCheckoutFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name || !phone || !street || !number || !neighborhood || !city || !state) {
+    if (!name || !phone || !street || !number || !neighborhood) {
       toast.error('Por favor, preencha todos os campos obrigatórios');
       return;
     }
@@ -39,12 +39,12 @@ export const GuestCheckoutForm = ({ onComplete }: GuestCheckoutFormProps) => {
 
     const address: GuestAddress = {
       street,
-      number,
+      number: String(number),
       complement: complement || undefined,
       neighborhood,
-      city,
-      state,
-      cep,
+      city: city || 'São Luís',
+      state: state || 'MA',
+      cep: cep ? cep.replace(/\D/g, '') : '00000000',
     };
 
     const { token, error } = await createGuestCustomer(name, phone, address);
