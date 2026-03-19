@@ -30,7 +30,7 @@ export const GuestCheckoutForm = ({ onComplete }: GuestCheckoutFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name || !phone || !street || !number || !neighborhood || !city || !state) {
+    if (!name || !phone || !street || !number || !neighborhood) {
       toast.error('Por favor, preencha todos os campos obrigatórios');
       return;
     }
@@ -39,12 +39,12 @@ export const GuestCheckoutForm = ({ onComplete }: GuestCheckoutFormProps) => {
 
     const address: GuestAddress = {
       street,
-      number,
+      number: String(number),
       complement: complement || undefined,
       neighborhood,
-      city,
-      state,
-      cep,
+      city: city || 'São Luís',
+      state: state || 'MA',
+      cep: cep ? cep.replace(/\D/g, '') : '00000000',
     };
 
     const { token, error } = await createGuestCustomer(name, phone, address);
@@ -182,29 +182,27 @@ export const GuestCheckoutForm = ({ onComplete }: GuestCheckoutFormProps) => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="city">Cidade *</Label>
+              <Label htmlFor="city">Cidade</Label>
               <Input
                 id="city"
                 type="text"
-                placeholder="Nome da cidade"
+                placeholder="São Luís"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 disabled={loading}
-                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="state">Estado *</Label>
+              <Label htmlFor="state">Estado</Label>
               <Input
                 id="state"
                 type="text"
-                placeholder="UF"
+                placeholder="MA"
                 value={state}
-                onChange={(e) => setState(e.target.value)}
+                onChange={(e) => setState(e.target.value.toUpperCase())}
                 disabled={loading}
                 maxLength={2}
-                required
               />
             </div>
           </div>
