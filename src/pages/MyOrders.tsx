@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseWithGuestToken } from '@/lib/supabaseWithGuest';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,7 @@ import { ptBR } from 'date-fns/locale';
 import { useGuestMode } from '@/hooks/useGuestMode';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { reconcileAwaitingPixOrders } from '@/lib/reconcilePixOrders';
 
 interface Order {
   id: string;

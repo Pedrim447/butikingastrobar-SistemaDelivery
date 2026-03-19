@@ -16,6 +16,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStoreStatus } from "@/hooks/useStoreStatus";
+import { getSupabaseWithGuestToken } from "@/lib/supabaseWithGuest";
+import { reconcileAwaitingPixOrders } from "@/lib/reconcilePixOrders";
 
 const Menu = () => {
   const [products, setProducts] = useState<Product[]>([]);

@@ -20,6 +20,7 @@ import { OrderItemsGrouped } from "@/components/OrderItemsGrouped";
 import { ShareMenuButton } from "@/components/ShareMenuButton";
 import { useStoreStatus } from "@/hooks/useStoreStatus";
 import { Switch } from "@/components/ui/switch";
+import { reconcileAwaitingPixOrders } from "@/lib/reconcilePixOrders";
 
 interface Order {
   id: string;

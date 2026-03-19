@@ -45,24 +45,25 @@ export default function OrderTracking() {
       setLoading(true);
       
       // Use guest token if available for RLS
-      const guestToken = safeStorage.getItem("guestToken");
+      const guestToken = safeStorage.getItem("guest_token");
       const supabaseClient = guestToken ? getSupabaseWithGuestToken() : supabase;
       
       const { data, error } = await supabaseClient
         .from("orders")
         .select("*, order_items(*)")
         .eq("tracking_code", code.toUpperCase())
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 
       if (!data) {
+        setOrder(null);
         toast.error("Pedido não encontrado");
         return;
       }
 
       setOrder(data);
-      safeStorage.setItem("lastOrderCode", code);
+      safeStorage.setItem("lastOrderCode", code.toUpperCase());
     } catch (error) {
       console.error("Erro ao buscar pedido:", error);
       toast.error("Erro ao buscar pedido");
