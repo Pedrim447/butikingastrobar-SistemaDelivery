@@ -34,9 +34,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for existing session FIRST before setting up listener
     const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (!mounted) return;
+
+        // Se houve erro ao recuperar sessão (token expirado), limpar sessão
+        if (sessionError) {
+          console.warn('Session recovery failed, signing out:', sessionError.message);
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
         
         console.log('Initial session loaded:', session?.user?.email);
         setSession(session);
@@ -49,6 +59,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (error) {
         console.error('Error loading initial session:', error);
+        // Em caso de erro inesperado, limpar estado de auth
+        try { await supabase.auth.signOut(); } catch {}
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -64,6 +80,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Avoid processing INITIAL_SESSION event since we handle it above
       if (event === 'INITIAL_SESSION') return;
+
+      // Se o token foi revogado/expirou, limpar tudo
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        console.warn('Token refresh failed, clearing session');
+        setSession(null);
+        setUser(null);
+        setIsAdmin(false);
+        setIsDeliveryRider(false);
+        setIsPDV(false);
+        return;
+      }
       
       setSession(session);
       setUser(session?.user ?? null);
