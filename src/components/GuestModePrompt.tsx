@@ -251,7 +251,10 @@ export const GuestModePrompt = ({ open, onClose, onSuccess }: GuestModePromptPro
                 type="text"
                 placeholder="123"
                 value={number}
-                onChange={(e) => setNumber(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setNumber(val);
+                }}
                 disabled={loading}
                 required
               />
