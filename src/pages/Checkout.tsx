@@ -26,7 +26,7 @@ const checkoutSchema = z.object({
   phone: z.string().min(8, 'Telefone inválido').max(20),
   cep: z.string().max(20).optional().or(z.literal('')),
   address: z.string().min(3, 'Endereço obrigatório').max(300),
-  number: z.string().min(1, 'Número obrigatório').max(20),
+  number: z.string().min(1, 'Número obrigatório').max(20).regex(/^\d+$/, 'Apenas números são permitidos'),
   reference: z.string().max(300).optional().or(z.literal('')),
   neighborhood: z.string().min(2, 'Bairro obrigatório').max(100),
   notes: z.string().max(500).optional().or(z.literal('')),
